@@ -15,6 +15,10 @@
                         <?php echo modal_anchor(get_uri("taxes/modal_form"), "<i data-feather='plus-circle' class='icon-16'></i> " . app_lang('add_tax'), array("class" => "btn btn-default", "title" => app_lang('add_tax'))); ?>
                     </div>
                 </div>
+                <div class="alert alert-warning m15 mb0" role="note">
+                    <i data-feather="alert-triangle" class="icon-16"></i>
+                    <?php echo app_lang('administrative_taxes_notice'); ?>
+                </div>
                 <div class="table-responsive">
                     <table id="taxes-table" class="display" cellspacing="0" width="100%">            
                     </table>
@@ -28,8 +32,14 @@
         $("#taxes-table").appTable({
             source: '<?php echo_uri("taxes/list_data") ?>',
             columns: [
-                {title: '<?php echo app_lang("name"); ?>'},
+                {title: '<?php echo app_lang("tax_title"); ?>'},
                 {title: '<?php echo app_lang("percentage"); ?>'},
+                <?php if ($can_view_fiscal_tax_settings) { ?>{title: '<?php echo app_lang("sat_tax_code"); ?>'},
+                {title: '<?php echo app_lang("fiscal_tax_type"); ?>'},
+                {title: '<?php echo app_lang("factor_type"); ?>'},
+                {title: '<?php echo app_lang("xml_rate_or_quota"); ?>'},
+                {title: '<?php echo app_lang("administrative"); ?>'},
+                {title: '<?php echo app_lang("fiscally_ready"); ?>'},<?php } ?>
                 {visible: false, searchable: false},
                 {title: '<i data-feather="menu" class="icon-16"></i>', "class": "text-center option w100"}
             ]

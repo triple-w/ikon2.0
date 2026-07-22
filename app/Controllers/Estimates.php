@@ -2,6 +2,8 @@
 
 namespace App\Controllers;
 
+use App\Services\EstimateAcceptanceService;
+
 use App\Libraries\Dropdown_list;
 
 class Estimates extends Security_Controller {
@@ -291,19 +293,36 @@ class Estimates extends Security_Controller {
                 $estimate_data["accepted_by"] = $this->login_user->id;
             }
 
-            $estimate_id = $this->Estimates_model->ci_save($estimate_data, $estimate_id);
+            if ($status === 'accepted') {
+                $acceptance_service = new EstimateAcceptanceService();
+                try {
+                    $result = $acceptance_service->acceptAndFulfill(
+                        (int) $estimate_id,
+                        $estimate_data,
+                        $acceptance_service->shouldCreateInvoiceOnAcceptance(),
+                        (int) $this->login_user->id
+                    );
+                } catch (\Throwable $e) {
+                    echo json_encode(array("success" => false, "message" => app_lang("estimate_acceptance_fulfillment_failed")));
+                    return;
+                }
+            } else {
+                $estimate_id = $this->Estimates_model->ci_save($estimate_data, $estimate_id);
+            }
 
             //create notification
             if ($status == "accepted") {
                 log_notification("estimate_accepted", array("estimate_id" => $estimate_id));
 
-                //estimate accepted, create a new project
-                if (get_setting("create_new_projects_automatically_when_estimates_gets_accepted")) {
-                    $this->_create_project_from_estimate($estimate_id);
-                }
-
                 if ($is_modal) {
-                    echo json_encode(array("success" => true, "message" => app_lang("estimate_accepted")));
+                    echo json_encode(array(
+                        "success" => true,
+                        "message" => app_lang($acceptance_service->resultMessageKey($result)),
+                        "invoice_action" => $result["invoice_action"],
+                        "invoice_id" => $result["invoice_id"],
+                    ));
+                } else {
+                    $this->session->setFlashdata("success_message", app_lang($acceptance_service->resultMessageKey($result)));
                 }
             } else if ($status == "declined") {
                 log_notification("estimate_rejected", array("estimate_id" => $estimate_id));
@@ -315,36 +334,27 @@ class Estimates extends Security_Controller {
             }
 
             $estimate_data = array("status" => $status);
-            $estimate_id = $this->Estimates_model->ci_save($estimate_data, $estimate_id);
-
-            //estimate accepted, create a new project
-            if (get_setting("create_new_projects_automatically_when_estimates_gets_accepted") && $status == "accepted") {
-                $this->_create_project_from_estimate($estimate_id);
-            }
-        }
-    }
-
-    /* create new project from accepted estimate */
-
-    private function _create_project_from_estimate($estimate_id) {
-        if ($estimate_id) {
-            $this->validate_estimate_access($estimate_id);
-            $estimate_info = $this->Estimates_model->get_one($estimate_id);
-
-            //don't create new project if there has already been created a new project with this estimate
-            if (!$this->Projects_model->get_one_where(array("estimate_id" => $estimate_id))->id) {
-                $data = array(
-                    "title" => get_estimate_id($estimate_info->id),
-                    "client_id" => $estimate_info->client_id,
-                    "start_date" => $estimate_info->estimate_date,
-                    "deadline" => $estimate_info->valid_until,
-                    "estimate_id" => $estimate_id
-                );
-                $save_id = $this->Projects_model->ci_save($data);
-
-                //save the project id
-                $data = array("project_id" => $save_id);
-                $this->Estimates_model->ci_save($data, $estimate_id);
+            if ($status === "accepted") {
+                $acceptance_service = new EstimateAcceptanceService();
+                try {
+                    $result = $acceptance_service->acceptAndFulfill(
+                        (int) $estimate_id,
+                        $estimate_data,
+                        $acceptance_service->shouldCreateInvoiceOnAcceptance(),
+                        (int) $this->login_user->id
+                    );
+                    echo json_encode(array(
+                        "success" => true,
+                        "message" => app_lang($acceptance_service->resultMessageKey($result)),
+                        "invoice_action" => $result["invoice_action"],
+                        "invoice_id" => $result["invoice_id"],
+                    ));
+                } catch (\Throwable $e) {
+                    echo json_encode(array("success" => false, "message" => app_lang("estimate_acceptance_fulfillment_failed")));
+                }
+            } else {
+                $estimate_id = $this->Estimates_model->ci_save($estimate_data, $estimate_id);
+                echo json_encode(array("success" => (bool) $estimate_id, "message" => app_lang("record_saved")));
             }
         }
     }

@@ -2,6 +2,10 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-12">
+                <div class="alert alert-info mb15" role="note">
+                    <i data-feather="info" class="icon-16"></i>
+                    <?php echo app_lang('administrative_sale_notice'); ?>
+                </div>
                 <div id="invoice-details-top-bar">
                     <?php echo view("invoices/invoice_top_bar"); ?>
                 </div>

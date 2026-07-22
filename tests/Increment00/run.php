@@ -36,7 +36,7 @@ final class Increment00TestRunner
         $fiscalRoutes = $this->read('app/Config/FiscalRoutes.php');
         $routes = $this->read('app/Config/Routes.php');
 
-        $this->assert(! str_contains($fiscalRoutes, '$routes->'), 'FiscalRoutes registers no endpoint');
+        $this->assert(! preg_match('/timbr|stamp|pac/i', $fiscalRoutes), 'FiscalRoutes registers no stamping or PAC endpoint');
         $this->assert(! preg_match('/(?:stamp|timbrar|cancelar|pac)[^\r\n]*\$routes->/i', $fiscalRoutes), 'No fiscal operation is routed');
         $this->assert(str_contains($routes, "require APPPATH . 'Config/FiscalRoutes.php';"), 'Explicit fiscal route file is integrated');
         $this->assert(str_contains($routes, 'is_file($dir . $file)'), 'Dynamic RISE routing excludes controller directories');

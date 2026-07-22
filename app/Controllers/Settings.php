@@ -879,11 +879,15 @@ class Settings extends Security_Controller {
     }
 
     function save_estimate_settings() {
-        $settings = array("estimate_prefix", "estimate_color", "estimate_footer", "send_estimate_bcc_to", "initial_number_of_the_estimate", "create_new_projects_automatically_when_estimates_gets_accepted", "enable_comments_on_estimates", "show_most_recent_estimate_comments_at_the_top", "add_signature_option_on_accepting_estimate", "enable_estimate_lock_state");
+        $settings = array("estimate_prefix", "estimate_color", "estimate_footer", "send_estimate_bcc_to", "initial_number_of_the_estimate", "create_new_invoices_automatically_when_estimates_gets_accepted", "enable_comments_on_estimates", "show_most_recent_estimate_comments_at_the_top", "add_signature_option_on_accepting_estimate", "enable_estimate_lock_state");
         $reload_page = false;
 
         foreach ($settings as $setting) {
             $value = $this->request->getPost($setting);
+
+            if ($setting === "create_new_invoices_automatically_when_estimates_gets_accepted") {
+                $value = ($value === "1" || $value === 1 || $value === true) ? "1" : "0";
+            }
 
             if ($setting === "estimate_footer") {
                 $value = decode_ajax_post_data($value);
@@ -900,7 +904,6 @@ class Settings extends Security_Controller {
                 $this->Estimates_model->save_initial_number_of_estimate($value);
             }
         }
-
         echo json_encode(array("success" => true, 'message' => app_lang('settings_updated'), "reload_page" => $reload_page));
     }
 

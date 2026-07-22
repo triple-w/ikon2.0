@@ -27,6 +27,11 @@
     </div>
 </div>
 
+<div class="alert alert-light border mb15" role="note">
+    <i data-feather="info" class="icon-16"></i>
+    <?php echo app_lang('client_fiscal_data_future_help'); ?>
+</div>
+
 <?php if ($model_info->id) { ?>
     <div class="form-group">
         <div class="row">
@@ -228,7 +233,7 @@
         </div>
     </div>
 </div>
-<div class="form-group">
+<div class="form-group d-none" aria-hidden="true">
     <div class="row">
         <label for="vat_number" class="<?php echo $label_column; ?>"><?php echo app_lang('vat_number'); ?></label>
         <div class="<?php echo $field_column; ?>">
@@ -244,7 +249,7 @@
         </div>
     </div>
 </div>
-<div class="form-group">
+<div class="form-group d-none" aria-hidden="true">
     <div class="row">
         <label for="gst_number" class="<?php echo $label_column; ?>"><?php echo app_lang('gst_number'); ?></label>
         <div class="<?php echo $field_column; ?>">

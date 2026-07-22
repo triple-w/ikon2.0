@@ -38,6 +38,10 @@
         echo view('invoices/invoice_parts/header_style_1.php', $data);
     }
 
+    echo '<div style="margin-top: 8px; padding: 6px; border: 1px solid #ddd; text-align: center; font-weight: bold;">'
+        . app_lang('administrative_sale_document')
+        . '</div>';
+
     $item_background = get_setting("invoice_item_list_background");
 
     $discount_row = '<tr>
@@ -145,4 +149,3 @@
 <span style="color:#444; line-height: 14px;">
     <?php echo get_setting("invoice_footer"); ?>
 </span>
-

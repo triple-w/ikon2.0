@@ -6,6 +6,7 @@ use App\Libraries\Paytm;
 use Config\Services;
 use App\Libraries\E_invoice;
 use App\Libraries\Dropdown_list;
+use App\Services\EstimateToInvoiceService;
 
 class Invoices extends Security_Controller {
 
@@ -296,7 +297,19 @@ class Invoices extends Security_Controller {
             $invoice_data = array_merge($invoice_data, prepare_invoice_display_id_data($invoice_due_date, $invoice_bill_date));
         }
 
-        $invoice_id = $this->Invoices_model->save_invoice_and_update_total($invoice_data, $id);
+        $copy_items_from_estimate = $this->request->getPost("copy_items_from_estimate");
+        if (!$id && $estimate_id && $copy_items_from_estimate) {
+            try {
+                $estimate = $this->Estimates_model->get_one($estimate_id);
+                $invoice_id = (new EstimateToInvoiceService())->createFromEstimate($estimate, (int)$this->login_user->id, 'draft', $invoice_data);
+            } catch (\Throwable $e) {
+                log_message('error', 'Manual estimate conversion failed estimate={estimate_id}: {exception}', ['estimate_id'=>$estimate_id, 'exception'=>$e]);
+                echo json_encode(array("success"=>false, "message"=>app_lang("error_occurred")));
+                return;
+            }
+        } else {
+            $invoice_id = $this->Invoices_model->save_invoice_and_update_total($invoice_data, $id);
+        }
         if ($invoice_id) {
 
             if ($is_clone && $main_invoice_id) {
@@ -324,7 +337,9 @@ class Invoices extends Security_Controller {
             $copy_items_from_contract = $this->request->getPost("copy_items_from_contract");
             $copy_items_from_proposal = $this->request->getPost("copy_items_from_proposal");
             $copy_items_from_order = $this->request->getPost("copy_items_from_order");
-            $this->_copy_related_items_to_invoice($copy_items_from_estimate, $copy_items_from_proposal, $copy_items_from_order, $copy_items_from_contract, $invoice_id);
+            if (!(!$id && $estimate_id && $copy_items_from_estimate)) {
+                $this->_copy_related_items_to_invoice($copy_items_from_estimate, $copy_items_from_proposal, $copy_items_from_order, $copy_items_from_contract, $invoice_id);
+            }
 
             echo json_encode(array("success" => true, "data" => $this->_row_data($invoice_id), 'id' => $invoice_id, 'message' => app_lang('record_saved')));
         } else {
@@ -429,7 +444,8 @@ class Invoices extends Security_Controller {
 
         $copy_items = null;
         if ($copy_items_from_estimate) {
-            $copy_items = $this->Estimate_items_model->get_details(array("estimate_id" => $copy_items_from_estimate))->getResult();
+            (new EstimateToInvoiceService())->copyItems((int)$copy_items_from_estimate, (int)$invoice_id);
+            return true;
         } else if ($copy_items_from_contract) {
             $copy_items = $this->Contract_items_model->get_details(array("contract_id" => $copy_items_from_contract))->getResult();
         } else if ($copy_items_from_proposal) {
@@ -505,12 +521,18 @@ class Invoices extends Security_Controller {
             "status" => $this->request->getPost("status"),
             "start_date" => $this->request->getPost("start_date"),
             "end_date" => $this->request->getPost("end_date"),
+            "date_filter_field" => "bill_date",
             "currency" => $this->request->getPost("currency"),
             "custom_fields" => $custom_fields,
             "custom_field_filter" => $this->prepare_custom_field_filter_values("invoices", $this->login_user->is_admin, $this->login_user->user_type),
             "show_own_client_invoice_user_id" => $this->show_own_client_invoice_user_id(),
             "show_own_invoices_only_user_id" => $this->show_own_invoices_only_user_id()
         );
+        log_message('debug', 'Invoice list filters user={user_id} type={type} status={status} start={start} end={end} currency={currency} own_creator={own_creator} own_client={own_client}', [
+            'user_id'=>$this->login_user->id, 'type'=>$options['type'] ?: '-', 'status'=>$options['status'] ?: '-',
+            'start'=>$options['start_date'] ?: '-', 'end'=>$options['end_date'] ?: '-', 'currency'=>$options['currency'] ?: '-',
+            'own_creator'=>$options['show_own_invoices_only_user_id'] ?: 0, 'own_client'=>$options['show_own_client_invoice_user_id'] ?: 0
+        ]);
 
         $list_data = $this->Invoices_model->get_details($options)->getResult();
         $result = array();

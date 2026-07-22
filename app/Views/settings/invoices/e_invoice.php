@@ -1,5 +1,11 @@
 <?php echo form_open(get_uri("settings/save_e_invoice_settings"), array("id" => "e-invoice-settings-form", "class" => "general-form dashed-row", "role" => "form")); ?>
 
+<div class="alert alert-danger m15" role="alert">
+    <i data-feather="alert-triangle" class="icon-16"></i>
+    <strong><?php echo app_lang('e_invoice'); ?>:</strong>
+    <?php echo app_lang('e_invoice_warning'); ?>
+</div>
+
 <div class="card-body">
     <div class="form-group form-switch">
         <div class="row">

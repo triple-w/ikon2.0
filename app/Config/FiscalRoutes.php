@@ -9,4 +9,9 @@
  *
  * @var \CodeIgniter\Router\RouteCollection $routes
  */
-
+$routes->get('fiscal/client-profiles/(:num)', 'Fiscal\ClientProfiles::index/$1');
+$routes->post('fiscal/client-profiles/list/(:num)', 'Fiscal\ClientProfiles::list_data/$1');
+$routes->post('fiscal/client-profiles/form', 'Fiscal\ClientProfiles::form');
+$routes->post('fiscal/client-profiles/save', 'Fiscal\ClientProfiles::save');
+$routes->post('fiscal/client-profiles/default', 'Fiscal\ClientProfiles::set_default');
+$routes->post('fiscal/client-profiles/deactivate', 'Fiscal\ClientProfiles::deactivate');

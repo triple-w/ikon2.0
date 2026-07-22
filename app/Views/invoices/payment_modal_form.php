@@ -1,6 +1,10 @@
 <?php echo form_open(get_uri("invoice_payments/save_payment"), array("id" => "invoice-payment-form", "class" => "general-form", "role" => "form")); ?>
 <div class="modal-body clearfix">
     <div class="container-fluid">
+        <div class="alert alert-light border" role="note">
+            <i data-feather="info" class="icon-16"></i>
+            <?php echo app_lang('payment_form_sat_notice'); ?>
+        </div>
         <input type="hidden" name="id" value="<?php echo $model_info->id; ?>" />
 
         <?php if ($invoice_id) { ?>

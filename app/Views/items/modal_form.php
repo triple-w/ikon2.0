@@ -4,6 +4,11 @@
         <div class="container-fluid">
             <input type="hidden" name="id" value="<?php echo $model_info->id; ?>" />
 
+            <div class="alert alert-light border" role="note">
+                <i data-feather="info" class="icon-16"></i>
+                <?php echo app_lang('item_sat_configuration_future_help'); ?>
+            </div>
+
             <?php if ($model_info->id) { ?>
                 <div class="form-group">
                     <div class="row">
@@ -14,7 +19,7 @@
 
             <div class="form-group">
                 <div class="row">
-                    <label for="title" class=" col-md-3"><?php echo app_lang('title'); ?></label>
+                    <label for="title" class=" col-md-3"><?php echo app_lang('item_name'); ?></label>
                     <div class="col-md-9">
                         <?php
                         echo form_input(array(
@@ -22,7 +27,7 @@
                             "name" => "title",
                             "value" => $model_info->title,
                             "class" => "form-control validate-hidden",
-                            "placeholder" => app_lang('title'),
+                            "placeholder" => app_lang('item_name'),
                             "autofocus" => true,
                             "data-rule-required" => true,
                             "data-msg-required" => app_lang("field_required"),
@@ -68,7 +73,7 @@
                             "name" => "unit_type",
                             "value" => $model_info->unit_type,
                             "class" => "form-control",
-                            "placeholder" => app_lang('unit_type') . ' (Ex: hours, pc, etc.)'
+                            "placeholder" => app_lang('unit_type') . ' (' . app_lang('unit_type_example') . ')'
                         ));
                         ?>
                     </div>
@@ -76,7 +81,7 @@
             </div>
             <div class="form-group">
                 <div class="row">
-                    <label for="item_rate" class=" col-md-3"><?php echo app_lang('rate'); ?></label>
+                    <label for="item_rate" class=" col-md-3"><?php echo app_lang('item_price'); ?></label>
                     <div class="col-md-9">
                         <?php
                         echo form_input(array(
@@ -84,7 +89,7 @@
                             "name" => "item_rate",
                             "value" => $model_info->rate ? to_decimal_format($model_info->rate) : "",
                             "class" => "form-control",
-                            "placeholder" => app_lang('rate'),
+                            "placeholder" => app_lang('item_price'),
                             "data-rule-required" => true,
                             "data-msg-required" => app_lang("field_required"),
                         ));

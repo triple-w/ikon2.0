@@ -136,6 +136,9 @@ class Roles extends Security_Controller {
             $view_data['can_upload_and_edit_files'] = get_array_value($permissions, "can_upload_and_edit_files");
             $view_data['can_view_files'] = get_array_value($permissions, "can_view_files");
             $view_data['can_comment_on_projects'] = get_array_value($permissions, "can_comment_on_projects");
+            foreach (array('can_view_fiscal_profiles','can_manage_fiscal_profiles','can_view_fiscal_tax_settings','can_manage_fiscal_tax_settings') as $permission) {
+                $view_data[$permission] = get_array_value($permissions, $permission);
+            }
 
             $view_data['permissions'] = $permissions;
 
@@ -303,6 +306,10 @@ class Roles extends Security_Controller {
         $can_upload_and_edit_files = $this->request->getPost('can_upload_and_edit_files');
         $can_view_files = $this->request->getPost('can_view_files');
         $can_comment_on_projects = $this->request->getPost('can_comment_on_projects');
+        $can_view_fiscal_profiles = $this->request->getPost('can_view_fiscal_profiles');
+        $can_manage_fiscal_profiles = $this->request->getPost('can_manage_fiscal_profiles');
+        $can_view_fiscal_tax_settings = $this->request->getPost('can_view_fiscal_tax_settings');
+        $can_manage_fiscal_tax_settings = $this->request->getPost('can_manage_fiscal_tax_settings');
 
         $permissions = array(
             "leave" => $leave,
@@ -367,6 +374,16 @@ class Roles extends Security_Controller {
             "can_view_files" => $can_view_files,
             "can_comment_on_projects" => $can_comment_on_projects,
         );
+
+        // Keep legacy roles unchanged: absent fiscal keys mean denied.
+        foreach (array(
+            'can_view_fiscal_profiles' => $can_view_fiscal_profiles,
+            'can_manage_fiscal_profiles' => $can_manage_fiscal_profiles,
+            'can_view_fiscal_tax_settings' => $can_view_fiscal_tax_settings,
+            'can_manage_fiscal_tax_settings' => $can_manage_fiscal_tax_settings,
+        ) as $permission => $enabled) {
+            if ($enabled) $permissions[$permission] = $enabled;
+        }
 
         try {
             $permissions = app_hooks()->apply_filters('app_filter_role_permissions_save_data', $permissions);

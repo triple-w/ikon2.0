@@ -57,8 +57,9 @@ class Invoices_model extends Crud_model {
         $start_date = $this->_get_clean_value($options, "start_date");
         $end_date = $this->_get_clean_value($options, "end_date");
 
+        $date_filter_field = $this->_get_clean_value($options, "date_filter_field");
         $generate_reports_based_on = "$invoices_table.due_date";
-        if (get_setting("generate_reports_based_on") == "bill_date") {
+        if ($date_filter_field === "bill_date" || (!$date_filter_field && get_setting("generate_reports_based_on") == "bill_date")) {
             $generate_reports_based_on = "$invoices_table.bill_date";
         }
 

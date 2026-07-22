@@ -1679,6 +1679,19 @@ $lang["private_template"] = "Private template";
 $lang["requested_by"] = "Requested by";
 
 $lang["create_new_projects_automatically_when_estimates_gets_accepted"] = "Create new projects automatically when estimates gets accepted";
+$lang["create_new_invoices_automatically_when_estimates_gets_accepted"] = "Create a sale when an estimate is accepted";
+$lang["link_automatic_invoice_to_estimate_project"] = "Link the sale to the created project";
+$lang["estimate_acceptance_fulfillment_failed"] = "The estimate could not be accepted and the requested automation could not be completed.";
+$lang["estimate_accepted_invoice_created"] = "Estimate accepted and sale created successfully.";
+$lang["estimate_accepted_invoice_existing"] = "Estimate accepted. A related sale already existed.";
+$lang["estimate_accepted_invoice_disabled"] = "Estimate accepted. No sale was created because automatic creation is disabled.";
+$lang["optional_fiscal_configuration"] = "Optional fiscal configuration"; $lang["fiscal_tax_does_not_generate_cfdi"] = "Fiscal tax configuration does not generate a CFDI.";
+$lang["use_for_administrative"] = "Use administratively"; $lang["use_for_fiscal"] = "Use for future invoicing"; $lang["sat_tax_code"] = "SAT tax code"; $lang["fiscal_tax_type"] = "Fiscal type"; $lang["factor_type"] = "Factor"; $lang["xml_rate"] = "XML rate"; $lang["xml_quota"] = "XML quota"; $lang["xml_rate_or_quota"] = "XML rate/quota"; $lang["fiscal_notes"] = "Fiscal notes"; $lang["administrative"] = "Administrative"; $lang["fiscally_ready"] = "Fiscally ready"; $lang["transfer"] = "Transfer"; $lang["withholding"] = "Withholding";
+$lang["xml_rate_help"] = "The visible rate is a percentage. The XML rate is a decimal factor with six decimals."; $lang["fiscal_tax_code_required"] = "Select a SAT tax code."; $lang["fiscal_tax_type_required"] = "Select transfer or withholding."; $lang["fiscal_factor_required"] = "Select a factor."; $lang["xml_rate_required"] = "Rate factor requires an exact XML decimal rate."; $lang["xml_quota_required"] = "Quota factor requires an exact XML decimal quota."; $lang["exempt_factor_has_no_rate"] = "Exempt factor cannot contain an XML rate or quota.";
+$lang["fiscal_data"] = "Fiscal data"; $lang["add_fiscal_profile"] = "Add fiscal profile"; $lang["legal_name"] = "Legal fiscal name"; $lang["fiscal_postal_code"] = "Fiscal postal code"; $lang["tax_residency_country"] = "Tax residency country"; $lang["foreign_tax_registration"] = "Foreign tax registration"; $lang["tax_regime"] = "Tax regime"; $lang["default_cfdi_use"] = "Default CFDI use"; $lang["fiscal_readiness"] = "Fiscal readiness"; $lang["ready_to_invoice"] = "Ready to invoice"; $lang["incomplete"] = "Incomplete"; $lang["rfc_format_not_sat_validation"] = "Format review does not validate the RFC with SAT.";
+$lang["fiscal_profile_draft"] = "Draft"; $lang["fiscal_profile_incomplete"] = "Incomplete profile"; $lang["fiscal_profile_ready"] = "Ready to invoice"; $lang["fiscal_profile_inactive"] = "Inactive"; $lang["fiscal_permissions"] = "Fiscal permissions"; $lang["can_view_fiscal_profiles"] = "View fiscal profiles"; $lang["can_manage_fiscal_profiles"] = "Manage fiscal profiles"; $lang["can_view_fiscal_tax_settings"] = "View fiscal tax settings"; $lang["can_manage_fiscal_tax_settings"] = "Manage fiscal tax settings";
+$lang["not_configured"] = "Not configured";
+$lang["automatic_sale_from_estimate_help"] = "When the estimate is accepted, an unpaid sale will be registered with the same items, discounts, and taxes.";
 
 $lang["typing"] = "Typing";
 
@@ -2933,5 +2946,18 @@ $lang["filter_bar"] = "Filter Bar";
 $lang["keep_filter_bar_collapsed"] = "Keep filter bar collapsed";
 $lang["keep_filter_bar_expanded_until_any_saved_filter_is_selected"] = "Keep filter bar expanded until any saved filter is selected";
 $lang["keep_filter_bar_always_expanded"] = "Keep filter bar always expanded";
+
+$lang["client_fiscal_data_future_help"] = "Fiscal data will be configured later in a separate section.";
+$lang["legacy_tax_identifier_help"] = "Legacy RISE data. It is not a Mexican RFC.";
+$lang["item_name"] = "Name";
+$lang["unit_type_example"] = "E.g. hours, pieces, service";
+$lang["item_price"] = "Price";
+$lang["item_sat_configuration_future_help"] = "SAT configuration will be added later and is not required to record an administrative sale.";
+$lang["administrative_sale_notice"] = "This sale is an administrative document. It is not a stamped CFDI.";
+$lang["administrative_sale_document"] = "Administrative sales document";
+$lang["payment_form_sat_notice"] = "The administrative payment form does not automatically correspond to the SAT payment form.";
+$lang["administrative_taxes_notice"] = "These taxes are used for administrative calculations and do not by themselves represent SAT fiscal configuration.";
+$lang["tax_title"] = "Tax name";
+$lang["e_invoice_warning"] = "This module is not Mexican electronic invoicing and does not stamp documents with the SAT.";
 
 return $lang;

@@ -15,7 +15,7 @@
                     </li>
                     <li><a role="presentation" data-bs-toggle="tab" href="javascript:;" data-bs-target="#invoice-style-settings-tab"> <?php echo app_lang('style'); ?></a></li>
                     <li><a role="presentation" data-bs-toggle="tab" href="<?php echo_uri("settings/invoice_general"); ?>" data-bs-target="#invoice-general-settings-tab"><?php echo app_lang('general'); ?></a></li>
-                    <li><a role="presentation" data-bs-toggle="tab" href="<?php echo_uri("settings/e_invoice"); ?>" data-bs-target="#e-invoice-settings-tab" class="e-invoice-templates-tab"> <?php echo app_lang('e_invoice'); ?></a></li>
+                    <li class="d-none" aria-hidden="true"><a role="presentation" data-bs-toggle="tab" href="<?php echo_uri("settings/e_invoice"); ?>" data-bs-target="#e-invoice-settings-tab" class="e-invoice-templates-tab" tabindex="-1"> <?php echo app_lang('e_invoice'); ?></a></li>
                     <li><a role="presentation" data-bs-toggle="tab" href="<?php echo_uri("settings/invoice_reminders"); ?>" data-bs-target="#invoice-reminder-settings-tab"><?php echo app_lang('reminders'); ?></a></li>
                 </ul>
 

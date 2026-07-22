@@ -86,7 +86,7 @@
                     </div>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="form-group d-none" aria-hidden="true">
                 <div class="row">
                     <label for="vat_number" class=" col-md-3"><?php echo app_lang('vat_number'); ?></label>
                     <div class=" col-md-9">
@@ -102,7 +102,7 @@
                     </div>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="form-group d-none" aria-hidden="true">
                 <div class="row">
                     <label for="gst_number" class="col-md-3"><?php echo app_lang('gst_number'); ?></label>
                     <div class="col-md-9">

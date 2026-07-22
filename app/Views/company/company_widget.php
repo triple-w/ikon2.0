@@ -21,11 +21,11 @@ $company_address = nl2br($company_info->address ? $company_info->address : "");
     <?php if ($company_info->website) { ?>
         <br /><?php echo app_lang("website"); ?>: <a style="color:#666; text-decoration: none;" href="<?php echo $company_info->website; ?>"><?php echo $company_info->website; ?></a>
     <?php } ?>
-    <?php if ($company_info->vat_number || $company_info->gst_number) {
+    <span style="display:none" aria-hidden="true"><?php if ($company_info->vat_number || $company_info->gst_number) {
         if ($company_info->vat_number) {
             echo "<br />" . app_lang("vat_number") . ": " . $company_info->vat_number;
         } else {
             echo "<br />" . app_lang("gst_number") . ": " . $company_info->gst_number;
         }
-    } ?>
+    } ?></span>
 </span>

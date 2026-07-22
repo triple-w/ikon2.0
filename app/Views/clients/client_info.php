@@ -162,10 +162,10 @@
                 </li>
             <?php } ?>
             <?php if ($client_info->vat_number) { ?>
-                <li class="list-group-item"><strong><?php echo app_lang("vat_number") . ": "; ?></strong><label><?php echo $client_info->vat_number; ?></label></li>
+                <li class="list-group-item d-none" aria-hidden="true"><strong><?php echo app_lang("vat_number") . ": "; ?></strong><label><?php echo $client_info->vat_number; ?></label></li>
             <?php } ?>
             <?php if ($client_info->gst_number) { ?>
-                <li class="list-group-item"><strong><?php echo app_lang("gst_number") . ": "; ?></strong><label><?php echo $client_info->gst_number; ?></label></li>
+                <li class="list-group-item d-none" aria-hidden="true"><strong><?php echo app_lang("gst_number") . ": "; ?></strong><label><?php echo $client_info->gst_number; ?></label></li>
             <?php } ?>
             <?php if ($client_info->disable_online_payment) { ?>
                 <li class="list-group-item">

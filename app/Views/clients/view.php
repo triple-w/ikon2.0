@@ -38,6 +38,7 @@
 
                 <ul id="client-details-tabs" data-bs-toggle="ajax-tab" data-do-not-save-state="1" class="nav nav-tabs scrollable-tabs rounded mb20" role="tablist">
                     <li><a role="presentation" data-bs-toggle="tab" href="<?php echo_uri(("clients/overview/" . $client_info->id)); ?>" data-bs-target="#client-overview"> <?php echo app_lang('overview'); ?></a></li>
+                    <?php $fiscal_permissions=is_array($login_user->permissions)?$login_user->permissions:(@unserialize((string)$login_user->permissions)?:array()); if ($login_user->is_admin || get_array_value($fiscal_permissions, 'can_view_fiscal_profiles')) { ?><li><a role="presentation" data-bs-toggle="tab" href="<?php echo_uri('fiscal/client-profiles/'.$client_info->id); ?>" data-bs-target="#client-fiscal-profiles"><?php echo app_lang('fiscal_data'); ?></a></li><?php } ?>
 
                     <?php if ($show_project_info) { ?>
                         <li><a role="presentation" data-bs-toggle="tab" href="<?php echo_uri("clients/projects/" . $client_info->id); ?>" data-bs-target="#client-projects"><?php echo app_lang('projects'); ?></a></li>
@@ -103,6 +104,7 @@
                 </ul>
                 <div class="tab-content">
                     <div role="tabpanel" class="tab-pane fade" id="client-overview"></div>
+                    <div role="tabpanel" class="tab-pane fade" id="client-fiscal-profiles"></div>
                     <div role="tabpanel" class="tab-pane fade" id="client-projects"></div>
                     <div role="tabpanel" class="tab-pane fade" id="client-subscriptions"></div>
                     <div role="tabpanel" class="tab-pane fade" id="client-invoices"></div>

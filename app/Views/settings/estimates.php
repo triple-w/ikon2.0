@@ -98,11 +98,14 @@
                             </div>
                             <div class="form-group">
                                 <div class="row">
-                                    <label for="create_new_projects_automatically_when_estimates_gets_accepted" class="col-md-2"><?php echo app_lang("create_new_projects_automatically_when_estimates_gets_accepted"); ?></label>
+                                    <label for="create_new_invoices_automatically_when_estimates_gets_accepted" class="col-md-2"><?php echo app_lang("create_new_invoices_automatically_when_estimates_gets_accepted"); ?></label>
                                     <div class="col-md-10">
                                         <?php
-                                        echo form_checkbox("create_new_projects_automatically_when_estimates_gets_accepted", "1", get_setting("create_new_projects_automatically_when_estimates_gets_accepted") ? true : false, "id='create_new_projects_automatically_when_estimates_gets_accepted' class='form-check-input'");
-                                        ?> 
+                                        $automatic_sale_setting = get_setting("create_new_invoices_automatically_when_estimates_gets_accepted");
+                                        $automatic_sale_enabled = $automatic_sale_setting === "1" || $automatic_sale_setting === 1 || $automatic_sale_setting === true;
+                                        echo form_checkbox("create_new_invoices_automatically_when_estimates_gets_accepted", "1", $automatic_sale_enabled, "id='create_new_invoices_automatically_when_estimates_gets_accepted' class='form-check-input'");
+                                        ?>
+                                        <div class="text-muted mt5"><?php echo app_lang("automatic_sale_from_estimate_help"); ?></div>
                                     </div>
                                 </div>
                             </div>

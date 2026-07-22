@@ -2,6 +2,8 @@
 
 namespace App\Controllers;
 
+use App\Services\EstimateAcceptanceService;
+
 class Estimate extends Security_Controller {
 
     function __construct() {
@@ -56,12 +58,28 @@ class Estimate extends Security_Controller {
         //client can only update the status once and the value should be either accepted or declined
         if ($status == "accepted" || $status == "declined") {
             $estimate_data = array("status" => $status);
-            $estimate_id = $this->Estimates_model->ci_save($estimate_data, $estimate_id);
+            if ($status === "accepted") {
+                $acceptance_service = new EstimateAcceptanceService();
+                $actor = (int) ($estimate_info->created_by ?: 1);
+                try {
+                    $result = $acceptance_service->acceptAndFulfill(
+                        (int) $estimate_id,
+                        $estimate_data,
+                        $acceptance_service->shouldCreateInvoiceOnAcceptance(),
+                        $actor
+                    );
+                } catch (\Throwable $e) {
+                    echo json_encode(array("success" => false, "message" => app_lang("estimate_acceptance_fulfillment_failed")));
+                    return;
+                }
+            } else {
+                $estimate_id = $this->Estimates_model->ci_save($estimate_data, $estimate_id);
+            }
 
             //create notification
             if ($status == "accepted") {
                 log_notification("estimate_accepted", array("estimate_id" => $estimate_id), isset($this->login_user->id) ? $this->login_user->id : "999999996");
-                $this->session->setFlashdata("success_message", app_lang("estimate_accepted"));
+                $this->session->setFlashdata("success_message", app_lang($acceptance_service->resultMessageKey($result)));
             } else if ($status == "declined") {
                 log_notification("estimate_rejected", array("estimate_id" => $estimate_id), isset($this->login_user->id) ? $this->login_user->id : "999999996");
                 $this->session->setFlashdata("error_message", app_lang('estimate_rejected'));
@@ -164,9 +182,27 @@ class Estimate extends Security_Controller {
         $estimate_data["meta_data"] = serialize($meta_data);
         $estimate_data["status"] = "accepted";
 
-        if ($this->Estimates_model->ci_save($estimate_data, $estimate_id)) {
+        $actor = (int) (($name ? $estimate_info->created_by : $this->login_user->id) ?: 1);
+        $acceptance_service = new EstimateAcceptanceService();
+        try {
+            $result = $acceptance_service->acceptAndFulfill(
+                (int) $estimate_id,
+                $estimate_data,
+                $acceptance_service->shouldCreateInvoiceOnAcceptance(),
+                $actor
+            );
+        } catch (\Throwable $e) {
+            echo json_encode(array("success" => false, "message" => app_lang("estimate_acceptance_fulfillment_failed")));
+            return;
+        }
+        if ($result["accepted"] ?? false) {
             log_notification("estimate_accepted", array("estimate_id" => $estimate_id), ($name ? "999999996" : $this->login_user->id));
-            echo json_encode(array("success" => true, "message" => app_lang("estimate_accepted")));
+            echo json_encode(array(
+                "success" => true,
+                "message" => app_lang($acceptance_service->resultMessageKey($result)),
+                "invoice_action" => $result["invoice_action"],
+                "invoice_id" => $result["invoice_id"],
+            ));
         } else {
             echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));
         }

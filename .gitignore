@@ -14,6 +14,10 @@ writable/session/**
 writable/uploads/**
 writable/debugbar/**
 writable/fiscal-private/**
+
+# Runtime-generated temporary documents; keep the access-control sentinel.
+/files/temp/*
+!/files/temp/index.html
 !writable/cache/.gitkeep
 !writable/logs/.gitkeep
 !writable/session/.gitkeep
@@ -41,4 +45,3 @@ Thumbs.db
 .phpunit.cache/
 .phpunit.result.cache
 coverage/
-

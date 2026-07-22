@@ -21,13 +21,13 @@
             <?php if ($client_info->country) { ?>
                 <br /><?php echo $client_info->country; ?>
             <?php } ?>
-            <?php if ($client_info->vat_number || $client_info->gst_number) { ?>
+            <span style="display:none" aria-hidden="true"><?php if ($client_info->vat_number || $client_info->gst_number) { ?>
                 <?php if ($client_info->vat_number) { ?>
                     <br /><?php echo app_lang("vat_number") . ": " . $client_info->vat_number; ?>
                 <?php } else { ?>
                     <br /><?php echo app_lang("gst_number") . ": " . $client_info->gst_number; ?>
                 <?php } ?>
-            <?php } ?>
+            <?php } ?></span>
             <?php
             if (isset($client_info->custom_fields) && $client_info->custom_fields) {
                 foreach ($client_info->custom_fields as $field) {
