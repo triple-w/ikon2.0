@@ -1,0 +1,44 @@
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+app/Config/Local.php
+app/Config/*Local.php
+*.secret
+*.secrets
+
+# Runtime data
+writable/cache/**
+writable/logs/**
+writable/session/**
+writable/uploads/**
+writable/debugbar/**
+writable/fiscal-private/**
+!writable/cache/.gitkeep
+!writable/logs/.gitkeep
+!writable/session/.gitkeep
+
+# Fiscal and cryptographic material
+*.cer
+*.key
+*.pem
+*.pfx
+*.p12
+*.jks
+
+# Temporary and editor files
+*.tmp
+*.temp
+*.bak
+*.swp
+~$*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Test output
+.phpunit.cache/
+.phpunit.result.cache
+coverage/
+
