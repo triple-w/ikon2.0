@@ -23,6 +23,15 @@
         </div>
         <div class="form-group">
             <div class="row">
+                <label for="sat_payment_form_code" class="col-md-4"><?php echo app_lang('sat_payment_form_mapping'); ?></label>
+                <div class="col-md-8">
+                    <?php echo form_dropdown("sat_payment_form_code", $sat_payment_forms, $sat_payment_form_code, "id='sat_payment_form_code' class='select2 form-control'"); ?>
+                    <small><?php echo app_lang('sat_payment_form_mapping_help'); ?></small>
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="row">
                 <label for="description" class="col-md-4"><?php echo app_lang('description'); ?></label>
                 <div class=" col-md-8">
                     <?php
@@ -167,5 +176,6 @@
             $("#title").focus();
         }, 200);
         $('[data-bs-toggle="tooltip"]').tooltip();
+        $("#sat_payment_form_code").select2();
     });
 </script>

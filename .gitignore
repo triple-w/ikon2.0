@@ -14,6 +14,9 @@ writable/session/**
 writable/uploads/**
 writable/debugbar/**
 writable/fiscal-private/**
+writable/fiscal/prexml/**
+writable/fiscal/certificates/**
+writable/fiscal/artifacts/**
 
 # Runtime-generated temporary documents; keep the access-control sentinel.
 /files/temp/*

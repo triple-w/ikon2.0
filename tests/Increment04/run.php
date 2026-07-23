@@ -8,5 +8,5 @@ $review=file_get_contents($root.'/app/Services/Fiscal/SaleFiscalReadinessService
 $roles=file_get_contents($root.'/app/Controllers/Roles.php');foreach(['fiscal_issuers_view','fiscal_issuers_manage','fiscal_series_view','fiscal_series_manage','fiscal_sales_review']as$p)$assert(str_contains($roles,$p),"Role persistence supports $p.");
 $routes=file_get_contents($root.'/app/Config/FiscalRoutes.php');foreach(['fiscal/issuers','fiscal/series','fiscal/invoices/review']as$r)$assert(str_contains($routes,$r),"Explicit fiscal route exists: $r.");
 $invoiceAction=file_get_contents($root.'/app/Views/invoices/invoice_actions.php');$assert(str_contains($invoiceAction,'fiscal_sales_review')&&!str_contains($invoiceAction,'>Timbrar<'),'Invoice action requires review permission and exposes no stamp button.');
-$assert(!file_exists($root.'/app/Models/Fiscal/Fiscal_documents_model.php')&&!file_exists($root.'/app/Database/Migrations/2026-07-24-040200_CreateFiscalDocuments.php'),'No fiscal_documents persistence exists.');
+$assert(!str_contains($migrationText,'fiscal_documents')&&!file_exists($root.'/app/Database/Migrations/2026-07-24-040200_CreateFiscalDocuments.php'),'Increment 04 itself introduced no fiscal_documents persistence.');
 echo "\n$pass passed, $fail failed.\n";exit($fail?1:0);

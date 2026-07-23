@@ -136,7 +136,7 @@ class Roles extends Security_Controller {
             $view_data['can_upload_and_edit_files'] = get_array_value($permissions, "can_upload_and_edit_files");
             $view_data['can_view_files'] = get_array_value($permissions, "can_view_files");
             $view_data['can_comment_on_projects'] = get_array_value($permissions, "can_comment_on_projects");
-            foreach (array('can_view_fiscal_profiles','can_manage_fiscal_profiles','can_view_fiscal_tax_settings','can_manage_fiscal_tax_settings','fiscal_items_view','fiscal_items_manage','fiscal_issuers_view','fiscal_issuers_manage','fiscal_series_view','fiscal_series_manage','fiscal_sales_review','fiscal_sales_pricing_review','fiscal_sales_pricing_apply','fiscal_sales_pricing_override') as $permission) {
+            foreach (array('can_view_fiscal_profiles','can_manage_fiscal_profiles','can_view_fiscal_tax_settings','can_manage_fiscal_tax_settings','fiscal_items_view','fiscal_items_manage','fiscal_issuers_view','fiscal_issuers_manage','fiscal_series_view','fiscal_series_manage','fiscal_sales_review','fiscal_sales_pricing_review','fiscal_sales_pricing_apply','fiscal_sales_pricing_override','fiscal_drafts_view','fiscal_drafts_create','fiscal_drafts_lock','fiscal_drafts_supersede','fiscal_drafts_cancel','fiscal_xml_preview_generate','fiscal_xml_preview_view','fiscal_xml_preview_download','fiscal_xml_preview_validate','fiscal_certificates_view','fiscal_certificates_manage','fiscal_xml_sign','fiscal_signed_xml_view') as $permission) {
                 $view_data[$permission] = get_array_value($permissions, $permission);
             }
 
@@ -320,6 +320,19 @@ class Roles extends Security_Controller {
         $fiscal_sales_pricing_review = $this->request->getPost('fiscal_sales_pricing_review');
         $fiscal_sales_pricing_apply = $this->request->getPost('fiscal_sales_pricing_apply');
         $fiscal_sales_pricing_override = $this->request->getPost('fiscal_sales_pricing_override');
+        $fiscal_drafts_view = $this->request->getPost('fiscal_drafts_view');
+        $fiscal_drafts_create = $this->request->getPost('fiscal_drafts_create');
+        $fiscal_drafts_lock = $this->request->getPost('fiscal_drafts_lock');
+        $fiscal_drafts_supersede = $this->request->getPost('fiscal_drafts_supersede');
+        $fiscal_drafts_cancel = $this->request->getPost('fiscal_drafts_cancel');
+        $fiscal_xml_preview_generate = $this->request->getPost('fiscal_xml_preview_generate');
+        $fiscal_xml_preview_view = $this->request->getPost('fiscal_xml_preview_view');
+        $fiscal_xml_preview_download = $this->request->getPost('fiscal_xml_preview_download');
+        $fiscal_xml_preview_validate = $this->request->getPost('fiscal_xml_preview_validate');
+        $fiscal_certificates_view = $this->request->getPost('fiscal_certificates_view');
+        $fiscal_certificates_manage = $this->request->getPost('fiscal_certificates_manage');
+        $fiscal_xml_sign = $this->request->getPost('fiscal_xml_sign');
+        $fiscal_signed_xml_view = $this->request->getPost('fiscal_signed_xml_view');
 
         $permissions = array(
             "leave" => $leave,
@@ -401,6 +414,19 @@ class Roles extends Security_Controller {
             'fiscal_sales_pricing_review' => $fiscal_sales_pricing_review,
             'fiscal_sales_pricing_apply' => $fiscal_sales_pricing_apply,
             'fiscal_sales_pricing_override' => $fiscal_sales_pricing_override,
+            'fiscal_drafts_view' => $fiscal_drafts_view,
+            'fiscal_drafts_create' => $fiscal_drafts_create,
+            'fiscal_drafts_lock' => $fiscal_drafts_lock,
+            'fiscal_drafts_supersede' => $fiscal_drafts_supersede,
+            'fiscal_drafts_cancel' => $fiscal_drafts_cancel,
+            'fiscal_xml_preview_generate' => $fiscal_xml_preview_generate,
+            'fiscal_xml_preview_view' => $fiscal_xml_preview_view,
+            'fiscal_xml_preview_download' => $fiscal_xml_preview_download,
+            'fiscal_xml_preview_validate' => $fiscal_xml_preview_validate,
+            'fiscal_certificates_view' => $fiscal_certificates_view,
+            'fiscal_certificates_manage' => $fiscal_certificates_manage,
+            'fiscal_xml_sign' => $fiscal_xml_sign,
+            'fiscal_signed_xml_view' => $fiscal_signed_xml_view,
         ) as $permission => $enabled) {
             if ($enabled) $permissions[$permission] = $enabled;
         }

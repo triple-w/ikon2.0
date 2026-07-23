@@ -25,6 +25,18 @@ class Payment_methods extends Security_Controller {
 
         //get seetings associtated with this payment type
         $view_data['settings'] = $this->Payment_methods_model->get_settings($view_data['model_info']->type);
+        $view_data['sat_payment_forms'] = array("" => "-");
+        $view_data['sat_payment_form_code'] = "";
+        $db = db_connect();
+        if ($db->tableExists("sat_payment_forms")) {
+            foreach ($db->table("sat_payment_forms")->where("is_active", 1)->orderBy("code")->get()->getResult() as $form) {
+                $view_data['sat_payment_forms'][$form->code] = $form->code . " · " . $form->name;
+            }
+        }
+        if ($view_data['model_info']->id && $db->tableExists("fiscal_payment_method_mappings")) {
+            $mapping = $db->table("fiscal_payment_method_mappings")->where("payment_method_id", $view_data['model_info']->id)->get(1)->getRow();
+            $view_data['sat_payment_form_code'] = $mapping->sat_payment_form_code ?? "";
+        }
 
         return $this->template->view('payment_methods/modal_form', $view_data);
     }
@@ -75,6 +87,23 @@ class Payment_methods extends Security_Controller {
 
         $save_id = $this->Payment_methods_model->ci_save($data, $id);
         if ($save_id) {
+            $db = db_connect();
+            if ($db->tableExists("fiscal_payment_method_mappings")) {
+                $form_code = trim((string) $this->request->getPost("sat_payment_form_code"));
+                $existing_mapping = $db->table("fiscal_payment_method_mappings")->where("payment_method_id", $save_id)->get(1)->getRow();
+                if ($form_code !== "" && $db->table("sat_payment_forms")->where(array("code" => $form_code, "is_active" => 1))->countAllResults() === 1) {
+                    $mapping_data = array("payment_method_id" => $save_id, "sat_payment_form_code" => $form_code, "is_active" => 1, "updated_at" => get_current_utc_time());
+                    if ($existing_mapping) {
+                        $db->table("fiscal_payment_method_mappings")->where("id", $existing_mapping->id)->update($mapping_data);
+                    } else {
+                        $mapping_data["created_by"] = $this->login_user->id;
+                        $mapping_data["created_at"] = get_current_utc_time();
+                        $db->table("fiscal_payment_method_mappings")->insert($mapping_data);
+                    }
+                } elseif ($existing_mapping) {
+                    $db->table("fiscal_payment_method_mappings")->where("id", $existing_mapping->id)->update(array("is_active" => 0, "updated_at" => get_current_utc_time()));
+                }
+            }
             echo json_encode(array("success" => true, "data" => $this->_row_data($save_id), 'id' => $save_id, 'message' => app_lang('record_saved')));
         } else {
             echo json_encode(array("success" => false, 'message' => app_lang('error_occurred')));

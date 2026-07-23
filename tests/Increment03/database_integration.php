@@ -214,7 +214,7 @@ if ($invoice) {
     echo "[SKIP] no invoice was available to characterize fiscal review\n";
 }
 
-$assert(!$db->tableExists('fiscal_documents'), 'Increment 03 creates no fiscal_documents table.');
+$increment03MigrationText=implode("\n",array_map('file_get_contents',glob(APPPATH.'Database/Migrations/2026-07-23-*.php')?:[]));$assert(!str_contains($increment03MigrationText,'fiscal_documents'), 'Increment 03 itself creates no fiscal_documents table.');
 $assert($db->fieldExists('rate', 'items') && $db->fieldExists('unit_type', 'items') && $db->fieldExists('taxable', 'items'), 'Administrative item schema remains available.');
 
 echo "\n$passed passed, $failed failed.\n";

@@ -22,7 +22,7 @@ $routes = file_get_contents($root . '/app/Config/FiscalRoutes.php');
 foreach (['fiscal/items/form', 'fiscal/items/save', 'fiscal/catalogs/product-service/search', 'fiscal/catalogs/units/search', 'fiscal/items/deactivate', 'fiscal/items/activate', 'fiscal/invoices/review'] as $route) {
     $assert(str_contains($routes, $route), "Explicit protected fiscal route exists: $route.");
 }
-$assert(!preg_match('/timbr|stamp|xml/i', $routes), 'No stamping or XML route was introduced.');
+$assert(!preg_match('/timbr|stamp|pac|cfdi\/(?:issue|seal|sign)/i', $routes), 'No stamping, PAC, signing, or final CFDI issuance route was introduced.');
 
 $itemsMigration = file_get_contents($root . '/app/Database/Migrations/2026-07-23-030300_CreateItemFiscalSettings.php');
 $assert(str_contains($itemsMigration, "'item_type'") && str_contains($itemsMigration, "'sat_unit_key_id'") && str_contains($itemsMigration, "'tax_object_code_id'"), 'Fiscal item settings remain separate from items.');
