@@ -23,3 +23,16 @@ $routes->post('fiscal/catalogs/units/search', 'Fiscal\ItemSettings::search_units
 $routes->post('fiscal/items/deactivate', 'Fiscal\ItemSettings::deactivate');
 $routes->post('fiscal/items/activate', 'Fiscal\ItemSettings::activate');
 $routes->get('fiscal/invoices/review/(:num)', 'Fiscal\InvoiceReview::show/$1');
+$routes->post('fiscal/invoices/review/(:num)', 'Fiscal\InvoiceReview::show/$1');
+$routes->post('fiscal/invoices/pricing/apply', 'Fiscal\InvoiceReview::apply');
+$routes->get('fiscal/issuers', 'Fiscal\Issuers::index');
+$routes->post('fiscal/issuers/list', 'Fiscal\Issuers::list_data');
+$routes->post('fiscal/issuers/form', 'Fiscal\Issuers::form');
+$routes->post('fiscal/issuers/save', 'Fiscal\Issuers::save');
+$routes->post('fiscal/issuers/default', 'Fiscal\Issuers::set_default');
+$routes->post('fiscal/issuers/deactivate', 'Fiscal\Issuers::deactivate');
+$routes->get('fiscal/series', 'Fiscal\Series::index');
+$routes->post('fiscal/series/list', 'Fiscal\Series::list_data');
+$routes->post('fiscal/series/form', 'Fiscal\Series::form');
+$routes->post('fiscal/series/save', 'Fiscal\Series::save');
+$routes->post('fiscal/series/deactivate', 'Fiscal\Series::deactivate');

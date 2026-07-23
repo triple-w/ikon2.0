@@ -72,6 +72,14 @@ if (get_setting("module_subscription") == "1") {
 $settings_menu["sales_and_prospects"][] = array("name" => "taxes", "url" => "taxes");
 
 $settings_menu["sales_and_prospects"][] = array("name" => "payment_methods", "url" => "payment_methods");
+$permissions = $login_user->permissions ?? array();
+if (!is_array($permissions)) $permissions = @unserialize((string) $permissions) ?: array();
+if ($login_user->is_admin || get_array_value($permissions, "fiscal_issuers_view")) {
+    $settings_menu["sales_and_prospects"][] = array("name" => "fiscal_issuers", "url" => "fiscal/issuers");
+}
+if ($login_user->is_admin || get_array_value($permissions, "fiscal_series_view")) {
+    $settings_menu["sales_and_prospects"][] = array("name" => "fiscal_series", "url" => "fiscal/series");
+}
 
 
 $settings_menu["setup"][] = array("name" => "projects", "url" => "settings/projects");

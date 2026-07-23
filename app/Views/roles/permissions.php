@@ -156,7 +156,7 @@
                 </li>
 
                 <?php if ($login_user->is_admin) { ?>
-                    <li><span data-feather="shield" class="icon-14 ml-20"></span><h5><?php echo app_lang('fiscal_permissions'); ?>:</h5><?php foreach(['can_view_fiscal_profiles','can_manage_fiscal_profiles','can_view_fiscal_tax_settings','can_manage_fiscal_tax_settings','fiscal_items_view','fiscal_items_manage'] as $permission){ ?><div><?php echo form_checkbox($permission,'1',${$permission}?true:false,"id='$permission' class='form-check-input'"); ?><label for="<?php echo $permission; ?>"><?php echo app_lang($permission); ?></label></div><?php } ?></li>
+                    <li><span data-feather="shield" class="icon-14 ml-20"></span><h5><?php echo app_lang('fiscal_permissions'); ?>:</h5><?php foreach(['can_view_fiscal_profiles','can_manage_fiscal_profiles','can_view_fiscal_tax_settings','can_manage_fiscal_tax_settings','fiscal_items_view','fiscal_items_manage','fiscal_issuers_view','fiscal_issuers_manage','fiscal_series_view','fiscal_series_manage','fiscal_sales_review','fiscal_sales_pricing_review','fiscal_sales_pricing_apply','fiscal_sales_pricing_override'] as $permission){ ?><div><?php echo form_checkbox($permission,'1',${$permission}?true:false,"id='$permission' class='form-check-input'"); ?><label for="<?php echo $permission; ?>"><?php echo app_lang($permission); ?></label></div><?php } ?></li>
                     <li>
                         <span data-feather="key" class="icon-14 ml-20"></span>
                         <h5><?php echo app_lang("administration_permissions"); ?>:</h5>

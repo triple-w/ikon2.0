@@ -792,12 +792,21 @@ class Invoices extends Security_Controller {
 
         $add_payment = '<li role="presentation">' . modal_anchor(get_uri("invoice_payments/payment_modal_form"), "<i data-feather='plus-circle' class='icon-16'></i> " . app_lang('add_payment'), array("title" => app_lang('add_payment'), "data-post-invoice_id" => $data->id, "class" => "dropdown-item")) . '</li>';
 
+        $fiscal_review = '';
+        $permissions = $this->login_user->permissions ?? array();
+        if (!is_array($permissions)) $permissions = @unserialize((string) $permissions) ?: array();
+        if ($this->login_user->is_admin || get_array_value($permissions, 'fiscal_sales_review') || get_array_value($permissions, 'fiscal_sales_pricing_review')) {
+            $latest = db_connect()->table('sale_fiscal_pricing_preparations')->where('invoice_id', $data->id)->orderBy('id', 'DESC')->get(1)->getRow();
+            $badge = $latest ? '<span class="badge bg-warning ml5">' . app_lang('fiscal_pricing_status_' . $latest->status) . '</span>' : '';
+            $fiscal_review = '<li role="presentation">' . modal_anchor(get_uri('fiscal/invoices/review/' . $data->id), "<i data-feather='shield' class='icon-16'></i> " . app_lang('fiscal_review') . $badge, array('title' => app_lang('fiscal_review'), 'class' => 'dropdown-item')) . '</li>';
+        }
+
         return '
                 <span class="dropdown inline-block">
                     <button class="action-option dropdown-toggle mt0 mb0" type="button" data-bs-toggle="dropdown" aria-expanded="true" data-bs-display="static">
                         <i data-feather="more-horizontal" class="icon-16"></i>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end" role="menu">' . $edit . $delete . $add_payment . '</ul>
+                    <ul class="dropdown-menu dropdown-menu-end" role="menu">' . $edit . $delete . $add_payment . $fiscal_review . '</ul>
                 </span>';
     }
 

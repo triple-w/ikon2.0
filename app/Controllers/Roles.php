@@ -136,7 +136,7 @@ class Roles extends Security_Controller {
             $view_data['can_upload_and_edit_files'] = get_array_value($permissions, "can_upload_and_edit_files");
             $view_data['can_view_files'] = get_array_value($permissions, "can_view_files");
             $view_data['can_comment_on_projects'] = get_array_value($permissions, "can_comment_on_projects");
-            foreach (array('can_view_fiscal_profiles','can_manage_fiscal_profiles','can_view_fiscal_tax_settings','can_manage_fiscal_tax_settings','fiscal_items_view','fiscal_items_manage') as $permission) {
+            foreach (array('can_view_fiscal_profiles','can_manage_fiscal_profiles','can_view_fiscal_tax_settings','can_manage_fiscal_tax_settings','fiscal_items_view','fiscal_items_manage','fiscal_issuers_view','fiscal_issuers_manage','fiscal_series_view','fiscal_series_manage','fiscal_sales_review','fiscal_sales_pricing_review','fiscal_sales_pricing_apply','fiscal_sales_pricing_override') as $permission) {
                 $view_data[$permission] = get_array_value($permissions, $permission);
             }
 
@@ -312,6 +312,14 @@ class Roles extends Security_Controller {
         $can_manage_fiscal_tax_settings = $this->request->getPost('can_manage_fiscal_tax_settings');
         $fiscal_items_view = $this->request->getPost('fiscal_items_view');
         $fiscal_items_manage = $this->request->getPost('fiscal_items_manage');
+        $fiscal_issuers_view = $this->request->getPost('fiscal_issuers_view');
+        $fiscal_issuers_manage = $this->request->getPost('fiscal_issuers_manage');
+        $fiscal_series_view = $this->request->getPost('fiscal_series_view');
+        $fiscal_series_manage = $this->request->getPost('fiscal_series_manage');
+        $fiscal_sales_review = $this->request->getPost('fiscal_sales_review');
+        $fiscal_sales_pricing_review = $this->request->getPost('fiscal_sales_pricing_review');
+        $fiscal_sales_pricing_apply = $this->request->getPost('fiscal_sales_pricing_apply');
+        $fiscal_sales_pricing_override = $this->request->getPost('fiscal_sales_pricing_override');
 
         $permissions = array(
             "leave" => $leave,
@@ -385,6 +393,14 @@ class Roles extends Security_Controller {
             'can_manage_fiscal_tax_settings' => $can_manage_fiscal_tax_settings,
             'fiscal_items_view' => $fiscal_items_view,
             'fiscal_items_manage' => $fiscal_items_manage,
+            'fiscal_issuers_view' => $fiscal_issuers_view,
+            'fiscal_issuers_manage' => $fiscal_issuers_manage,
+            'fiscal_series_view' => $fiscal_series_view,
+            'fiscal_series_manage' => $fiscal_series_manage,
+            'fiscal_sales_review' => $fiscal_sales_review,
+            'fiscal_sales_pricing_review' => $fiscal_sales_pricing_review,
+            'fiscal_sales_pricing_apply' => $fiscal_sales_pricing_apply,
+            'fiscal_sales_pricing_override' => $fiscal_sales_pricing_override,
         ) as $permission => $enabled) {
             if ($enabled) $permissions[$permission] = $enabled;
         }

@@ -79,9 +79,20 @@ $assert(count($units->search('H87')['results']) === 1 && count($units->search('s
 $assert(count($units->search('pie')['results']) >= 1, 'Complete unit catalog searches Pieza by description.');
 $assert($products->search('01')['results']===[]&&$units->search('H8')['results']===[],'Catalog search does not run with fewer than three characters.');
 
-$legacyItem = $db->table('items')->where('deleted', 0)->orderBy('id')->get(1)->getRow();
+$legacyItem = $db->table('items i')
+    ->select('i.*')
+    ->join('item_fiscal_settings f', 'f.item_id=i.id AND f.deleted=0', 'left')
+    ->where('i.deleted', 0)
+    ->where('f.id', null)
+    ->orderBy('i.id')
+    ->get(1)->getRow();
 if (!$legacyItem) {
-    throw new RuntimeException('An administrative item fixture is required in the isolated clone.');
+    $legacyData = $db->table('items')->where('deleted', 0)->get(1)->getRowArray();
+    if (!$legacyData) throw new RuntimeException('An administrative item fixture is required in the isolated clone.');
+    unset($legacyData['id']);
+    $legacyData['title'] = 'Legacy item isolated fixture';
+    $db->table('items')->insert($legacyData);
+    $legacyItem = $db->table('items')->where('id', $db->insertID())->get()->getRow();
 }
 $readiness = new App\Services\Fiscal\ItemFiscalReadinessService();
 $legacyResult = $readiness->evaluate((int) $legacyItem->id);
