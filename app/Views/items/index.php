@@ -28,11 +28,15 @@
                 {title: "<?php echo app_lang('category') ?>"},
                 {title: "<?php echo app_lang('unit_type') ?>", "class": "w100"},
                 {title: "<?php echo app_lang('rate') ?>", "class": "text-right w100"}
+                ,{title: "<?php echo app_lang('fiscal_readiness') ?>", "class": "text-center w150"}
+                ,{title: "<?php echo app_lang('sat_product_service_key') ?>", "class": "w100"}
+                ,{title: "<?php echo app_lang('sat_unit_key') ?>", "class": "w100"}
+                ,{title: "<?php echo app_lang('tax_object_code') ?>", "class": "w100"}
                 <?php echo $custom_field_headers; ?>,
                 {title: "<i data-feather='menu' class='icon-16'></i>", "class": "text-center option w100"}
             ],
-            printColumns: combineCustomFieldsColumns([0, 1, 2, 3, 4], '<?php echo $custom_field_headers; ?>'),
-            xlsColumns: combineCustomFieldsColumns([0, 1, 2, 3, 4], '<?php echo $custom_field_headers; ?>')
+            printColumns: combineCustomFieldsColumns([0, 1, 2, 3, 4, 5, 6, 7, 8], '<?php echo $custom_field_headers; ?>'),
+            xlsColumns: combineCustomFieldsColumns([0, 1, 2, 3, 4, 5, 6, 7, 8], '<?php echo $custom_field_headers; ?>')
         });
     });
 </script>

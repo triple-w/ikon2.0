@@ -21,6 +21,14 @@
     </div>
 </div>
 
+<?php if ($login_user->is_admin || get_array_value($login_user->permissions, "fiscal_items_view")) { ?>
+    <div class="card">
+        <div class="card-body text-center">
+            <?php echo modal_anchor(get_uri("fiscal/invoices/review/" . $invoice_info->id), "<i data-feather='shield' class='icon-16'></i> " . app_lang("fiscal_review"), array("title" => app_lang("fiscal_review"))); ?>
+        </div>
+    </div>
+<?php } ?>
+
 <?php if (get_setting("enable_e_invoice")) { ?>
     <div class="card">
         <div class="card-body text-center">

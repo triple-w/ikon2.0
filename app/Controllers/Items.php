@@ -10,6 +10,10 @@ class Items extends Security_Controller {
 
     private $categories_id_by_title = array();
 
+    private function can_view_fiscal_items() {
+        return $this->login_user->is_admin || (bool) get_array_value($this->login_user->permissions, "fiscal_items_view");
+    }
+
     function __construct() {
         parent::__construct();
         $this->init_permission_checker("order");
@@ -209,12 +213,20 @@ class Items extends Security_Controller {
             to_decimal_format($data->rate)
         );
 
+        $status = $data->fiscal_status ?: "not_configured";
+        $badge_class = $status === "ready" ? "bg-success" : ($status === "inactive" ? "bg-secondary" : ($status === "incomplete" ? "bg-warning" : "bg-light text-dark"));
+        $row_data[] = "<span class='badge $badge_class'>" . app_lang("item_fiscal_status_" . $status) . "</span>";
+        $row_data[] = $data->sat_product_code ?: "-";
+        $row_data[] = $data->sat_unit_code ?: "-";
+        $row_data[] = $data->tax_object_code ?: "-";
+
         foreach ($custom_fields as $field) {
             $cf_id = "cfv_" . $field->id;
             $row_data[] = $this->template->view("custom_fields/output_" . $field->field_type, array("value" => $data->$cf_id));
         }
 
-        $row_data[] = modal_anchor(get_uri("items/modal_form"), "<i data-feather='edit' class='icon-16'></i>", array("class" => "edit", "title" => app_lang('edit_item'), "data-post-id" => $data->id))
+        $fiscal_action = $this->can_view_fiscal_items() ? modal_anchor(get_uri("fiscal/items/form"), "<i data-feather='shield' class='icon-16'></i>", array("title" => app_lang('fiscal_item_configuration'), "data-post-item_id" => $data->id)) : "";
+        $row_data[] = $fiscal_action . modal_anchor(get_uri("items/modal_form"), "<i data-feather='edit' class='icon-16'></i>", array("class" => "edit", "title" => app_lang('edit_item'), "data-post-id" => $data->id))
             . js_anchor("<i data-feather='x' class='icon-16'></i>", array('title' => app_lang('delete'), "class" => "delete", "data-id" => $data->id, "data-action-url" => get_uri("items/delete"), "data-action" => "delete"));
 
         return $row_data;

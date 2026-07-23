@@ -15,7 +15,9 @@ $assert = static function (bool $ok, string $message) use (&$fail): void {
     if (! $ok) $fail++;
 };
 
-$client = $db->table('clients')->where('deleted', 0)->orderBy('id')->get(1)->getRow();
+$sourceClient = $db->table('clients')->where('deleted', 0)->orderBy('id')->get(1)->getRowArray();
+$fixtureClientId = 0;
+$client = $sourceClient ? (object) $sourceClient : null;
 $company = $db->table('company')->where('deleted', 0)->orderBy('id')->get(1)->getRow();
 $tax = $db->table('taxes')->where('deleted', 0)->orderBy('percentage', 'DESC')->get(1)->getRow();
 $item = $db->table('items')->where('deleted', 0)->orderBy('id')->get(1)->getRow();
@@ -23,6 +25,13 @@ if (! $client || ! $company || ! $item) {
     echo "[SKIP] local reference client/company/item is unavailable\n";
     exit(0);
 }
+
+// Characterize a genuinely profile-free client regardless of data already present in the source installation.
+unset($sourceClient['id']);
+$sourceClient['company_name'] = 'Increment02 profile-free isolated fixture';
+$db->table('clients')->insert($sourceClient);
+$fixtureClientId = (int) $db->insertID();
+$client = (object) ($sourceClient + ['id' => $fixtureClientId]);
 
 $today = get_my_local_time('Y-m-d');
 $due = date('Y-m-d', strtotime('+' . (int) get_setting('default_due_date_after_billing_date') . ' days', strtotime($today)));
@@ -111,6 +120,7 @@ try {
         $db->table('estimate_items')->whereIn('estimate_id',$estimateIds)->delete();
         $db->table('estimates')->whereIn('id',$estimateIds)->delete();
     }
+    if ($fixtureClientId) $db->table('clients')->where('id',$fixtureClientId)->delete();
 }
 
 echo "Equivalence failures: {$fail}\n";

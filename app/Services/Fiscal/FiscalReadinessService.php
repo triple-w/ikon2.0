@@ -11,6 +11,9 @@ class FiscalReadinessService {
         if(($profile->default_cfdi_use_id ?? null) && (!$cfdiUse || !(int)($cfdiUse->is_active ?? 0))) $result['errors'][]='Clave de Uso CFDI inactiva o inexistente.';
         if(($profile->status ?? '')==='inactive') $result['errors'][]='El perfil está inactivo.';
         if(($profile->rfc ?? '') && !preg_match('/^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/',(string)$profile->rfc)) $result['warnings'][]='El formato del RFC requiere revisión; esto no valida su existencia ante el SAT.';
+        $addressMissing=[];
+        foreach(['fiscal_street'=>'calle','fiscal_neighborhood'=>'colonia','fiscal_municipality'=>'municipio o alcaldía','fiscal_state'=>'estado','fiscal_country_code'=>'país'] as $field=>$label) if(trim((string)($profile->$field ?? ''))==='') $addressMissing[]=$label;
+        if($addressMissing) $result['warnings'][]='Dirección fiscal complementaria incompleta. Falta: '.implode(', ',$addressMissing).'.';
         $result['is_ready']=$result['errors']===[] && $result['missing_fields']===[];
         return $result;
     }

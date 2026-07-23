@@ -136,7 +136,7 @@ class Roles extends Security_Controller {
             $view_data['can_upload_and_edit_files'] = get_array_value($permissions, "can_upload_and_edit_files");
             $view_data['can_view_files'] = get_array_value($permissions, "can_view_files");
             $view_data['can_comment_on_projects'] = get_array_value($permissions, "can_comment_on_projects");
-            foreach (array('can_view_fiscal_profiles','can_manage_fiscal_profiles','can_view_fiscal_tax_settings','can_manage_fiscal_tax_settings') as $permission) {
+            foreach (array('can_view_fiscal_profiles','can_manage_fiscal_profiles','can_view_fiscal_tax_settings','can_manage_fiscal_tax_settings','fiscal_items_view','fiscal_items_manage') as $permission) {
                 $view_data[$permission] = get_array_value($permissions, $permission);
             }
 
@@ -310,6 +310,8 @@ class Roles extends Security_Controller {
         $can_manage_fiscal_profiles = $this->request->getPost('can_manage_fiscal_profiles');
         $can_view_fiscal_tax_settings = $this->request->getPost('can_view_fiscal_tax_settings');
         $can_manage_fiscal_tax_settings = $this->request->getPost('can_manage_fiscal_tax_settings');
+        $fiscal_items_view = $this->request->getPost('fiscal_items_view');
+        $fiscal_items_manage = $this->request->getPost('fiscal_items_manage');
 
         $permissions = array(
             "leave" => $leave,
@@ -381,6 +383,8 @@ class Roles extends Security_Controller {
             'can_manage_fiscal_profiles' => $can_manage_fiscal_profiles,
             'can_view_fiscal_tax_settings' => $can_view_fiscal_tax_settings,
             'can_manage_fiscal_tax_settings' => $can_manage_fiscal_tax_settings,
+            'fiscal_items_view' => $fiscal_items_view,
+            'fiscal_items_manage' => $fiscal_items_manage,
         ) as $permission => $enabled) {
             if ($enabled) $permissions[$permission] = $enabled;
         }
