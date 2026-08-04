@@ -10,6 +10,9 @@
                     <i data-feather="more-horizontal" class="icon-16"></i>
                 </div>
                 <ul class="dropdown-menu" role="menu">
+                    <?php if (($invoice_info->commercial_status ?? 'open') === 'open') { ?>
+                        <li><form method="post" action="<?php echo get_uri('invoices/close_sale/'.$invoice_info->id); ?>"><?php echo csrf_field(); ?><button class="dropdown-item" type="submit"><i data-feather="lock" class="icon-16"></i> Cerrar venta</button></form></li>
+                    <?php } ?>
                     <?php if ($can_edit_invoices && $invoice_info->type == "invoice") { ?>
                         <?php
                         $edit_url = "invoices/modal_form";
@@ -36,6 +39,10 @@
     </div>
     <div class="card-body">
         <ul class="list-group info-list">
+            <?php $commercialLabels=['draft'=>'Borrador','open'=>'Abierta','closed'=>'Cerrada','cancelled'=>'Cancelada']; $commercial=$invoice_info->commercial_status ?? ($invoice_info->status==='draft'?'draft':'open'); ?>
+            <li class="list-group-item no-border pt0"><strong>Estado comercial:</strong> <span class="badge bg-secondary"><?php echo esc($commercialLabels[$commercial] ?? $commercial); ?></span></li>
+            <li class="list-group-item"><strong>Estado de pago:</strong> <?php echo esc(app_lang($invoice_status)); ?></li>
+            <?php if(!empty($invoice_info->closed_at)){ ?><li class="list-group-item"><strong>Cierre:</strong> <?php echo format_to_datetime($invoice_info->closed_at); ?></li><?php } ?>
             <?php if ($invoice_info->client_id) { ?>
                 <li class="list-group-item no-border pt0">
                     <span title="<?php echo app_lang("client"); ?>"><i data-feather="briefcase" class="icon-16 mr5"></i> <?php echo (anchor(get_uri("clients/view/" . $invoice_info->client_id), $invoice_info->company_name)); ?></span>

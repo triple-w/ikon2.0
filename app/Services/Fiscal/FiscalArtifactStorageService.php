@@ -8,7 +8,7 @@ use Throwable;
 
 final class FiscalArtifactStorageService
 {
-    private const TYPES = ['original_chain' => 'txt', 'signed_xml' => 'xml'];
+    private const TYPES = ['original_chain' => 'txt', 'signed_xml' => 'xml', 'stamped_xml' => 'xml', 'pdf' => 'pdf'];
     private $db;
     private string $root;
 
@@ -73,11 +73,14 @@ final class FiscalArtifactStorageService
     public function read(object $artifact): string
     {
         $extension = self::TYPES[$artifact->artifact_type] ?? null;
-        if (!$extension || !preg_match('#^fiscal/artifacts/([a-f0-9]{48}\.' . $extension . ')$#', $artifact->storage_path, $match)) {
+        if (!$extension || !preg_match('#^(fiscal/artifacts|fiscal-private/artifacts)/([a-f0-9]{48}\.' . $extension . ')$#', $artifact->storage_path, $match)) {
             throw new RuntimeException('Ruta de artefacto fiscal inválida.');
         }
-        $base = realpath($this->root);
-        $path = realpath($this->root . DIRECTORY_SEPARATOR . $match[1]);
+        $root = $match[1] === 'fiscal-private/artifacts'
+            ? WRITEPATH . 'fiscal-private/artifacts'
+            : $this->root;
+        $base = realpath($root);
+        $path = realpath($root . DIRECTORY_SEPARATOR . $match[2]);
         if (!$base || !$path || !str_starts_with($path, $base . DIRECTORY_SEPARATOR)) {
             throw new RuntimeException('Acceso al artefacto fiscal denegado.');
         }

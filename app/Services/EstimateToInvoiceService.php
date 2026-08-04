@@ -66,7 +66,13 @@ class EstimateToInvoiceService
 
     public function createFromEstimate(object $estimate, int $userId, string $status, array $overrides = []): int
     {
-        $header = array_replace($this->prepareHeader($estimate, $userId, $status), $overrides);
+        $header = array_replace($this->prepareHeader(
+            $estimate,
+            $userId,
+            $status,
+            $overrides['bill_date'] ?? null,
+            $overrides['due_date'] ?? null
+        ), $overrides);
         return $this->creator->create($header, $this->getItems((int) $estimate->id));
     }
 

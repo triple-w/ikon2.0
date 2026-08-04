@@ -111,7 +111,7 @@ try {
     if (!is_file($openssl)) throw new RuntimeException('OpenSSL test executable is unavailable.');
     $keyPath = $temp . DIRECTORY_SEPARATOR . 'fixture.key.pem';
     $certPath = $temp . DIRECTORY_SEPARATOR . 'fixture.cer.pem';
-    $password = 'increment08-test-only';
+    $password = bin2hex(random_bytes(16));
     $serialHex = '3330303031303030303030353030303033343136';
     $run = static function (array $arguments) use ($openssl): void {
         $command = escapeshellarg($openssl);
@@ -123,25 +123,51 @@ try {
     $run(['req', '-new', '-x509', '-config', 'C:\\xampp\\apache\\conf\\openssl.cnf', '-key', $keyPath, '-passin', 'pass:' . $password, '-subj', '/C=MX/O=IKONTROL TEST/serialNumber=AAA010101AAA/CN=TEST CSD', '-set_serial', '0x' . $serialHex, '-days', '2', '-sha256', '-out', $certPath]);
     $certificateBytes = file_get_contents($certPath);
     $keyBytes = file_get_contents($keyPath);
-    $certificateService = new App\Services\Fiscal\CsdCertificateService($db, $certificateRoot);
+    $fiscalConfig=(new ReflectionClass(Config\Fiscal::class))->newInstanceWithoutConstructor();
+    $fiscalConfig->csdEncryptionKey=str_repeat('a',64);
+    $fiscalConfig->pacEncryptionKey=str_repeat('b',64);
+    $fiscalConfig->csdEncryptionVersion='csd-secret-v1';
+    $vault=new App\Services\Fiscal\Signing\CsdSecretVault($fiscalConfig);
+    $secrets=new App\Services\Fiscal\Signing\CsdCertificateSecretService($db,$vault,$certificateRoot);
+    $certificateService = new App\Services\Fiscal\CsdCertificateService($db, $certificateRoot,$secrets);
     $imported = $certificateService->import($issuerId, $certificateBytes, 'fixture.cer.pem', $keyBytes, 'fixture.key.pem', $password, true, (int) $user->id, true);
     $certificateId = (int) $imported['certificate']->id;
     $assert($imported['status'] === 'valid' && $imported['certificate']->certificate_number === '30001000000500003416', 'Synthetic CSD is parsed with its 20-digit certificate number.');
     $assert($imported['certificate']->certificate_rfc === 'AAA010101AAA', 'Certificate RFC matches the issuer profile.');
-    $assert(!str_contains(json_encode($imported), $password) && !$db->fieldExists('password', 'fiscal_issuer_certificates'), 'Private-key password is not persisted or returned.');
+    $storedSecret=$db->table('fiscal_issuer_certificate_secrets')->where('fiscal_issuer_certificate_id',$certificateId)->get(1)->getRow();
+    $assert($storedSecret&&!str_contains((string)$storedSecret->encrypted_payload,$password)&&!str_contains(json_encode($imported),$password),'Private-key password is stored only as authenticated ciphertext and is not returned.');
+    $originalPayload=(string)$storedSecret->encrypted_payload;
+    try{$secrets->configure($certificateId,'wrong-password',(int)$user->id,true);$wrongSecret=false;}catch(Throwable){$wrongSecret=true;}
+    $payloadAfterWrong=(string)$db->table('fiscal_issuer_certificate_secrets')->where('fiscal_issuer_certificate_id',$certificateId)->get(1)->getRow()->encrypted_payload;
+    $assert($wrongSecret&&hash_equals($originalPayload,$payloadAfterWrong),'An invalid password does not replace the active secret.');
+    $secrets->configure($certificateId,$password,(int)$user->id,true);
+    $rotatedSecret=$db->table('fiscal_issuer_certificate_secrets')->where('fiscal_issuer_certificate_id',$certificateId)->get(1)->getRow();
+    $assert(!hash_equals($originalPayload,(string)$rotatedSecret->encrypted_payload)&&$rotatedSecret->rotated_at!==null,'Updating a valid password rotates authenticated ciphertext with a fresh nonce.');
+    $status=(new App\Services\Fiscal\Signing\CsdOperationalStatusService($db,$secrets,$certificateRoot))->forCertificate((object)$imported['certificate']);
+    $assert($status['ready']&&$status['code']==='ready','A certificate with an active decryptable secret is ready for automatic signing.');
+    $validPayload=(string)$rotatedSecret->encrypted_payload;
+    $db->table('fiscal_issuer_certificate_secrets')->where('id',$rotatedSecret->id)->update(['encrypted_payload'=>substr_replace($validPayload,'A',20,1)]);
+    try{$secrets->passwordForSigning($certificateId,(int)$user->id);$corruptBlocked=false;}catch(Throwable){$corruptBlocked=true;}
+    $assert($corruptBlocked,'A corrupted CSD secret blocks automatic signing.');
+    $db->table('fiscal_issuer_certificate_secrets')->where('id',$rotatedSecret->id)->update(['encrypted_payload'=>$validPayload]);
     try {$certificateService->import($issuerId, $certificateBytes, 'fixture.cer.pem', $keyBytes, 'fixture.key.pem', 'wrong', false, (int)$user->id, true);$wrong=false;}catch(Throwable $e){$wrong=true;}
     $assert($wrong, 'Wrong private-key password is rejected.');
 
-    $signing = new App\Services\Fiscal\Cfdi40\CfdiSigningService($db, $certificateRoot, $artifactRoot, $preXmlRoot);
-    $signed = $signing->sign($documentId, (int) $preXml['artifact']->id, $certificateId, $password, (int) $user->id, true);
+    $signing = new App\Services\Fiscal\Cfdi40\CfdiSigningService($db, $certificateRoot, $artifactRoot, $preXmlRoot,null,$secrets);
+    $signed = $signing->sign($documentId, (int) $preXml['artifact']->id, $certificateId, (int) $user->id, true);
     $assert($signed['seal_verified'] === true && $signed['xsd']['status'] === 'valid', 'Local RSA-SHA256 seal verifies and complete XSD validation passes.');
     $assert(str_contains($signed['signed_xml'], 'NoCertificado="30001000000500003416"') && str_contains($signed['signed_xml'], 'Certificado="') && str_contains($signed['signed_xml'], 'Sello="'), 'Signed XML contains NoCertificado, Certificado, and Sello.');
     $assert(!str_contains($signed['signed_xml'], 'TimbreFiscalDigital') && !str_contains($signed['signed_xml'], 'UUID='), 'Locally signed XML contains no Timbre or UUID.');
+    $independent=(new App\Services\Fiscal\Signing\SignedXmlVerifier())->verify($signed['signed_xml'],'AAA010101AAA',hash('sha256',$signed['signed_xml']));
+    $assert($independent->valid&&$independent->signatureValid&&$independent->xsdValid,'Independent verifier recalculates chain, RSA-SHA256 signature, certificate and XSD.');
+    $altered=preg_replace('/ Total="[^"]+"/',' Total="999.99"',$signed['signed_xml'],1);
+    $alteredVerification=(new App\Services\Fiscal\Signing\SignedXmlVerifier())->verify($altered,'AAA010101AAA');
+    $assert(!$alteredVerification->valid&&!$alteredVerification->signatureValid,'Independent verifier rejects XML modified after signing.');
     $assert($db->table('fiscal_document_artifacts')->where(['fiscal_document_id'=>$documentId,'artifact_type'=>'original_chain'])->countAllResults()===1&&$db->table('fiscal_document_artifacts')->where(['fiscal_document_id'=>$documentId,'artifact_type'=>'signed_xml'])->countAllResults()===1,'Original chain and signed XML are private tracked artifacts.');
-    $again = $signing->sign($documentId, (int) $preXml['artifact']->id, $certificateId, '', (int) $user->id, true);
+    $again = $signing->sign($documentId, (int) $preXml['artifact']->id, $certificateId, (int) $user->id, true);
     $assert($again['action'] === 'existing' && $db->table('fiscal_document_signatures')->where('fiscal_document_id',$documentId)->countAllResults()===1, 'Repeated signing is idempotent and does not request the password again for an existing result.');
     $unchanged = $db->table('fiscal_documents')->where('id', $documentId)->get()->getRow();
-    $assert($unchanged->status === 'locked' && (int)$unchanged->folio === 8001, 'Signing does not change document state or consume another folio.');
+    $assert($unchanged->status === 'ready_to_stamp' && (int)$unchanged->folio === 8001, 'Signing marks the immutable document ready to stamp without consuming another folio.');
     $assert((string)$db->table('invoices')->where('id',$invoice->id)->get()->getRow()->invoice_total === (string)$invoice->invoice_total, 'Signing does not modify the administrative sale.');
     $assert($db->table('fiscal_document_audit')->where(['fiscal_document_id'=>$documentId,'action'=>'locally_signed'])->countAllResults()===1, 'Local signing is audited without password, key, chain, or XML contents.');
     unset($password, $keyBytes, $certificateBytes);

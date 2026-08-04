@@ -124,6 +124,11 @@ class Invoice_payments extends Security_Controller {
 
         $id = $this->request->getPost('id');
         $invoice_id = $this->request->getPost('invoice_id');
+        $saleLifecycle = db_connect()->table('invoices')->select('commercial_status')
+            ->where(['id'=>$invoice_id,'deleted'=>0])->get(1)->getRow();
+        if (!$saleLifecycle || !in_array($saleLifecycle->commercial_status, ['open','closed'], true)) {
+            echo json_encode(["success"=>false,"message"=>"La venta no admite pagos en su estado comercial actual."]); return;
+        }
         $amount = unformat_currency($this->request->getPost('invoice_payment_amount'));
         $payment_method_id = $this->request->getPost('invoice_payment_method_id');
 

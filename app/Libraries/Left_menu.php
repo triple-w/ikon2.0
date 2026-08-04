@@ -100,6 +100,20 @@ class Left_menu {
                 $sidebar_menu["sales"] = array("name" => "sales", "class" => "shopping-cart", "submenu" => $sales_submenu);
             }
 
+            $fiscal_submenu = array();
+            if ($this->ci->login_user->is_admin || get_array_value($permissions, "fiscal.drafts.view")) {
+                $fiscal_submenu[] = array("name" => "fiscal_drafts", "url" => "fiscal/drafts", "class" => "edit-3");
+            }
+            if ($this->ci->login_user->is_admin || get_array_value($permissions, "fiscal_invoices_view")) {
+                $fiscal_submenu[] = array("name" => "fiscal_invoices", "url" => "fiscal/invoices", "class" => "file-text");
+            }
+            if ($this->ci->login_user->is_admin || get_array_value($permissions, "fiscal_pdf_templates_view")) {
+                $fiscal_submenu[] = array("name" => "fiscal_pdf_templates", "url" => "fiscal/pdf-templates", "class" => "layout");
+            }
+            if (count($fiscal_submenu)) {
+                $sidebar_menu["fiscal_billing"] = array("name" => "fiscal_billing", "class" => "clipboard", "submenu" => $fiscal_submenu);
+            }
+
 
             $prospects_submenu = array();
 

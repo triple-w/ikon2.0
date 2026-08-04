@@ -5,6 +5,9 @@ namespace App\Services\Fiscal\Cfdi40;
 
 use App\Services\Fiscal\CsdCertificateService;
 use App\Services\Fiscal\FiscalArtifactStorageService;
+use App\Services\Fiscal\Signing\SignedXmlVerifier;
+use App\Services\Fiscal\Signing\CsdCertificateSecretService;
+use App\Domain\Fiscal\Signing\CsdSecretException;
 use DOMDocument;
 use DOMXPath;
 use RuntimeException;
@@ -18,22 +21,24 @@ final class CfdiSigningService
     private ?string $artifactRoot;
     private ?string $preXmlRoot;
     private ?string $xsltMain;
+    private ?CsdCertificateSecretService $secretService;
 
-    public function __construct($db = null, ?string $certificateRoot = null, ?string $artifactRoot = null, ?string $preXmlRoot = null, ?string $xsltMain = null)
+    public function __construct($db = null, ?string $certificateRoot = null, ?string $artifactRoot = null, ?string $preXmlRoot = null, ?string $xsltMain = null, ?CsdCertificateSecretService $secretService = null)
     {
         $this->db = $db ?: db_connect();
         $this->certificateRoot = $certificateRoot;
         $this->artifactRoot = $artifactRoot;
         $this->preXmlRoot = $preXmlRoot;
         $this->xsltMain = $xsltMain;
+        $this->secretService = $secretService;
     }
 
-    public function sign(int $documentId, int $preXmlArtifactId, int $certificateId, string $password, int $userId, bool $authorized): array
+    public function sign(int $documentId, int $preXmlArtifactId, int $certificateId, int $userId, bool $authorized): array
     {
         if (!$authorized) {
             throw new RuntimeException('No tiene permiso para sellar XML localmente.');
         }
-        $document = $this->db->table('fiscal_documents')->where(['id' => $documentId, 'status' => 'locked', 'deleted' => 0])->get(1)->getRow();
+        $document = $this->db->table('fiscal_documents')->where(['id' => $documentId, 'deleted' => 0])->whereIn('status', ['locked', 'ready_to_stamp'])->get(1)->getRow();
         if (!$document) {
             throw new RuntimeException('El documento fiscal debe estar cerrado antes del sellado local.');
         }
@@ -57,15 +62,24 @@ final class CfdiSigningService
             'status' => 'valid', 'deleted' => 0,
         ])->get(1)->getRow();
         if (!$certificate) {
-            throw new RuntimeException('El CSD seleccionado no está vigente o no corresponde al emisor.');
+            throw new CsdSecretException(
+                'CSD_CERTIFICATE_NOT_READY',
+                'El CSD seleccionado no está vigente o no corresponde al emisor.'
+            );
         }
         $now = gmdate('Y-m-d H:i:s');
         if ($certificate->valid_from > $now || $certificate->valid_to < $now) {
-            throw new RuntimeException('El CSD seleccionado no se encuentra dentro de su vigencia local.');
+            throw new CsdSecretException(
+                'CSD_CERTIFICATE_NOT_READY',
+                'El CSD seleccionado no se encuentra dentro de su vigencia local.'
+            );
         }
         $issuerSnapshot = $this->db->table('fiscal_document_issuers')->where('fiscal_document_id', $documentId)->get(1)->getRow();
         if (!$issuerSnapshot || $this->normalizeRfc($issuerSnapshot->rfc) !== $this->normalizeRfc($certificate->certificate_rfc)) {
-            throw new RuntimeException('El CSD no corresponde al RFC congelado del emisor.');
+            throw new CsdSecretException(
+                'CSD_CERTIFICATE_NOT_READY',
+                'El CSD no corresponde al RFC congelado del emisor.'
+            );
         }
 
         $mapped = (new CfdiDraftMapper())->map($documentId);
@@ -80,6 +94,9 @@ final class CfdiSigningService
         }
         $csdService = new CsdCertificateService($this->db, $this->certificateRoot);
         $material = $csdService->certificateMaterial($certificate);
+        $secrets = $this->secretService
+            ?? new CsdCertificateSecretService($this->db, null, $this->certificateRoot);
+        $password = $secrets->passwordForSigning($certificateId, $userId);
         $privateKey = $csdService->openPrivateKey($material['private_key_bytes'], $password);
         try {
             $certificateBase64 = base64_encode($material['certificate_der']);
@@ -105,6 +122,8 @@ final class CfdiSigningService
             if ($xsd['status'] !== 'valid') {
                 throw new RuntimeException('El XML sellado no supera la validación XSD completa.');
             }
+            $independent=(new SignedXmlVerifier($generator,new CfdiXsdValidator()))->verify($signedXml,(string)$issuerSnapshot->rfc);
+            if(!$independent->valid)throw new RuntimeException('El XML sellado no supera la verificación criptográfica independiente.');
             $storage = new FiscalArtifactStorageService($this->db, $this->artifactRoot);
             $chainArtifact = $storage->store(
                 $documentId, 'original_chain', $chain['chain'], $chain['version'],
@@ -114,7 +133,7 @@ final class CfdiSigningService
             $signedArtifact = $storage->store(
                 $documentId, 'signed_xml', $signedXml, self::VERSION,
                 CfdiXmlBuilder::SCHEMA_VERSION, $xsd['schema_sha256'], 'valid',
-                ['semantic' => $semantic, 'xsd' => $xsd, 'signature_verified' => true, 'stamped' => false], $userId
+                ['semantic' => $semantic, 'xsd' => $xsd, 'signature_verified' => true, 'independent_verification'=>$independent->toArray(), 'stamped' => false], $userId
             );
             $data = [
                 'fiscal_document_id' => $documentId,
@@ -132,6 +151,10 @@ final class CfdiSigningService
             ];
             $this->db->table('fiscal_document_signatures')->insert($data);
             $data['id'] = (int) $this->db->insertID();
+            $this->db->table('fiscal_documents')->where(['id' => $documentId, 'status' => 'locked'])->update([
+                'status' => 'ready_to_stamp',
+                'stamp_updated_at' => get_current_utc_time(),
+            ]);
             $this->audit($documentId, (int) $document->invoice_id, $userId, 'locally_signed', [
                 'certificate_id' => $certificateId,
                 'pre_xml_sha256' => $preXmlArtifact->sha256,
@@ -140,6 +163,7 @@ final class CfdiSigningService
                 'signature_verified' => true,
                 'xsd_status' => 'valid',
             ]);
+            $secrets->auditAutomaticSigning($certificateId, $userId);
             return [
                 'action' => 'created',
                 'signature' => (object) $data,

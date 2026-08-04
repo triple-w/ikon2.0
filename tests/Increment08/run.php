@@ -44,6 +44,17 @@ $routes = file_get_contents($root . '/app/Config/FiscalRoutes.php');
 foreach (['fiscal/certificates/upload', 'fiscal/invoices/sign', 'fiscal/invoices/signed/view/(:num)'] as $route) {
     $assert(str_contains($routes, $route), "Explicit protected route exists: $route.");
 }
+$assert((bool) preg_match("/get\\('fiscal\\/invoices\\/signed\\/view\\/\\(:num\\)'.*'as'=>'fiscal_signed_xml_view'/", $routes), 'Signed XML viewer is a named GET route.');
+$assert((bool) preg_match("/get\\('fiscal\\/invoices\\/signed\\/download\\/\\(:num\\)'.*'as'=>'fiscal_signed_xml_download'/", $routes), 'Signed XML download is a named GET route.');
+$assert(!preg_match("/post\\('fiscal\\/invoices\\/signed\\/(?:view|download)/", $routes), 'Signed XML read actions have no duplicate POST route.');
+$controller = file_get_contents($root . '/app/Controllers/Fiscal/InvoiceReview.php');
+$assert(str_contains($controller, "'fiscal_document_id'=>\$documentId") && str_contains($controller, "'view_url'=>url_to('fiscal_invoice_draft_view',\$documentId)"), 'Signing response identifies the fiscal document and its canonical viewer URL.');
+$assert(str_contains($controller, "'signed_xml_artifact_id'=>\$artifactId") && str_contains($controller, "url_to('fiscal_signed_xml_view',\$documentId)"), 'Signing response keeps artifact metadata separate while public viewers use fiscal document ID.');
+$assert(str_contains($controller, 'signedArtifactForDocument') && str_contains($controller, "'fiscal_document_id'=>\$documentId"), 'Signed XML endpoints resolve the private artifact from the canonical fiscal document ID.');
+$draftView = file_get_contents($root . '/app/Views/fiscal/invoices/draft.php');
+$assert(!str_contains($draftView, "modal_anchor(get_uri('fiscal/invoices/signed/view/"), 'Signed XML viewer no longer invokes the GET route through the POST-only modal helper.');
+$assert(str_contains($draftView, "type:'GET'") && str_contains($draftView, "loadFiscalView(result.view_url"), 'Successful signing refreshes the canonical fiscal viewer with GET.');
+$assert(str_contains($draftView, "closeModalOnSuccess:false"), 'Successful signing keeps the modal available while refreshing its content.');
 $roles = file_get_contents($root . '/app/Controllers/Roles.php');
 foreach (['fiscal_certificates_view', 'fiscal_certificates_manage', 'fiscal_xml_sign', 'fiscal_signed_xml_view'] as $permission) {
     $assert(str_contains($roles, $permission), "Role persistence supports $permission.");

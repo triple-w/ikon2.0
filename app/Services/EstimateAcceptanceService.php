@@ -32,6 +32,9 @@ class EstimateAcceptanceService
             $result = $createInvoice
                 ? $this->fulfillInsideTransaction($estimateId, $userId)
                 : $this->disabledResult();
+            if ($createInvoice && !empty($result['invoice_id'])) {
+                $this->markConverted($estimateId, (int)$result['invoice_id'], $userId);
+            }
 
             $result['accepted'] = true;
 
@@ -63,6 +66,9 @@ class EstimateAcceptanceService
 
         try {
             $result = $this->fulfillInsideTransaction($estimateId, $userId);
+            if (!empty($result['invoice_id'])) {
+                $this->markConverted($estimateId, (int)$result['invoice_id'], $userId);
+            }
             if (! $db->transStatus()) {
                 throw new RuntimeException('La transacción de venta no pudo completarse.');
             }
@@ -152,6 +158,21 @@ class EstimateAcceptanceService
     private function disabledResult(): array
     {
         return ['invoice_action' => 'disabled', 'invoice_id' => null, 'created_invoice' => false, 'repaired_invoice' => false];
+    }
+
+    private function markConverted(int $estimateId, int $invoiceId, int $userId): void
+    {
+        (new Estimates_model())->ci_save([
+            'status' => 'converted',
+            'converted_sale_id' => $invoiceId,
+            'converted_at' => get_current_utc_time(),
+            'converted_by' => $userId,
+        ], $estimateId);
+        db_connect()->table('commercial_lifecycle_audit')->insert([
+            'entity_type'=>'quotation','entity_id'=>$estimateId,'event'=>'quotation_converted',
+            'old_status'=>'accepted','new_status'=>'converted','reason'=>null,
+            'user_id'=>$userId,'created_at'=>get_current_utc_time(),
+        ]);
     }
 
     private function matchesHeader(object $estimate, object $invoice): bool

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Services\Fiscal;
 
 use App\Models\Fiscal\Fiscal_issuer_certificates_model;
+use App\Services\Fiscal\Signing\CsdCertificateSecretService;
 use RuntimeException;
 use Throwable;
 
@@ -14,7 +15,11 @@ final class CsdCertificateService
     private $db;
     private string $root;
 
-    public function __construct($db = null, ?string $root = null)
+    public function __construct(
+        $db = null,
+        ?string $root = null,
+        private readonly ?CsdCertificateSecretService $secretService = null
+    )
     {
         $this->db = $db ?: db_connect();
         $this->root = rtrim($root ?: WRITEPATH . 'fiscal/certificates', '/\\');
@@ -118,6 +123,11 @@ final class CsdCertificateService
             if (!$id || !$this->db->transStatus()) {
                 throw new RuntimeException('No fue posible registrar el certificado.');
             }
+            ($this->secretService ?? new CsdCertificateSecretService($this->db, null, $this->root))
+                ->configure((int) $id, $password, $userId, true, false);
+            if (!$this->db->transStatus()) {
+                throw new RuntimeException('No fue posible proteger la contraseña del certificado.');
+            }
             $this->db->transCommit();
             $data['id'] = (int) $id;
             return ['certificate' => (object) $data, 'status' => $status, 'validity_checked_locally' => true];
@@ -153,6 +163,22 @@ final class CsdCertificateService
             throw new RuntimeException('No fue posible abrir la llave privada con la contraseña proporcionada.');
         }
         return $key;
+    }
+
+    public function exportPrivateKeyPem(mixed $key): string
+    {
+        $pem='';
+        $options=[];
+        $config=PHP_OS_FAMILY==='Windows'?'C:\\xampp\\php\\extras\\openssl\\openssl.cnf':'';
+        if($config!==''&&is_file($config))$options['config']=$config;
+        if(!@openssl_pkey_export($key,$pem,null,$options)){
+            $this->clearOpenSslErrors();
+            throw new RuntimeException('No fue posible exportar temporalmente la llave privada.');
+        }
+        if(!str_contains($pem,'BEGIN PRIVATE KEY')&&!str_contains($pem,'BEGIN RSA PRIVATE KEY')){
+            throw new RuntimeException('La llave privada exportada no tiene formato PEM.');
+        }
+        return $pem;
     }
 
     private function parseCertificate(string $bytes): array

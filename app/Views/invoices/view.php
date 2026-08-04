@@ -9,6 +9,13 @@
                 <div id="invoice-details-top-bar">
                     <?php echo view("invoices/invoice_top_bar"); ?>
                 </div>
+                <?php if (isset($fiscal_sale_summary)) {
+                    echo view('invoices/fiscal_summary', [
+                        'summary' => $fiscal_sale_summary,
+                        'permissions' => $fiscal_sale_permissions,
+                        'invoice_id' => $invoice_id,
+                    ]);
+                } ?>
 
                 <div class="details-view-wrapper d-flex">
                     <div class="w-100">

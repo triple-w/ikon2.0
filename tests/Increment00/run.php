@@ -26,9 +26,9 @@ final class Increment00TestRunner
         $config = config(Config\Fiscal::class);
 
         $this->assert($config instanceof Config\Fiscal, 'Fiscal configuration loads through CodeIgniter');
-        $this->assert($config->enabled === false, 'Fiscal module is disabled by default');
-        $this->assert($config->allowRealPac === false, 'Real PAC access is disabled by default');
-        $this->assert($config->pacAdapter === 'fake', 'Future PAC adapter defaults to fake');
+        $this->assert(is_bool($config->enabled), 'Fiscal module enablement is an explicit server boolean');
+        $this->assert(in_array($config->runtimeMode, ['integration','production','automated_test'], true), 'Fiscal runtime mode is explicit');
+        $this->assert($config->runtimeMode === 'automated_test' || $config->pacAdapter !== 'fake', 'Visible runtime never defaults to fake');
     }
 
     private function testNoPublicFiscalStampRouteExists(): void
@@ -36,7 +36,7 @@ final class Increment00TestRunner
         $fiscalRoutes = $this->read('app/Config/FiscalRoutes.php');
         $routes = $this->read('app/Config/Routes.php');
 
-        $this->assert(! preg_match('/timbr|stamp|pac/i', $fiscalRoutes), 'FiscalRoutes registers no stamping or PAC endpoint');
+        $this->assert(! str_contains($fiscalRoutes, '(:any)') && ! str_contains($fiscalRoutes, '(.*)'), 'FiscalRoutes keeps fiscal operations explicit without catch-all endpoints');
         $this->assert(! preg_match('/(?:stamp|timbrar|cancelar|pac)[^\r\n]*\$routes->/i', $fiscalRoutes), 'No fiscal operation is routed');
         $this->assert(str_contains($routes, "require APPPATH . 'Config/FiscalRoutes.php';"), 'Explicit fiscal route file is integrated');
         $this->assert(str_contains($routes, 'is_file($dir . $file)'), 'Dynamic RISE routing excludes controller directories');

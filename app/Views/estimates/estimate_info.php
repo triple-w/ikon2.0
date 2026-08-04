@@ -46,6 +46,8 @@
 
     <div class="card-body">
         <ul class="list-group info-list">
+            <?php $quoteLabels=['draft'=>'Borrador','sent'=>'Enviada','accepted'=>'Aceptada','rejected'=>'Rechazada','declined'=>'Rechazada','expired'=>'Vencida','converted'=>'Convertida en venta','cancelled'=>'Cancelada']; ?>
+            <li class="list-group-item no-border pt0"><strong>Estado comercial:</strong> <span class="badge bg-secondary"><?php echo esc($quoteLabels[$estimate_info->status] ?? $estimate_info->status); ?></span><?php if(!empty($estimate_info->converted_sale_id)){ ?> · <?php echo anchor(get_uri('invoices/view/'.$estimate_info->converted_sale_id),'Ver venta'); ?><?php } ?></li>
             <li class="list-group-item no-border pt0">
                 <?php if ($estimate_info->is_lead) { ?>
                     <span title="<?php echo app_lang("lead"); ?>"><i data-feather="layers" class="icon-16 mr5"></i> <?php echo (anchor(get_uri("leads/view/" . $estimate_info->client_id), $estimate_info->company_name)); ?></span>

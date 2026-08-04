@@ -33,6 +33,7 @@ if (is_dir($dir)) {
 // add route for Collect_leads controller differently with the CORS filter for AJAX requests / API calls
 $routes->post('collect_leads/save', 'Collect_leads::save', ['filter' => 'cors']);
 $routes->options('collect_leads/save', 'Collect_leads::save', ['filter' => 'cors']);
+$routes->post('invoices/close_sale/(:num)', 'Invoices::close_sale/$1', ['filter' => 'csrf']);
 
 foreach ($controller_dropdown as $controller) {
     $routes->get(strtolower($controller), "$controller::index");

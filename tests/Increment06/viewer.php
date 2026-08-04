@@ -17,14 +17,15 @@ $model = file_get_contents($root . '/app/Models/Fiscal/Fiscal_documents_model.ph
 $spanish = file_get_contents($root . '/app/Language/spanish/default_lang.php');
 $english = file_get_contents($root . '/app/Language/english/default_lang.php');
 
-$assert(str_contains($routes, "\$routes->post('fiscal/invoices/drafts/(:num)/view'"), 'Viewer has an explicit POST route.');
-$assert(!str_contains($routes, "\$routes->get('fiscal/invoices/drafts/(:num)'"), 'Draft viewer is not exposed by GET.');
-$assert(str_contains($review, "fiscal/invoices/drafts/'.\$d->id.'/view"), 'View button sends fiscal_documents.id to the viewer route.');
+$assert(str_contains($routes, "\$routes->get('fiscal/invoices/drafts/(:num)/view'") && str_contains($routes, "'as'=>'fiscal_invoice_draft_view'"), 'Viewer has one named canonical GET route.');
+$assert(!str_contains($routes, "\$routes->post('fiscal/invoices/drafts/(:num)/view'"), 'Draft viewer is never exposed by POST.');
+$assert(str_contains($review, "url_to('fiscal_invoice_draft_view',\$d->id)") && str_contains($review, "'data-fiscal-document-id'=>(int)\$d->id"), 'View button sends fiscal_documents.id through the named route.');
 $assert(str_contains($review, 'fiscal-draft-view') && !str_contains($review, "modal_anchor(get_uri('fiscal/invoices/drafts/"), 'Viewer replaces the current modal instead of opening a second ajax modal.');
-$assert(str_contains($review, "type:'POST'"), 'Viewer JavaScript uses POST.');
+$assert(str_contains($review, "type:'GET'"), 'Viewer JavaScript uses GET.');
 $assert(str_contains($review, "button.trigger('blur')") && str_contains($review, "trigger('focus')"), 'Modal transition releases and restores focus.');
 $assert(str_contains($controller, "complete((int)\$documentId)") && str_contains($model, "'tax_totals'") && str_contains($model, "'metadata'"), 'Controller loads the complete immutable snapshot.');
 $assert(str_contains($controller, "'fiscal_drafts_view'"), 'Viewer enforces fiscal_drafts_view.');
+$assert(str_contains($controller, "draftError(app_lang('fiscal_access_denied'),403"), 'Denied fiscal document access returns HTTP 403.');
 $assert(str_contains($controller, 'draftError(') && str_contains($controller, 'Fiscal draft viewer requested a missing document'), 'Invalid and missing IDs have controlled responses and logging.');
 $assert(!preg_match('/Fiscal_profiles_model|Items_model|Invoices_model/', substr($controller, strpos($controller, 'public function draft('), strpos($controller, 'public function draft_action(') - strpos($controller, 'public function draft('))), 'Viewer does not use live fiscal profiles, items, or invoice models as snapshot fallback.');
 
@@ -64,7 +65,10 @@ foreach ($fiscalFiles as $file) {
 $assert($missing === [], 'All static fiscal language keys exist in Spanish and English: ' . implode(', ', array_keys($missing)));
 $assert(strrpos($spanish, 'return $lang;') > strrpos($spanish, '$lang['), 'Spanish returns the language array after Increment 6/7 keys.');
 $assert(strrpos($english, 'return $lang;') > strrpos($english, '$lang['), 'English returns the language array after Increment 6/7 keys.');
-$assert(!str_contains($draft, 'Timbrar') && !str_contains($draft, 'Stamp</button>'), 'Draft viewer exposes no stamping action.');
+$assert(str_contains($draft,'$signature&&in_array($document->status')&&str_contains($draft,'$can_stamp_sandbox'),'Later stamping action is gated by signed XML, controlled state, configuration, and explicit permission.');
+$assert(str_contains($draft,"in_array(\$document->status,['locked','ready_to_stamp','stamped'],true)")&&str_contains($draft,"\$document->status==='locked'&&\$can_sign"),'Signed and stamped documents remain viewable while only locked unsigned documents show the signing form.');
+$assert(str_contains($routes, "\$routes->post('fiscal/invoices/sign'") && str_contains($routes, "\$routes->post('fiscal/stamping/stamp'"), 'Signing and stamping remain separate POST mutations.');
+$assert(str_contains($routes, "\$routes->get('fiscal/invoices/signed/view/(:num)'"), 'Signed XML viewer is a read-only GET route.');
 $assert(str_contains($draft, '$issuer->') && str_contains($draft, '$receiver->') && str_contains($draft, '$items') && str_contains($draft, '$tax_totals'), 'Viewer renders issuer, receiver, concepts, item taxes, and tax summary snapshots.');
 $assert(substr_count($review . $draft, 'id="ajaxModal"') === 0, 'Fiscal views never create another #ajaxModal.');
 

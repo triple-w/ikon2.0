@@ -6,8 +6,8 @@ use Throwable;
 
 class FiscalDraftCreationService
 {
- private $db;private FiscalDecimalCalculator$d;
- public function __construct($db=null){$this->db=$db?:db_connect();$this->d=new FiscalDecimalCalculator();}
+ private $db;private FiscalDecimalCalculator$d;private FiscalIssueDateService$issueDates;
+ public function __construct($db=null,?FiscalIssueDateService$issueDates=null){$this->db=$db?:db_connect();$this->d=new FiscalDecimalCalculator();$this->issueDates=$issueDates?:new FiscalIssueDateService();}
  public function create(int$invoiceId,int$issuerId,int$receiverId,int$seriesId,int$preparationId,array$options,int$userId,bool$authorized,bool$confirmSupersede=false):array{
   if(!$authorized)throw new RuntimeException('No tiene permiso para crear borradores fiscales.');
   foreach(['payment_form_code','payment_method_code']as$key)if(trim((string)($options[$key]??''))==='')throw new RuntimeException('Falta seleccionar forma y método de pago SAT.');
@@ -30,7 +30,7 @@ class FiscalDraftCreationService
   $source=$this->sourcePayload($invoice,$review,$prep,$options,$currency,$exchange,$paymentTotal);
   $hash=hash('sha256',$this->canonicalJson($source));
   $existing=$this->db->table('fiscal_documents')->where(['invoice_id'=>$invoiceId,'source_snapshot_hash'=>$hash,'deleted'=>0])->whereIn('status',['draft','ready','locked'])->get(1)->getRow();
-  if($existing)return['id'=>(int)$existing->id,'status'=>$existing->status,'action'=>'existing','hash'=>$hash];
+  if($existing&&!$confirmSupersede)return['id'=>(int)$existing->id,'status'=>$existing->status,'action'=>'existing','hash'=>$hash];
   $active=$this->db->table('fiscal_documents')->where(['invoice_id'=>$invoiceId,'deleted'=>0])->whereIn('status',['draft','ready','locked'])->orderBy('id','DESC')->get(1)->getRow();
   if($active&&$active->status==='locked'&&!$confirmSupersede)throw new RuntimeException('Existe una preparación cerrada. Debe confirmar su reemplazo.');
   if($active&&!$confirmSupersede)throw new RuntimeException('La venta cambió después del borrador activo. Confirme el reemplazo.');
@@ -42,10 +42,10 @@ class FiscalDraftCreationService
    if(!$series)throw new RuntimeException('La serie fiscal no está activa.');
    $folio=max((int)$series->initial_folio,(int)$series->current_folio+1);
    $version=1+(int)($this->db->table('fiscal_documents')->selectMax('version')->where('invoice_id',$invoiceId)->get()->getRow()->version??0);
-   $now=get_current_utc_time();$header=[
+   $now=get_current_utc_time();$fiscalIssueDate=$this->issueDates->nowForSnapshot();$header=[
     'invoice_id'=>$invoiceId,'issuer_profile_id'=>$issuerId,'receiver_profile_id'=>$receiverId,'fiscal_series_id'=>$seriesId,
     'pricing_preparation_id'=>$preparationId,'document_type'=>'income','status'=>'ready','version'=>$version,'series'=>(string)$series->series,
-    'folio'=>$folio,'issue_date'=>$now,'expedition_postal_code'=>(string)$review['issuer']['profile']->expedition_postal_code,
+    'folio'=>$folio,'issue_date'=>$fiscalIssueDate,'expedition_postal_code'=>(string)$review['issuer']['profile']->expedition_postal_code,
     'currency_code'=>$currency,'exchange_rate'=>$exchange,'payment_form_code'=>$options['payment_form_code'],
     'payment_method_code'=>$options['payment_method_code'],'cfdi_use_code'=>(string)$review['receiver']['cfdi_use']->code,
     'export_code'=>(string)($options['export_code']??'01'),'subtotal'=>'0.00','discount'=>'0.00','transferred_tax_total'=>'0.00',
@@ -68,7 +68,20 @@ class FiscalDraftCreationService
  }
  public function changeStatus(int$id,string$action,int$userId,bool$authorized,string$reason=''):array{
   if(!$authorized)throw new RuntimeException('No tiene permiso para esta acción fiscal.');$map=['lock'=>[['ready'],'locked'],'cancel'=>[['draft','ready'],'cancelled_internal']];
-  if(!isset($map[$action]))throw new RuntimeException('Acción fiscal inválida.');$this->db->transBegin();try{$row=$this->db->query('SELECT * FROM '.$this->db->prefixTable('fiscal_documents').' WHERE id=? AND deleted=0 FOR UPDATE',[$id])->getRow();if(!$row)throw new RuntimeException('El borrador fiscal no existe.');if($row->status===$map[$action][1]){$this->db->transCommit();return['id'=>$id,'status'=>$row->status,'action'=>'existing'];}if(!in_array($row->status,$map[$action][0],true))throw new RuntimeException('El estado actual no permite esta acción.');$now=get_current_utc_time();$update=['status'=>$map[$action][1],'updated_at'=>$now];if($action==='lock')$update['locked_at']=$now;else$update['cancelled_at']=$now;$this->db->table('fiscal_documents')->where('id',$id)->update($update);$this->audit($id,(int)$row->invoice_id,$userId,$action==='lock'?'locked':'cancelled_internal',$reason,$row->source_snapshot_hash,$row->source_snapshot_hash);$this->db->transCommit();return['id'=>$id,'status'=>$update['status'],'action'=>$action];}catch(Throwable$e){$this->db->transRollback();throw$e;}
+  if(!isset($map[$action]))throw new RuntimeException('Acción fiscal inválida.');
+  $this->db->transBegin();
+  try{
+   $row=$this->db->query('SELECT * FROM '.$this->db->prefixTable('fiscal_documents').' WHERE id=? AND deleted=0 FOR UPDATE',[$id])->getRow();
+   if(!$row)throw new RuntimeException('El borrador fiscal no existe.');
+   if($row->status===$map[$action][1]){$this->db->transCommit();return['id'=>$id,'status'=>$row->status,'action'=>'existing','issue_date'=>$row->issue_date];}
+   if(!in_array($row->status,$map[$action][0],true))throw new RuntimeException('El estado actual no permite esta acción.');
+   $now=get_current_utc_time();$update=['status'=>$map[$action][1],'updated_at'=>$now];
+   if($action==='lock'){$update['locked_at']=$now;$update['issue_date']=$this->issueDates->nowForSnapshot();}else$update['cancelled_at']=$now;
+   $this->db->table('fiscal_documents')->where('id',$id)->update($update);
+   $this->audit($id,(int)$row->invoice_id,$userId,$action==='lock'?'locked':'cancelled_internal',$reason,$row->source_snapshot_hash,$row->source_snapshot_hash);
+   $this->db->transCommit();
+   return['id'=>$id,'status'=>$update['status'],'action'=>$action,'issue_date'=>$update['issue_date']??$row->issue_date];
+  }catch(Throwable$e){$this->db->transRollback();throw$e;}
  }
  private function assertCatalog(string$table,string$code):object{$row=$this->db->table($table)->where(['code'=>$code,'is_active'=>1])->get(1)->getRow();if(!$row)throw new RuntimeException("La clave {$code} no está activa en {$table}.");return$row;}
  private function paymentTotal(int$id):string{$row=$this->db->table('invoice_payments')->selectSum('amount','total')->where(['invoice_id'=>$id,'deleted'=>0])->get()->getRow();return$this->d->money((string)($row->total??'0'));}

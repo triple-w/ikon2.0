@@ -369,19 +369,14 @@ class Estimates extends Security_Controller {
 
         $id = $this->request->getPost('id');
         $this->validate_estimate_access($id);
-        $estimate_info = $this->Estimates_model->get_one($id);
-
-        if ($this->Estimates_model->delete($id)) {
-            //delete signature file
-            $signer_info = @unserialize($estimate_info->meta_data);
-            if ($signer_info && is_array($signer_info) && get_array_value($signer_info, "signature")) {
-                $signature_file = unserialize(get_array_value($signer_info, "signature"));
-                delete_app_files(get_setting("timeline_file_path"), $signature_file);
-            }
-
-            echo json_encode(array("success" => true, 'message' => app_lang('record_deleted')));
-        } else {
-            echo json_encode(array("success" => false, 'message' => app_lang('record_cannot_be_deleted')));
+        try {
+            (new \App\Services\Quotes\QuotationLifecycleService())->cancel(
+                (int)$id, (int)$this->login_user->id,
+                trim((string)$this->request->getPost('cancellation_reason')) ?: 'Cancelación comercial.'
+            );
+            echo json_encode(array("success" => true, 'message' => 'La cotización fue cancelada y se conservó como historial.'));
+        } catch (\Throwable $e) {
+            echo json_encode(array("success" => false, 'message' => $e->getMessage()));
         }
     }
 

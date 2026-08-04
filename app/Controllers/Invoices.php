@@ -216,6 +216,9 @@ class Invoices extends Security_Controller {
 
     function save() {
         $id = $this->request->getPost('id');
+        if ($id && !(new \App\Services\Sales\SaleLifecycleService())->canEdit((int)$id, (int)$this->login_user->id, true)['allowed']) {
+            echo json_encode(["success"=>false,"message"=>"La venta está cerrada para cambios comerciales."]); return;
+        }
         $is_clone = $this->request->getPost('is_clone');
 
         if (!$this->can_edit_invoices($id)) {
@@ -488,23 +491,13 @@ class Invoices extends Security_Controller {
             app_redirect("forbidden");
         }
 
-        $invoice_info = $this->Invoices_model->get_one($id);
-
-        if ($this->Invoices_model->delete_permanently($id)) {
-            //delete the files
-            $file_path = get_setting("timeline_file_path");
-            if ($invoice_info->files) {
-                $files = unserialize($invoice_info->files);
-
-                foreach ($files as $file) {
-                    delete_app_files($file_path, array($file));
-                }
-            }
-
-            echo json_encode(array("success" => true, 'message' => app_lang('record_deleted')));
-        } else {
-            echo json_encode(array("success" => false, 'message' => app_lang('record_cannot_be_deleted')));
-        }
+        // C2.1: a commercial sale is auditable history and must never be
+        // physically deleted. Cancellation is handled by the central fiscal
+        // allocation policy in update_invoice_status().
+        echo json_encode(array(
+            "success" => false,
+            "message" => "La venta no puede eliminarse. Utilice la cancelación comercial."
+        ));
     }
 
     /* list of invoices, prepared for datatable  */
@@ -795,10 +788,28 @@ class Invoices extends Security_Controller {
         $fiscal_review = '';
         $permissions = $this->login_user->permissions ?? array();
         if (!is_array($permissions)) $permissions = @unserialize((string) $permissions) ?: array();
-        if ($this->login_user->is_admin || get_array_value($permissions, 'fiscal_sales_review') || get_array_value($permissions, 'fiscal_sales_pricing_review')) {
+        if ($this->login_user->is_admin || get_array_value($permissions, 'fiscal.sales.invoice')) {
+            $allocationService = new \App\Services\Fiscal\FiscalSaleAllocationService();
+            $summary = $allocationService->getSaleFiscalSummary((int) $data->id);
+            if ($data->status !== 'cancelled' && !$allocationService->hasBlockingOperation((int) $data->id)) {
+                if (\App\Services\Fiscal\FiscalDecimal::micros($summary['available_to_invoice']) > 0) {
+                    $fiscal_review .= '<li role="presentation">' . modal_anchor(
+                        get_uri('fiscal/drafts/create/' . $data->id),
+                        "<i data-feather='file-plus' class='icon-16'></i> Facturar",
+                        array('class' => 'dropdown-item','title'=>'Revisión fiscal','data-modal-lg'=>'1')
+                    ) . '</li>';
+                } elseif ($summary['active_drafts']) {
+                    $firstDraft = (int) $summary['active_drafts'][0]['fiscal_draft_id'];
+                    $label = count($summary['active_drafts']) === 1 ? 'Editar borrador' : 'Ver borradores';
+                    $url = count($summary['active_drafts']) === 1 ? 'fiscal/drafts/'.$firstDraft.'/edit' : 'fiscal/drafts';
+                    $fiscal_review .= '<li role="presentation">' . anchor(get_uri($url), "<i data-feather='edit-3' class='icon-16'></i> ".$label, array('class'=>'dropdown-item')) . '</li>';
+                }
+            }
+        }
+        if ($this->login_user->is_admin || get_array_value($permissions, 'fiscal.advanced.view')) {
             $latest = db_connect()->table('sale_fiscal_pricing_preparations')->where('invoice_id', $data->id)->orderBy('id', 'DESC')->get(1)->getRow();
             $badge = $latest ? '<span class="badge bg-warning ml5">' . app_lang('fiscal_pricing_status_' . $latest->status) . '</span>' : '';
-            $fiscal_review = '<li role="presentation">' . modal_anchor(get_uri('fiscal/invoices/review/' . $data->id), "<i data-feather='shield' class='icon-16'></i> " . app_lang('fiscal_review') . $badge, array('title' => app_lang('fiscal_review'), 'class' => 'dropdown-item')) . '</li>';
+            $fiscal_review .= '<li role="presentation">' . modal_anchor(get_uri('fiscal/invoices/review/' . $data->id), "<i data-feather='shield' class='icon-16'></i> " . app_lang('fiscal_review') . $badge, array('title' => app_lang('fiscal_review'), 'class' => 'dropdown-item')) . '</li>';
         }
 
         return '
@@ -919,6 +930,22 @@ class Invoices extends Security_Controller {
 
                 $view_data["invoice_total_summary"] = $this->Invoices_model->get_invoice_total_summary($invoice_id);
                 $view_data["invoice_id"] = $invoice_id;
+                $rolePermissions = is_array($this->login_user->permissions)
+                    ? $this->login_user->permissions
+                    : (@unserialize((string) $this->login_user->permissions) ?: []);
+                $hasFiscalPermission = fn(string $permission): bool =>
+                    (bool) $this->login_user->is_admin || (bool) get_array_value($rolePermissions, $permission);
+                if (db_connect()->tableExists('fiscal_document_sales')) {
+                    $view_data['fiscal_sale_summary'] =
+                        (new \App\Services\Fiscal\FiscalSaleAllocationService())->getSaleFiscalSummary((int) $invoice_id);
+                    $view_data['fiscal_sale_permissions'] = [
+                        'create_draft' => $hasFiscalPermission('fiscal.sales.invoice')
+                            || $hasFiscalPermission('fiscal.drafts.create'),
+                        'view_draft' => $hasFiscalPermission('fiscal.drafts.view'),
+                        'view_invoice' => $hasFiscalPermission('fiscal.invoices.view')
+                            || $hasFiscalPermission('fiscal_invoices_view'),
+                    ];
+                }
 
                 $invoice_total_section = $this->template->view('invoices/invoice_total_section', $view_data);
                 $view_data["invoice_total_section"] = $invoice_total_section;
@@ -951,6 +978,9 @@ class Invoices extends Security_Controller {
         if (!$this->is_invoice_editable($invoice_id)) {
             app_redirect("forbidden");
         }
+        if (!(new \App\Services\Sales\SaleLifecycleService())->canEdit((int)$invoice_id, (int)$this->login_user->id, true)['allowed']) {
+            echo json_encode(["success"=>false,"message"=>"La venta está cerrada para cambios de partidas."]); return;
+        }
 
         $this->validate_submitted_data(array(
             "id" => "numeric"
@@ -980,6 +1010,9 @@ class Invoices extends Security_Controller {
 
         if (!$this->is_invoice_editable($invoice_id)) {
             app_redirect("forbidden");
+        }
+        if (!(new \App\Services\Sales\SaleLifecycleService())->canEdit((int)$invoice_id, (int)$this->login_user->id, true)['allowed']) {
+            echo json_encode(["success"=>false,"message"=>"La venta está cerrada para cambios de partidas."]); return;
         }
 
         $id = $this->request->getPost('id');
@@ -1039,6 +1072,9 @@ class Invoices extends Security_Controller {
 
         if (!$this->is_invoice_editable($item_info->invoice_id)) {
             app_redirect("forbidden");
+        }
+        if (!(new \App\Services\Sales\SaleLifecycleService())->canEdit((int)$item_info->invoice_id, (int)$this->login_user->id, true)['allowed']) {
+            echo json_encode(["success"=>false,"message"=>"La venta está cerrada para cambios de partidas."]); return;
         }
 
         if ($this->request->getPost('undo')) {
@@ -1536,25 +1572,61 @@ class Invoices extends Security_Controller {
 
         validate_numeric_value($invoice_id);
         if ($invoice_id && $status) {
-            //change the draft status of the invoice
-            $this->Invoices_model->update_invoice_status($invoice_id, $status);
-
-            //save extra information for cancellation
             if ($status == "cancelled") {
-                $data = array(
-                    "cancelled_at" => get_current_utc_time(),
-                    "cancelled_by" => $this->login_user->id
-                );
-
-                $this->Invoices_model->ci_save($data, $invoice_id);
+                try {
+                    $reason = trim((string) $this->request->getPost('cancellation_reason'));
+                    if ($reason === '') {
+                        $reason = 'Cancelación comercial solicitada desde iKontrol.';
+                    }
+                    (new \App\Services\Sales\SaleLifecycleService())->cancel(
+                        (int) $invoice_id,
+                        (int) $this->login_user->id,
+                        $reason
+                    );
+                } catch (\Throwable $exception) {
+                    echo json_encode(array(
+                        "success" => false,
+                        "message" => $exception->getMessage() === 'FISCAL_SALE_HAS_ACTIVE_DOCUMENTS'
+                            ? 'La venta tiene facturas fiscales vigentes y no puede cancelarse.'
+                            : ($exception->getMessage() === 'FISCAL_SALE_HAS_ACTIVE_DRAFTS'
+                                ? 'La venta tiene borradores fiscales activos y no puede cancelarse.'
+                                : 'No fue posible cancelar la venta.')
+                    ));
+                    return "";
+                }
             } else if ($status == "not_paid") {
+                $this->Invoices_model->update_invoice_status($invoice_id, $status);
                 $this->_add_payment_from_client_wallet($invoice_id);
+            } else {
+                $this->Invoices_model->update_invoice_status($invoice_id, $status);
             }
 
             echo json_encode(array("success" => true, 'message' => app_lang('record_saved')));
         }
 
         return "";
+    }
+
+    function close_sale($invoice_id = 0) {
+        if (!$this->commercialPermission('sales.close') || !$this->can_view_invoices($invoice_id)) app_redirect("forbidden");
+        validate_numeric_value($invoice_id);
+        try {
+            (new \App\Services\Sales\SaleLifecycleService())->close(
+                (int)$invoice_id, (int)$this->login_user->id,
+                trim((string)$this->request->getPost('closure_reason'))
+            );
+            echo json_encode(["success"=>true,"message"=>"La venta quedó cerrada. Puede seguir facturándose."]);
+        } catch (\Throwable $e) {
+            log_message('warning','Sale close blocked sale={sale_id} code={code}',['sale_id'=>$invoice_id,'code'=>$e->getMessage()]);
+            echo json_encode(["success"=>false,"message"=>"No fue posible cerrar la venta: ".$e->getMessage()]);
+        }
+    }
+
+    private function commercialPermission(string $permission): bool {
+        if ($this->login_user->is_admin) return true;
+        $permissions=$this->login_user->permissions??[];
+        if(!is_array($permissions))$permissions=@unserialize((string)$permissions)?:[];
+        return (bool)get_array_value($permissions,$permission);
     }
 
     private function _add_payment_from_client_wallet($invoice_id) {

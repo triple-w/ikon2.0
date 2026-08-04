@@ -9,7 +9,7 @@
         } ?>
     </div>
     <div class="card-body">
-        <div class="alert alert-warning"><?php echo app_lang('csd_password_strategy_notice'); ?></div>
+        <div class="alert alert-warning"><?php echo app_lang('csd_password_vault_notice'); ?></div>
         <div class="alert alert-info"><?php echo app_lang('csd_local_validity_notice'); ?></div>
         <div class="table-responsive"><table id="csd-table" class="display" width="100%"></table></div>
     </div>
@@ -24,6 +24,7 @@ $(document).ready(function(){
             {title:'<?php echo app_lang('valid_from'); ?>'},
             {title:'<?php echo app_lang('valid_to'); ?>'},
             {title:'<?php echo app_lang('status'); ?>'},
+            {title:'<?php echo app_lang('csd_operational_status'); ?>'},
             {title:'<?php echo app_lang('default'); ?>'},
             {title:'<i data-feather="menu" class="icon-16"></i>',class:'text-center option w100'}
         ]

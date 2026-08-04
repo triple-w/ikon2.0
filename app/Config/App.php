@@ -195,7 +195,7 @@ class App extends BaseConfig {
      *
      * @var string
      */
-    public $appTimezone = 'UTC';
+    public string $appTimezone = 'America/Mexico_City';
 
     /**
      * --------------------------------------------------------------------------

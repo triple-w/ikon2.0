@@ -1,6 +1,6 @@
 <?php
 namespace App\Database\Seeds;
-use CodeIgniter\Database\Seeder;
+use App\Database\Seeds\ExplicitConnectionSeeder as Seeder;
 class SatProductServiceKeysSeeder extends Seeder { public function run(){ $now=date('Y-m-d H:i:s');$inserted=0;$updated=0;$rows=[
  ['01010101','No existe en el catálogo','CFDI 4.0 carga mínima'],
  ['43211503','Computadoras notebook','CFDI 4.0 carga mínima'],

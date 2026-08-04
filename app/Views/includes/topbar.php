@@ -9,6 +9,9 @@
                         <i data-feather="menu" class="icon"></i>
                     </a>
                 </li>
+                <?php if(config('Fiscal')->runtimeMode==='integration'){ ?>
+                <li class="nav-item d-flex align-items-center"><span class="badge bg-warning text-dark">AMBIENTE DE PRUEBAS PAC</span></li>
+                <?php } ?>
 
                 <li class="nav-item d-block d-sm-none">
                     <?php

@@ -84,10 +84,20 @@
                     <label for="item_rate" class=" col-md-3"><?php echo app_lang('item_price'); ?></label>
                     <div class="col-md-9">
                         <?php
+                        $stored_item_rate = (string) $model_info->rate;
+                        if ($stored_item_rate !== "") {
+                            $stored_item_rate = rtrim(rtrim($stored_item_rate, "0"), ".");
+                            if ($stored_item_rate === "") {
+                                $stored_item_rate = "0";
+                            }
+                            if (get_setting("decimal_separator") === ",") {
+                                $stored_item_rate = str_replace(".", ",", $stored_item_rate);
+                            }
+                        }
                         echo form_input(array(
                             "id" => "item_rate",
                             "name" => "item_rate",
-                            "value" => $model_info->rate ? to_decimal_format($model_info->rate) : "",
+                            "value" => $stored_item_rate,
                             "class" => "form-control",
                             "placeholder" => app_lang('item_price'),
                             "data-rule-required" => true,

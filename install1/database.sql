@@ -720,7 +720,7 @@ CREATE TABLE IF NOT EXISTS `items` (
   `title` text CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL,
   `description` text CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci,
   `unit_type` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL DEFAULT '',
-  `rate` double NOT NULL,
+  `rate` decimal(18,6) NOT NULL DEFAULT '0.000000',
   `files` mediumtext CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL,
   `show_in_client_portal` tinyint(1) NOT NULL DEFAULT '0',
   `category_id` int NOT NULL,
@@ -1718,4 +1718,3 @@ CREATE TABLE IF NOT EXISTS `verification` (
   `deleted` int NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_unicode_ci;
-

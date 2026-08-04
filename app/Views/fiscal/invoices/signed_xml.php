@@ -8,6 +8,6 @@
     <pre class="bg-light p15" style="max-height:500px;overflow:auto;white-space:pre-wrap"><?php echo htmlspecialchars($xml, ENT_QUOTES, 'UTF-8'); ?></pre>
 </div>
 <div class="modal-footer">
-    <a class="btn btn-default" href="<?php echo get_uri('fiscal/invoices/signed/download/' . $artifact->id); ?>"><?php echo app_lang('download'); ?></a>
+    <a class="btn btn-default" href="<?php echo url_to('fiscal_signed_xml_download', $artifact->fiscal_document_id); ?>"><?php echo app_lang('download'); ?></a>
     <button type="button" class="btn btn-default" data-bs-dismiss="modal"><?php echo app_lang('close'); ?></button>
 </div>

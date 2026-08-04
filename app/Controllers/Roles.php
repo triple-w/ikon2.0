@@ -136,7 +136,7 @@ class Roles extends Security_Controller {
             $view_data['can_upload_and_edit_files'] = get_array_value($permissions, "can_upload_and_edit_files");
             $view_data['can_view_files'] = get_array_value($permissions, "can_view_files");
             $view_data['can_comment_on_projects'] = get_array_value($permissions, "can_comment_on_projects");
-            foreach (array('can_view_fiscal_profiles','can_manage_fiscal_profiles','can_view_fiscal_tax_settings','can_manage_fiscal_tax_settings','fiscal_items_view','fiscal_items_manage','fiscal_issuers_view','fiscal_issuers_manage','fiscal_series_view','fiscal_series_manage','fiscal_sales_review','fiscal_sales_pricing_review','fiscal_sales_pricing_apply','fiscal_sales_pricing_override','fiscal_drafts_view','fiscal_drafts_create','fiscal_drafts_lock','fiscal_drafts_supersede','fiscal_drafts_cancel','fiscal_xml_preview_generate','fiscal_xml_preview_view','fiscal_xml_preview_download','fiscal_xml_preview_validate','fiscal_certificates_view','fiscal_certificates_manage','fiscal_xml_sign','fiscal_signed_xml_view') as $permission) {
+            foreach (array('can_view_fiscal_profiles','can_manage_fiscal_profiles','can_view_fiscal_tax_settings','can_manage_fiscal_tax_settings','fiscal_items_view','fiscal_items_manage','fiscal_issuers_view','fiscal_issuers_manage','fiscal_series_view','fiscal_series_manage','fiscal_sales_review','fiscal_sales_pricing_review','fiscal_sales_pricing_apply','fiscal_sales_pricing_override','fiscal_drafts_view','fiscal_drafts_create','fiscal_drafts_lock','fiscal_drafts_supersede','fiscal_drafts_cancel','fiscal_xml_preview_generate','fiscal_xml_preview_view','fiscal_xml_preview_download','fiscal_xml_preview_validate','fiscal_certificates_view','fiscal_certificates_manage','fiscal_xml_sign','fiscal_signed_xml_view','fiscal_pac_status_view','fiscal_stamp_sandbox','fiscal_stamp_status','fiscal_stamp_reconcile','fiscal_stamped_xml_view','fiscal_stamped_xml_download','fiscal_stamp_error_details','fiscal_pdf_view','fiscal_pdf_download','fiscal_pdf_generate','fiscal_pdf_templates_view','fiscal_pdf_templates_manage','fiscal_invoices_view','fiscal_invoice_view','fiscal_xml_download','fiscal_cancel_request','fiscal_cancellation_receipt_view','fiscal_status_query','fiscal_invoices_download_xml','fiscal_invoices_download_pdf','fiscal_invoices_cancel','fiscal_invoices_view_cancellation','fiscal_invoices_reconcile_cancellation') as $permission) {
                 $view_data[$permission] = get_array_value($permissions, $permission);
             }
 
@@ -333,6 +333,9 @@ class Roles extends Security_Controller {
         $fiscal_certificates_manage = $this->request->getPost('fiscal_certificates_manage');
         $fiscal_xml_sign = $this->request->getPost('fiscal_xml_sign');
         $fiscal_signed_xml_view = $this->request->getPost('fiscal_signed_xml_view');
+        foreach (array('fiscal_pac_status_view','fiscal_stamp_sandbox','fiscal_stamp_status','fiscal_stamp_reconcile','fiscal_stamped_xml_view','fiscal_stamped_xml_download','fiscal_stamp_error_details','fiscal_pdf_view','fiscal_pdf_download','fiscal_pdf_generate','fiscal_pdf_templates_view','fiscal_pdf_templates_manage','fiscal_invoices_view','fiscal_invoice_view','fiscal_xml_download','fiscal_cancel_request','fiscal_cancellation_receipt_view','fiscal_status_query','fiscal_invoices_download_xml','fiscal_invoices_download_pdf','fiscal_invoices_cancel','fiscal_invoices_view_cancellation','fiscal_invoices_reconcile_cancellation') as $permission) {
+            ${$permission} = $this->request->getPost($permission);
+        }
 
         $permissions = array(
             "leave" => $leave,
@@ -427,9 +430,48 @@ class Roles extends Security_Controller {
             'fiscal_certificates_manage' => $fiscal_certificates_manage,
             'fiscal_xml_sign' => $fiscal_xml_sign,
             'fiscal_signed_xml_view' => $fiscal_signed_xml_view,
+            'fiscal_pac_status_view' => $fiscal_pac_status_view,
+            'fiscal_stamp_sandbox' => $fiscal_stamp_sandbox,
+            'fiscal_stamp_status' => $fiscal_stamp_status,
+            'fiscal_stamp_reconcile' => $fiscal_stamp_reconcile,
+            'fiscal_stamped_xml_view' => $fiscal_stamped_xml_view,
+            'fiscal_stamped_xml_download' => $fiscal_stamped_xml_download,
+            'fiscal_stamp_error_details' => $fiscal_stamp_error_details,
+            'fiscal_pdf_view' => $fiscal_pdf_view,
+            'fiscal_pdf_download' => $fiscal_pdf_download,
+            'fiscal_pdf_generate' => $fiscal_pdf_generate,
+            'fiscal_pdf_templates_view' => $fiscal_pdf_templates_view,
+            'fiscal_pdf_templates_manage' => $fiscal_pdf_templates_manage,
+            'fiscal_invoices_view' => $fiscal_invoices_view,
+            'fiscal_invoice_view' => $fiscal_invoice_view,
+            'fiscal_xml_download' => $fiscal_xml_download,
+            'fiscal_cancel_request' => $fiscal_cancel_request,
+            'fiscal_cancellation_receipt_view' => $fiscal_cancellation_receipt_view,
+            'fiscal_status_query' => $fiscal_status_query,
+            'fiscal_invoices_download_xml' => $fiscal_invoices_download_xml,
+            'fiscal_invoices_download_pdf' => $fiscal_invoices_download_pdf,
+            'fiscal_invoices_cancel' => $fiscal_invoices_cancel,
+            'fiscal_invoices_view_cancellation' => $fiscal_invoices_view_cancellation,
+            'fiscal_invoices_reconcile_cancellation' => $fiscal_invoices_reconcile_cancellation,
         ) as $permission => $enabled) {
             if ($enabled) $permissions[$permission] = $enabled;
         }
+          foreach (array(
+              'fiscal.sales.invoice','fiscal.drafts.view','fiscal.drafts.create','fiscal.drafts.edit','fiscal.invoices.stamp',
+            'fiscal.drafts.discard','fiscal.invoices.view','fiscal.invoices.download_xml',
+            'fiscal.invoices.download_pdf','fiscal.invoices.send','fiscal.invoices.cancel',
+            'fiscal.advanced.view','fiscal.advanced.reconcile','fiscal.advanced.regenerate_pdf'
+          ) as $permission) {
+              if ($this->request->getPost($permission)) $permissions[$permission] = '1';
+          }
+          foreach (array(
+              'quotations.view','quotations.create','quotations.edit','quotations.send','quotations.accept',
+              'quotations.reject','quotations.cancel','quotations.convert','sales.view','sales.create',
+              'sales.edit','sales.close','sales.cancel','sales.edit_open','sales.override_close_validation'
+          ) as $permission) {
+              if ($this->request->getPost($permission)) $permissions[$permission] = '1';
+          }
+          // sales.reopen is reserved for a future audited workflow and is not assignable.
 
         try {
             $permissions = app_hooks()->apply_filters('app_filter_role_permissions_save_data', $permissions);

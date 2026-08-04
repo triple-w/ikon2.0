@@ -76,11 +76,41 @@ class Database extends Config
 		'port'     => 3306,
 	];
 
+	/**
+	 * Read-only legacy FC2 connection. Credentials must belong to a MySQL
+	 * account granted SELECT only; the application never migrates this group.
+	 */
+	public $fc2_legacy = [
+		'DSN' => '', 'hostname' => '', 'username' => '', 'password' => '', 'database' => '',
+		'DBDriver' => 'MySQLi', 'DBPrefix' => '', 'pConnect' => false,
+		'DBDebug' => false, 'charset' => 'utf8mb4', 'DBCollat' => 'utf8mb4_unicode_ci',
+		'swapPre' => '', 'encrypt' => false, 'compress' => false, 'strictOn' => true,
+		'failover' => [], 'port' => 3306,
+	];
+
+	/**
+	 * Isolated local build target. It intentionally reuses only the local
+	 * database transport credentials, never fiscal/PAC/FC2 configuration.
+	 */
+	public $clean_build = [];
+
 	//--------------------------------------------------------------------
 
 	public function __construct()
 	{
 		parent::__construct();
+		$this->fc2_legacy['hostname'] = (string) env('FC2_DB_HOST', '');
+		$this->fc2_legacy['port'] = (int) env('FC2_DB_PORT', 3306);
+		$this->fc2_legacy['database'] = (string) env('FC2_DB_DATABASE', '');
+		$this->fc2_legacy['username'] = (string) env('FC2_DB_USERNAME', '');
+		$this->fc2_legacy['password'] = (string) env('FC2_DB_PASSWORD', '');
+		$this->fc2_legacy['charset'] = (string) env('FC2_DB_CHARSET', 'utf8mb4');
+		$this->clean_build = $this->default;
+		$this->clean_build['database'] = 'ikontrol20_clean';
+		$this->clean_build['DBPrefix'] = 'ikontrol_';
+		$this->clean_build['charset'] = 'utf8mb4';
+		$this->clean_build['DBCollat'] = 'utf8mb4_general_ci';
+		$this->clean_build['pConnect'] = false;
 
 		// Ensure that we always set the database group to 'tests' if
 		// we are currently running an automated test suite, so that

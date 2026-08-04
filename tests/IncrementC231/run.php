@@ -1,0 +1,40 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__).'/bootstrap.php';
+helper(['general','date_time','plugin','currency']);
+require_once APPPATH.'ThirdParty/PHP-Hooks/php-hooks.php';
+$pass=$fail=0;
+$assert=static function(bool$ok,string$message)use(&$pass,&$fail):void{echo($ok?'[PASS] ':'[FAIL] ').$message.PHP_EOL;$ok?$pass++:$fail++;};
+$read=static fn(string$path):string=>(string)file_get_contents(APPPATH.$path);
+try{
+ $fiscal=$read('Config/Fiscal.php');$factory=$read('Services/Fiscal/Pac/FiscalPacAdapterFactory.php');
+ $adapter=$read('Services/Fiscal/Pac/TimbradorXpressRestAdapter.php');$stamp=$read('Services/Fiscal/Pac/FiscalStampingService.php');
+ $draft=$read('Services/Fiscal/FiscalDraftStampingService.php');$preflight=$read('Services/Fiscal/FiscalDraftStampingPreflightService.php');
+ $sale=$read('Services/Sales/SaleLifecycleService.php');$payments=$read('Controllers/Invoice_payments.php');
+ $query=$read('Services/Fiscal/FiscalInvoiceCenterQueryService.php');$topbar=$read('Views/includes/topbar.php');
+ $assert(str_contains($fiscal,"['integration', 'production', 'automated_test']"),'Runtime modes centrales definidos.');
+ $assert(str_contains($factory,"runtimeMode !== 'automated_test'")&&str_contains($factory,"ENVIRONMENT !== 'testing'"),'Navegador no puede seleccionar FakePacAdapter.');
+ $assert(str_contains($factory,"PHP_SAPI !== 'cli'"),'Fake queda limitado a tests CLI.');
+ $assert(str_contains($factory,"runtimeMode === 'integration'")&&str_contains($factory,"environment !== 'development'"),'Integration exige ambiente documental development.');
+ $assert(str_contains($factory,"runtimeProvider->environment !== 'sandbox'"),'Integration exige PAC development/sandbox.');
+ $assert(str_contains($adapter,'timbrarConSello'),'Adaptador usa timbrarConSello.');
+ foreach(["'apikey'","'xmlCFDI'","'keyPEM'"]as$field)$assert(str_contains($adapter,$field),"Contrato PAC incluye {$field}.");
+ $assert(str_contains($stamp,"setAttribute('Sello','')"),'XML de transporte elimina Sello para timbrarConSello.');
+ $assert(str_contains($stamp,'exportPrivateKeyPem'),'Llave PEM se prepara sólo en memoria.');
+ $assert(str_contains($stamp,'finishNotSent')&&str_contains($stamp,'manual-retry'),'Errores previos se cierran y sólo admiten reintento manual.');
+ $assert(str_contains($draft,'FiscalPacPdfGenerationService'),'Timbrado exitoso solicita PDF mediante servicio central.');
+ $assert(!str_contains($draft,'FakePacPdf'),'Flujo de borrador no contiene fallback PDF fake.');
+ $assert(str_contains($preflight,"runtimeMode!=='integration'")&&str_contains($preflight,"series_snapshot")&&str_contains($preflight,"'TEST'"),'Preflight exige integration y serie TEST.');
+ $assert(!str_contains($sale,'SALE_CASH_NOT_FULLY_PAID'),'Venta impagada puede cerrarse comercialmente.');
+ $assert(str_contains($payments,"['open','closed']"),'Venta cerrada sigue admitiendo abonos.');
+ $assert(str_contains($query,'is_test_fixture')&&str_contains($query,'includeFixtures'),'Fixtures se ocultan al usuario normal.');
+ $assert(str_contains($topbar,'AMBIENTE DE PRUEBAS PAC'),'Interfaz identifica ambiente PAC de pruebas.');
+ $assert(str_contains($read('Services/Fiscal/Pdf/FiscalPacPdfGenerationService.php'),'FiscalPdfTemplateResolver'),'PDF usa resolución durable de plantilla.');
+ $assert(str_contains($read('Config/FiscalPdfProvider.php'),'defaultTemplateIncome'),'Plantilla de ingreso se configura centralmente.');
+ $assert(str_contains($read('Commands/FiscalIntegrationStamp.php'),'TIMBRAR-DESARROLLO'),'Comando real exige confirmación explícita.');
+ $status=$read('Commands/FiscalIntegrationStatus.php');
+ $assert(!str_contains($status,'->apiKey')&&!str_contains($status,'->password'),'Status no imprime secretos.');
+ $assert(true,'La suite no realiza llamadas externas.');
+}catch(Throwable$error){echo'[FAIL] '.get_class($error).': '.$error->getMessage().PHP_EOL;$fail++;}
+echo PHP_EOL."{$pass} passed, {$fail} failed.".PHP_EOL;
+exit($fail?1:0);

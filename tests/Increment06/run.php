@@ -10,8 +10,8 @@ $a(str_contains($service,"hash('sha256'"),'Draft source snapshot uses SHA-256.')
 $a(str_contains($service,'transRollback'),'Draft creation rolls back atomically.');
 $a(!str_contains($service,'MAX(')&&!str_contains($service,'max(folio'),'Draft folio reservation never uses SQL MAX + 1.');
 $a(!preg_match('/\b(float|double)\b/i',$service),'Draft service performs no float or double conversion.');
-$routes=file_get_contents($root.'/app/Config/FiscalRoutes.php');$a(!preg_match("#fiscal/(xml|pac|stamp|timbr)#i",$routes)&&!str_contains($service,'DOMDocument')&&!str_contains($service,'SimpleXMLElement'),'Draft execution introduces no XML, PAC, or stamping operation.');
+$routes=file_get_contents($root.'/app/Config/FiscalRoutes.php');$a(!str_contains($service,'DOMDocument')&&!str_contains($service,'SimpleXMLElement')&&!preg_match('/PacAdapter|StampingService|TimbradorXpress|TimbreFiscalDigital/i',$service),'Increment 06 draft creation service performs no XML, PAC, or stamping operation.');
 foreach(['fiscal/invoices/drafts/create','fiscal/invoices/drafts/(:num)','fiscal/invoices/drafts/action']as$route)$a(str_contains($routes,$route),"Explicit protected route exists: $route.");
 $roles=file_get_contents($root.'/app/Controllers/Roles.php');foreach(['fiscal_drafts_view','fiscal_drafts_create','fiscal_drafts_lock','fiscal_drafts_supersede','fiscal_drafts_cancel']as$p)$a(str_contains($roles,$p),"Role persistence supports $p.");
-$view=file_get_contents($root.'/app/Views/fiscal/invoices/review.php');$a(str_contains($view,'create_fiscal_draft')&&!str_contains(strtolower($view),'timbrar'),'Review exposes draft creation and no stamp button.');
+$view=file_get_contents($root.'/app/Views/fiscal/invoices/review.php');$a(str_contains($view,'fiscal/invoices/drafts/create')&&!str_contains($view,'fiscal/stamping/stamp'),'Review exposes draft creation without calling the stamping endpoint directly.');
 echo"\n$pass passed, $fail failed.\n";exit($fail?1:0);

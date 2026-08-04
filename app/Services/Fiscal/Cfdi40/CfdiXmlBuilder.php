@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace App\Services\Fiscal\Cfdi40;
 use App\Domain\Fiscal\Cfdi40\{CfdiDocument,CfdiConceptTax,CfdiTaxSummary};
-use App\Services\Fiscal\FiscalDecimalCalculator;
+use App\Services\Fiscal\{FiscalDecimalCalculator,FiscalIssueDateService};
 use DOMDocument;use DOMElement;use RuntimeException;
 final class CfdiXmlBuilder{
  public const VERSION='1.0.0';public const SCHEMA_VERSION='CFDI 4.0';
@@ -20,7 +20,7 @@ final class CfdiXmlBuilder{
  private function conceptTax(DOMDocument$d,string$name,CfdiConceptTax$t):DOMElement{$n=$d->createElementNS(self::CFDI,'cfdi:'.$name);$attrs=['Base'=>$this->money($t->base),'Impuesto'=>$t->taxCode,'TipoFactor'=>$t->factorType];if($t->factorType!=='Exento'){$attrs['TasaOCuota']=$this->decimal((string)$t->rateOrQuota,6);$attrs['Importe']=$this->money($t->amount);}$this->attrs($n,$attrs);return$n;}
  private function summaryTax(DOMDocument$d,CfdiTaxSummary$t):DOMElement{$n=$d->createElementNS(self::CFDI,'cfdi:Traslado');$attrs=['Base'=>$this->money($t->base),'Impuesto'=>$t->taxCode,'TipoFactor'=>$t->factorType];if($t->factorType!=='Exento'){$attrs['TasaOCuota']=$this->decimal((string)$t->rateOrQuota,6);$attrs['Importe']=$this->money($t->amount);}$this->attrs($n,$attrs);return$n;}
  private function attrs(DOMElement$e,array$a):void{foreach($a as$k=>$v)if($v!==null&&$v!==''){$v=(string)$v;if(preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/',$v))throw new RuntimeException("El atributo $k contiene caracteres de control no permitidos.");$e->setAttribute($k,$v);}}
- private function date(string$v):string{$v=str_replace(' ','T',trim($v));return substr($v,0,19);}
+ private function date(string$v):string{return(new FiscalIssueDateService())->formatForXml($v);}
  private function money(string$v):string{return$this->d->money($v);}
  private function decimal(string$v,int$scale):string{return$this->d->normalize($v,$scale);}
  private function positive(string$v):bool{return$this->d->compare($v,'0')>0;}
