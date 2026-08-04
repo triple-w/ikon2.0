@@ -12,6 +12,9 @@
                 <?php if(config('Fiscal')->runtimeMode==='integration'){ ?>
                 <li class="nav-item d-flex align-items-center"><span class="badge bg-warning text-dark">AMBIENTE DE PRUEBAS PAC</span></li>
                 <?php } ?>
+                <?php if((new \App\Services\Fiscal\FiscalPreviewModeGuard(db_connect()))->isPreview()){ ?>
+                <li class="nav-item d-flex align-items-center"><span class="badge bg-danger">AMBIENTE DE VISTA PREVIA — TIMBRADO FISCAL DESHABILITADO</span></li>
+                <?php } ?>
 
                 <li class="nav-item d-block d-sm-none">
                     <?php

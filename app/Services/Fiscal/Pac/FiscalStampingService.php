@@ -10,6 +10,7 @@ use App\Services\Fiscal\FiscalArtifactStorageService;
 use App\Services\Fiscal\Signing\SignedXmlVerifier;
 use App\Services\Fiscal\Signing\CsdCertificateSecretService;
 use App\Services\Fiscal\CsdCertificateService;
+use App\Services\Fiscal\FiscalPreviewModeGuard;
 use Config\TimbradorXpress;
 use RuntimeException;
 use Throwable;
@@ -32,6 +33,7 @@ final class FiscalStampingService
 
     public function stamp(int $documentId, int $userId, bool $authorized): FiscalStampingResult
     {
+        (new FiscalPreviewModeGuard($this->db))->assertStampingAllowed();
         if (!$authorized) {
             throw new RuntimeException('No tiene permiso para timbrar CFDI.');
         }

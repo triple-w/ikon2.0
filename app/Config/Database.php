@@ -94,6 +94,9 @@ class Database extends Config
 	 */
 	public $clean_build = [];
 
+	/** Isolated destination used only for the DOLD visual preview. */
+	public $dold_preview = [];
+
 	//--------------------------------------------------------------------
 
 	public function __construct()
@@ -111,6 +114,12 @@ class Database extends Config
 		$this->clean_build['charset'] = 'utf8mb4';
 		$this->clean_build['DBCollat'] = 'utf8mb4_general_ci';
 		$this->clean_build['pConnect'] = false;
+		$this->dold_preview = $this->default;
+		$this->dold_preview['database'] = 'ikontrol20_dold_preview';
+		$this->dold_preview['DBPrefix'] = 'ikontrol_';
+		$this->dold_preview['charset'] = 'utf8mb4';
+		$this->dold_preview['DBCollat'] = 'utf8mb4_general_ci';
+		$this->dold_preview['pConnect'] = false;
 
 		// Ensure that we always set the database group to 'tests' if
 		// we are currently running an automated test suite, so that

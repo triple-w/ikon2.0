@@ -6,6 +6,7 @@ namespace App\Services\Fiscal\Cancellation;
 use App\Contracts\Fiscal\Cancellation\FiscalCancellationAdapterInterface;
 use RuntimeException;
 use Throwable;
+use App\Services\Fiscal\FiscalPreviewModeGuard;
 
 final class FiscalCancellationService
 {
@@ -17,6 +18,7 @@ final class FiscalCancellationService
 
     public function cancel(int $documentId,string $reason,?string $replacementUuid,int $userId,bool $authorized):array
     {
+        (new FiscalPreviewModeGuard($this->db))->assertCancellationAllowed();
         if(!$authorized)throw new RuntimeException('No tiene permiso para cancelar facturas.');
         if(!in_array($reason,['01','02','03','04'],true))throw new RuntimeException('El motivo de cancelación no es válido.');
         $replacementUuid=$replacementUuid?strtoupper(trim($replacementUuid)):null;

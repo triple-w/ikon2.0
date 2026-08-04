@@ -15,6 +15,8 @@ class Fiscal extends BaseConfig
 {
     public string $runtimeMode = 'integration';
     public bool $enabled = false;
+    public bool $previewMode = false;
+    public bool $stampingEnabled = false;
 
     public string $environment = 'local';
 
@@ -61,6 +63,10 @@ class Fiscal extends BaseConfig
             throw new \RuntimeException('automated_test sólo está permitido en pruebas CLI.');
         }
         $this->enabled = filter_var(env('fiscal.enabled', false), FILTER_VALIDATE_BOOL);
+        $this->previewMode = filter_var(env('fiscal.previewMode', false), FILTER_VALIDATE_BOOL);
+        // Existing automated suites inject network-free adapters; production and
+        // preview remain fail-closed unless the server opts in explicitly.
+        $this->stampingEnabled = filter_var(env('fiscal.stampingEnabled', ENVIRONMENT === 'testing'), FILTER_VALIDATE_BOOL);
         $this->environment = strtolower(trim((string) env('fiscal.environment', 'local')));
         $this->allowRealPac = filter_var(env('fiscal.allowRealPac', false), FILTER_VALIDATE_BOOL);
         $this->allowExternalPdf = filter_var(env('fiscal.allowExternalPdf', false), FILTER_VALIDATE_BOOL);
