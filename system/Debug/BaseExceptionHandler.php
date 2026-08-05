@@ -99,6 +99,11 @@ abstract class BaseExceptionHandler
     protected function maskSensitiveData(array $trace, array $keysToMask, string $path = ''): array
     {
         foreach ($trace as $i => $line) {
+            if (! array_key_exists('args', $line)
+                || (! is_array($line['args']) && ! is_object($line['args']))) {
+                continue;
+            }
+
             $trace[$i]['args'] = $this->maskData($line['args'], $keysToMask);
         }
 
