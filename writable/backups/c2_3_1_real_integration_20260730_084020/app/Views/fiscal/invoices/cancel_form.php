@@ -1,0 +1,8 @@
+<?php echo form_open(get_uri('fiscal/invoices/cancel'),['id'=>'fiscal-cancellation-form','class'=>'general-form']); echo csrf_field(); ?>
+<div class="modal-body"><input type="hidden" name="document_id" value="<?php echo(int)$document->id; ?>">
+<dl><dt>Serie/Folio</dt><dd><?php echo esc($document->series.' '.$document->folio); ?></dd><dt>UUID</dt><dd><?php echo esc($stamp->uuid); ?></dd><dt>Receptor</dt><dd><?php echo esc($receiver->legal_name??''); ?></dd><dt>Total</dt><dd><?php echo to_currency($document->total); ?></dd></dl>
+<div class="form-group"><label>Motivo de cancelación</label><?php echo form_dropdown('cancellation_reason',['02'=>'02 · Comprobante emitido con errores sin relación','03'=>'03 · No se llevó a cabo la operación','04'=>'04 · Operación nominativa relacionada en factura global','01'=>'01 · Comprobante emitido con errores con relación'],'',"class='form-control' required"); ?></div>
+<div class="form-group"><label>UUID sustituto (sólo motivo 01)</label><input class="form-control" name="replacement_uuid" maxlength="36"></div>
+<div class="alert alert-warning">La cancelación fiscal no cancela la venta administrativa. La solicitud se registra antes de llamar al adaptador fake.</div></div>
+<div class="modal-footer"><button type="button" class="btn btn-default" data-bs-dismiss="modal"><?php echo app_lang('cancel'); ?></button><button type="submit" class="btn btn-danger">Confirmar cancelación fiscal</button></div><?php echo form_close(); ?>
+<script>$(document).ready(function(){$('#fiscal-cancellation-form').appForm({closeModalOnSuccess:true,onSuccess:function(r){appAlert.success(r.message);location.reload();}});});</script>

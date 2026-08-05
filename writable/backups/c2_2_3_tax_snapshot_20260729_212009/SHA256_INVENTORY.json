@@ -1,0 +1,407 @@
+[
+    {
+        "path": "app\\Controllers\\Fiscal\\Drafts.php",
+        "bytes": 11545,
+        "sha256": "6a1ffe6a14dbe5baab62a8c5a25875e046d9b164665f8e9b682531b7853d2bfb"
+    },
+    {
+        "path": "app\\Database\\Migrations\\.gitkeep",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-21-000000_RiseAdministrativeBaseline.php",
+        "bytes": 2840,
+        "sha256": "7f3804cfada90a1ca79748f86937597621e9bc5924a39fb3dbb773fec7879a3c"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-21-010000_CreateMinimalSatCatalogs.php",
+        "bytes": 3457,
+        "sha256": "21dc074f98d1741dbdf3cb9c68e32744b7e1fbb05894d7c44d9d4215c0d64666"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-21-010100_ExtendAdministrativeTaxesForFiscalPreparation.php",
+        "bytes": 1596,
+        "sha256": "ee243efaec3df653b8baa023f9bea55c61e712f345785dc17421fc9ee7aa9347"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-21-010200_CreateFiscalProfiles.php",
+        "bytes": 2204,
+        "sha256": "40449ea0c35bb73595c85e86d7f95c1a0cc656fd776bd9995091acae341e8403"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-22-020000_AddEstimateSaleAutomationSetting.php",
+        "bytes": 851,
+        "sha256": "0841dc5dafee825ea75025bc50e0a0b30853df65fe826a45844492f49a6731c0"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-22-020100_NormalizeEstimateSaleAutomationSetting.php",
+        "bytes": 1204,
+        "sha256": "70b802e03876005aaf8aebe44a02556f40c340448556207bfd98cef2866495a6"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-23-030000_CreateSatProductServiceKeys.php",
+        "bytes": 1114,
+        "sha256": "05039e681826ba0b00a9068e24e893ad932502b3d335a2822ce4740ba2210d97"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-23-030100_CreateSatUnitKeys.php",
+        "bytes": 1167,
+        "sha256": "bcefd1d4414cd392644642fac96fcf68c6f87e148729af692b4c480295bce3db"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-23-030200_CreateSatTaxObjectCodes.php",
+        "bytes": 939,
+        "sha256": "d94fc2a2ddcae33b37a738fcd86b03370c8dd3e7b3ce44bf9d16298b2c285050"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-23-030300_CreateItemFiscalSettings.php",
+        "bytes": 1898,
+        "sha256": "df7c9aff6c9d446813580d66b0aaf21ffa4954f325613c1b6a1215382e6443f7"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-23-030400_CreateItemFiscalTaxes.php",
+        "bytes": 1164,
+        "sha256": "ed103d329498c858ab420e5ef9cd4c645d209d9816c00f4d1adb5764c8a8aae1"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-23-030500_AddCompleteFiscalAddressToProfiles.php",
+        "bytes": 1798,
+        "sha256": "64dfb09b2f0b17920eeeb424a8aa9ff36f247c1ebc4767ba0dbc978b3b7ed01b"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-24-040000_ExtendFiscalProfilesForIssuers.php",
+        "bytes": 1316,
+        "sha256": "1affb9450ee1f47e072d59b58f79429832b6fa2de17c31bc535c78df8d27657d"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-24-040100_CreateFiscalSeries.php",
+        "bytes": 1935,
+        "sha256": "f044f8cd4e4ff326c78a67e2cae305408b145d35901d498f86aad1cbb2ae6a58"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-25-050000_AddIssuerTaxPricingPolicy.php",
+        "bytes": 979,
+        "sha256": "1f1bf6019b49c4195abf6f9d0ef49bfc72640fde6220d050c2ab0e214139a776"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-25-050100_CreateSaleFiscalPricingPreparations.php",
+        "bytes": 2300,
+        "sha256": "0ef38ea5c0fa0fd9dde74d0d7030604ef9e66920949d5490b1ea1516f1c3994e"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-26-060000_CreateFiscalDraftCatalogs.php",
+        "bytes": 2359,
+        "sha256": "88512f6720c64041a208d9e9da82478a0630a4f56c32ab7ffd1cbd9a4f46ec26"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-26-060100_CreateFiscalDocuments.php",
+        "bytes": 2779,
+        "sha256": "b7b154a8441bab9de7881aa974b5fb3f72cc9bf2f88b40a05359ea84a89b61c8"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-26-060200_CreateFiscalDocumentIssuers.php",
+        "bytes": 1560,
+        "sha256": "825c83e59218478f56592a3c77f15987b05eb73da5ca6f6c725d1ee26990a09b"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-26-060300_CreateFiscalDocumentReceivers.php",
+        "bytes": 1654,
+        "sha256": "a4998f74b132a32fe4c34d3190c45070082d7ea45ebf0de82a322f69feedd4f4"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-26-060400_CreateFiscalDocumentItems.php",
+        "bytes": 1557,
+        "sha256": "4260d8e3df8539d00703706b6c3a9b064172cb6bac3caef61e814af8d4678c7b"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-26-060500_CreateFiscalDocumentItemTaxes.php",
+        "bytes": 1261,
+        "sha256": "4c0211b3ca84ab3bec1615cb0477301363223a5e4a495877287d16c5e9a3bff6"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-26-060600_CreateFiscalDocumentTaxTotals.php",
+        "bytes": 1193,
+        "sha256": "abd751a0b6a59137c04292e358a15663252b376b33e692c448cf1032caea0d04"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-26-060700_CreateFiscalDocumentMetadataAndAudit.php",
+        "bytes": 1889,
+        "sha256": "c31f4bbc01945821a3a620266ee3566a4ec4e4917c5b19f4f315965428107ef2"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-27-070000_CreateFiscalDocumentArtifacts.php",
+        "bytes": 1717,
+        "sha256": "a8379e5b19f5121807e7652af4274fee7d37c0638152ec5e0612bf9965bbf5dd"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-28-080000_CreateFiscalIssuerCertificatesAndPaymentMappings.php",
+        "bytes": 4117,
+        "sha256": "49a14fb437dedb055196dbc4e89642f6fe8edf04af233a3e2fdf96aedd22608d"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-28-080100_CreateFiscalDocumentSignatures.php",
+        "bytes": 2243,
+        "sha256": "49db3ce8e270ee5c3234f7b3f1558c5bf45412b4b8367da0d950e0ce917a1a78"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-29-090000_CreateFiscalPacConfigurations.php",
+        "bytes": 1918,
+        "sha256": "e8dc0d1dc37212f956e86541a0b35b1b289b98d92f9f5d0d537791fc84dd91a6"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-29-090100_CreateFiscalStampAttempts.php",
+        "bytes": 2889,
+        "sha256": "f44af6339a4afea043fbdb7bfb87249be7644e3df708169d9eda047df343fb1e"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-29-090200_CreateFiscalDocumentStamps.php",
+        "bytes": 1930,
+        "sha256": "f003a60c8e69875cb235080a7a2c378e1f8e3ab7b30a5024e55c9974ab683354"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-29-090300_PrepareFiscalStampingStates.php",
+        "bytes": 987,
+        "sha256": "e15f1a41808f37893527b0886623008a2838e4912b1c9e14064112769ecde20a"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-29-090400_DeprecateDatabasePacCredentials.php",
+        "bytes": 1468,
+        "sha256": "eeb765d4af4f05a664882bc2eee04b5913291f7c572e2d52e9c60dd3d491f14a"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-29-090500_ExtendTimbradorXpressStampMetadata.php",
+        "bytes": 1089,
+        "sha256": "a43d46d0482301b31ca27a8224ea42cbc40f3de830c1df18da54a4ca9de39fee"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-29-090600_AddPacErrorGuidance.php",
+        "bytes": 910,
+        "sha256": "9d2fd3fea13741fdd25dc639d08e2807a1481cf3b80204fc5c4ae590345aa942"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-29-090700_CreateFiscalBinaryArtifacts.php",
+        "bytes": 3265,
+        "sha256": "4d6e26ae5748071b53445b1ac4c6cb93b3c00b039ab32a9f7631678f48c7d5f9"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-29-090800_MigrateFiscalPdfPermissions.php",
+        "bytes": 1131,
+        "sha256": "d2502c3524c0dc9fb7143bab731973874723d759ac4f67f23c47f79e6b4c3403"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-30-100000_CreateCsdCertificateSecrets.php",
+        "bytes": 2933,
+        "sha256": "bdb6887de1af7f0c9985968e6abd79fe160c5d1ec68072c731336b3456985c36"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-07-31-110000_CreateFiscalCancellationWorkflow.php",
+        "bytes": 5078,
+        "sha256": "2d87782030c2c305a348830b0117ce9035fd46830118e8a5825e54a899bbae4e"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-08-01-120000_CreateFiscalPdfProviderWorkflow.php",
+        "bytes": 5354,
+        "sha256": "9f930f51c7ae94f081c496089e5a24a24a8b2365622cf1fd2c905ec5d9d0f0f4"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-08-02-130000_CreateCommercialFiscalAllocationModel.php",
+        "bytes": 9669,
+        "sha256": "9e11b1c8303991f915226198ce10d890ec447a0aa87d24eb815cd732808dc160"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-08-03-140000_ExtendFiscalDraftWorkflow.php",
+        "bytes": 4088,
+        "sha256": "4547d22a0a87032e990162ff471cd043a7e44cc909982d40732cdecf83feaf91"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-08-04-150000_CreateCommercialLifecycle.php",
+        "bytes": 3686,
+        "sha256": "1d58350206afcb77ab08564cf8e81dc59387c9e2cfdae1abac9626466c29d2b6"
+    },
+    {
+        "path": "app\\Database\\Migrations\\2026-08-04-150100_EnsureCommercialStatusCompatibility.php",
+        "bytes": 918,
+        "sha256": "1c39c130aa5619551cb84b87bd4d0c1b8a1afd50e0b0fa82b989b32bc6a78102"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\.gitkeep",
+        "bytes": 1,
+        "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Fiscal_documents_model.php",
+        "bytes": 1351,
+        "sha256": "ffc6dc914d81758ac160dbbb35af51020e8585efffdd150a74faadbd2d1fe6e6"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Fiscal_document_artifacts_model.php",
+        "bytes": 411,
+        "sha256": "1e57e1a243548e86a50ab57298305c253f069a568d1b6a8fd7c9153ee9b66217"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Fiscal_document_relations_model.php",
+        "bytes": 393,
+        "sha256": "4eaed6576635b39ff88c9c84035557b3555990ab68cd13072f26c32bc906bd69"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Fiscal_document_sales_model.php",
+        "bytes": 559,
+        "sha256": "3c771d26e3a6be481e37bf6313ba36c2b7a22046f538a346bab303f9147f9a38"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Fiscal_drafts_model.php",
+        "bytes": 976,
+        "sha256": "cb9b1a1f72d3e899b51027e6667d99e2a84d4267061ffde5ab258bb0d588ac61"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Fiscal_draft_audit_model.php",
+        "bytes": 367,
+        "sha256": "7c2643f17981109ccb6fcf3b7a5fb300e388c5f6289c136ab27d85c637e64726"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Fiscal_draft_items_model.php",
+        "bytes": 450,
+        "sha256": "c76f3dafecbe7b7daaa29e9f124e2571ca6ae9e2f2ea8393b9569b4b0742f61f"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Fiscal_draft_sales_model.php",
+        "bytes": 564,
+        "sha256": "233f0400ab1e848b1b02c76b662965fc24c881ac0fa8267b186c6921c41bac03"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Fiscal_issuer_certificates_model.php",
+        "bytes": 709,
+        "sha256": "294cc4409b40d70f7a2a933914381536d7193a154ea203ffaa70995dd4433896"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Fiscal_profiles_model.php",
+        "bytes": 1859,
+        "sha256": "4075aff9f771a68a120a89bea222358dd3f8a4e87593c8d1dadb061428173249"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Fiscal_series_model.php",
+        "bytes": 1004,
+        "sha256": "017d3023f9216ac0698b4aa5499ce8d522626aa6be10fd9ca1db26a75aa82c0d"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Item_fiscal_settings_model.php",
+        "bytes": 729,
+        "sha256": "71e53c8afdf748ab6fe7048e52455fbe5754b9a26e6e45691eaccd020321039c"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Item_fiscal_taxes_model.php",
+        "bytes": 944,
+        "sha256": "9c6c374ac614f7a8836525f64801e5bf73826900f39e2c0987cb71866c6f79f9"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Sale_fiscal_pricing_preparations_model.php",
+        "bytes": 622,
+        "sha256": "09820c6d31a558178a11be468a96e8b02311ce35197b85950758f2282726c4af"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Sat_catalog_model.php",
+        "bytes": 719,
+        "sha256": "76a20b0941bf35a5edb0554e4a6e1a104ac0f4c85f2eb9d95d47ed81e380d0d0"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Sat_cfdi_uses_model.php",
+        "bytes": 160,
+        "sha256": "df7963c719d113ae0aebe29a296b40322605426872c4b61d649d73ea337ee5e2"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Sat_product_service_keys_model.php",
+        "bytes": 1150,
+        "sha256": "edf3f32ff8f76170c80e7182bf7f0caab80bb9e6fdbecf5b3fa2e469b43e58ca"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Sat_tax_codes_model.php",
+        "bytes": 160,
+        "sha256": "34653cc66a407f011aa545ec64d673171c1be773fbce3ef978bfd6c1d828cf32"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Sat_tax_factor_types_model.php",
+        "bytes": 174,
+        "sha256": "66191b41990586457f3ef97e40b4c17c4a7caca9052d80fc69f4c431ea5ed865"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Sat_tax_object_codes_model.php",
+        "bytes": 174,
+        "sha256": "018547b8530c6637844d9e9dc30324eb086e4dbec60c3714eeff0b4771718238"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Sat_tax_regimes_model.php",
+        "bytes": 164,
+        "sha256": "9238916a66855eaea5a66b317444deda05cc69676a4048c177bae6811f4d1365"
+    },
+    {
+        "path": "app\\Models\\Fiscal\\Sat_unit_keys_model.php",
+        "bytes": 1169,
+        "sha256": "c4854ce1a3047a9d5b67168ef6e62ca4baef06d107df428a170093c753c6161f"
+    },
+    {
+        "path": "app\\Services\\Fiscal\\FiscalDraftValidationService.php",
+        "bytes": 5261,
+        "sha256": "4c3c067cf96365b7d309d6e4db004903a117131dbe61e4f697f4bb0a2fa144c1"
+    },
+    {
+        "path": "app\\Services\\Fiscal\\FiscalDraftWorkflowService.php",
+        "bytes": 20139,
+        "sha256": "93cb0a109eb1f6afa300f56ea931cd4702cda17baff90a18129e286d53bebbd9"
+    },
+    {
+        "path": "app\\Services\\Fiscal\\FiscalPreInvoiceService.php",
+        "bytes": 2241,
+        "sha256": "9262034f5c7f768b44a6c4023e442f3c903d11675d529a0166f40f6748080924"
+    },
+    {
+        "path": "app\\Views\\fiscal\\drafts\\form.php",
+        "bytes": 7699,
+        "sha256": "739260201153637fa765a8c14d4af255acc721b344ba722541893aa8c856b333"
+    },
+    {
+        "path": "app\\Views\\fiscal\\drafts\\index.php",
+        "bytes": 2943,
+        "sha256": "84adfa02acac8dbfbcb6cd1e6a15d65a79599614a9beafe495bb2f996454cd39"
+    },
+    {
+        "path": "app\\Views\\fiscal\\drafts\\preinvoice.php",
+        "bytes": 3327,
+        "sha256": "dbe85d6609f28134d0de7fc2c624b72b8295efe46354739aa7988a25445cd65a"
+    },
+    {
+        "path": "app\\Views\\fiscal\\drafts\\show.php",
+        "bytes": 3870,
+        "sha256": "1f5deba3508bda7aa702cd509ebac90168238d0db9af78f160fa9899017201a7"
+    },
+    {
+        "path": "env.backup",
+        "bytes": 2013,
+        "sha256": "67224378cd51b8f997e23b1f413230e30662961280a20e1014d5f38b04210b62"
+    },
+    {
+        "path": "ikontrol_new.sql",
+        "bytes": 9149508,
+        "sha256": "c96799b55d9614a762467301a787282a3238bf4ea3d71ada99e2cf8dbbdede76"
+    },
+    {
+        "path": "tests\\IncrementC21\\run.php",
+        "bytes": 9855,
+        "sha256": "16175a4675266ef2549ab2dfd53584a2050820a48a5dca8a377931da230777fa"
+    },
+    {
+        "path": "tests\\IncrementC22\\run.php",
+        "bytes": 10301,
+        "sha256": "eaf8e5081cde49af39c97e5b137f868a558f8c5cf65870d2e84d7f8121d372c8"
+    },
+    {
+        "path": "tests\\IncrementC221\\run.php",
+        "bytes": 6051,
+        "sha256": "abe48b30181df487f17cc8bf4ef6eaf95f2e6331a4fd31601d36925928687183"
+    },
+    {
+        "path": "tests\\IncrementC222\\run.php",
+        "bytes": 7925,
+        "sha256": "d0bda60c9bd283bac302eaee2a9b72e7ec19d25c9ccd9d3cc072819ef3a6847e"
+    }
+]

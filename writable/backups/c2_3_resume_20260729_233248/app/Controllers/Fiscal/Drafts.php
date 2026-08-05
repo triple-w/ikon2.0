@@ -1,0 +1,126 @@
+<?php
+declare(strict_types=1);
+namespace App\Controllers\Fiscal;
+
+use App\Controllers\Security_Controller;
+use App\Services\Fiscal\FiscalDraftStatusPresenter;
+use App\Services\Fiscal\FiscalDraftWorkflowService;
+use App\Services\Fiscal\FiscalPreInvoiceService;
+use CodeIgniter\Exceptions\PageNotFoundException;
+use Throwable;
+
+final class Drafts extends Security_Controller
+{
+    public function index()
+    {
+        $this->guard('fiscal.drafts.view');
+        return $this->template->rander('fiscal/drafts/index', ['statuses'=>$this->statusOptions()]);
+    }
+
+    public function listData(): void
+    {
+        $this->guard('fiscal.drafts.view');
+        $builder=db_connect()->table('fiscal_drafts d')
+            ->select('d.id,d.provisional_series,d.issue_date,d.total,d.status,d.created_at,d.updated_at,d.created_by,p.legal_name,u.first_name,u.last_name,COUNT(DISTINCT a.sale_id) sale_count')
+            ->join('fiscal_profiles p','p.id=d.receiver_profile_id','left')
+            ->join('users u','u.id=d.created_by','left')
+            ->join('fiscal_draft_sales a','a.fiscal_draft_id=d.id','left')
+            ->groupBy('d.id')->orderBy('d.id','DESC');
+        foreach(['status','client','sale_id','created_from','issue_from','user_id']as$key){$value=trim((string)$this->request->getPost($key));if($value==='')continue;match($key){'status'=>$builder->where('d.status',$value),'client'=>$builder->like('p.legal_name',$value),'sale_id'=>$builder->where('a.sale_id',(int)$value),'created_from'=>$builder->where('d.created_at >=',$value.' 00:00:00'),'issue_from'=>$builder->where('d.issue_date >=',$value.' 00:00:00'),'user_id'=>$builder->where('d.created_by',(int)$value)};}
+        $amount=trim((string)$this->request->getPost('amount'));if($amount!=='')$builder->where('d.total',$amount);
+        $rows=[];
+        foreach($builder->limit(200)->get()->getResult()as$row){
+            if(!$this->canAccessDraft((int)$row->id))continue;
+            [$label,$color]=(new FiscalDraftStatusPresenter())->present((string)$row->status);
+            $actions=anchor(get_uri('fiscal/drafts/'.$row->id),'Ver',['class'=>'dropdown-item']);
+            if($this->allowed('fiscal.drafts.edit')&&in_array($row->status,['draft','ready','error'],true))$actions.=anchor(get_uri('fiscal/drafts/'.$row->id.'/edit'),'Editar',['class'=>'dropdown-item']);
+            $actions.=anchor(get_uri('fiscal/drafts/'.$row->id.'/preinvoice'),'Ver prefactura',['class'=>'dropdown-item','target'=>'_blank']);
+            $actions.='<span class="dropdown-item text-muted" title="El timbrado se integrará en el siguiente incremento.">Preparar facturación</span>';
+            if($this->allowed('fiscal.drafts.discard')&&in_array($row->status,['draft','ready','error'],true))$actions.=js_anchor('Descartar',['class'=>'dropdown-item text-danger discard-draft','data-id'=>$row->id]);
+            $rows[]=['#'.$row->id,esc($row->created_at),esc($row->issue_date),esc($row->legal_name?:'-'),(int)$row->sale_count,to_currency($row->total),'<span class="badge bg-'.$color.'">'.esc($label).'</span>',esc(trim($row->first_name.' '.$row->last_name)),esc($row->updated_at),'<div class="dropdown"><button class="btn btn-default btn-sm dropdown-toggle" data-bs-toggle="dropdown">Acciones</button><div class="dropdown-menu dropdown-menu-end">'.$actions.'</div></div>'];
+        }
+        echo json_encode(['data'=>$rows],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+    }
+
+    public function create($saleId=0)
+    {
+        $this->guard('fiscal.drafts.create');$this->guardSale((int)$saleId);
+        $data=$this->formData(null,[(int)$saleId]);
+        if($this->request->isAJAX())return$this->template->view('fiscal/drafts/form',$data);
+        return$this->template->rander('fiscal/drafts/form',$data);
+    }
+
+    public function store(): void
+    {
+        $this->guard('fiscal.drafts.create');$saleIds=array_map('intval',(array)$this->request->getPost('sale_ids'));foreach($saleIds as$id)$this->guardSale($id);
+        try{$workflow=new FiscalDraftWorkflowService();if($this->request->getPost('confirm_receiver_update')){$sale=db_connect()->table('invoices')->where('id',$saleIds[0])->get(1)->getRow();$workflow->updateReceiver((int)$this->request->getPost('receiver_profile_id'),(int)$sale->client_id,(array)$this->request->getPost(),(int)$this->login_user->id);}$result=$workflow->save((array)$this->request->getPost(),(int)$this->login_user->id);echo json_encode(['success'=>true,'message'=>'Borrador guardado correctamente.','redirect'=>get_uri('fiscal/drafts/'.$result['id']),'data'=>$result,'csrf'=>['name'=>csrf_token(),'hash'=>csrf_hash()]]);}
+        catch(Throwable$e){echo json_encode(['success'=>false,'message'=>$this->safeMessage($e),'csrf'=>['name'=>csrf_token(),'hash'=>csrf_hash()]]);}
+    }
+
+    public function show($draftId=0)
+    {
+        $this->guard('fiscal.drafts.view');$this->guardDraft((int)$draftId);
+        $db=db_connect();$draft=$db->table('fiscal_drafts')->where('id',(int)$draftId)->get(1)->getRow();
+        $sales=$db->table('fiscal_draft_sales a')->select('a.*,i.display_id,i.bill_date,i.invoice_total')
+            ->join('invoices i','i.id=a.sale_id','left')->where('a.fiscal_draft_id',(int)$draftId)->get()->getResult();
+        $items=$db->table('fiscal_draft_items')->where('fiscal_draft_id',(int)$draftId)->get()->getResult();
+        $audit=$db->table('fiscal_draft_audit a')->select('a.event,a.created_at,u.first_name,u.last_name')->join('users u','u.id=a.user_id','left')->where('a.fiscal_draft_id',(int)$draftId)->orderBy('a.id','DESC')->get()->getResult();
+        $payload=json_decode((string)$draft->fiscal_payload,true)?:[];[$label,$color]=(new FiscalDraftStatusPresenter())->present($draft->status);
+        return$this->template->rander('fiscal/drafts/show',compact('draft','sales','items','audit','payload','label','color')+['can_edit'=>$this->allowed('fiscal.drafts.edit'),'can_discard'=>$this->allowed('fiscal.drafts.discard')]);
+    }
+
+    public function edit($draftId=0)
+    {
+        $this->guard('fiscal.drafts.edit');$this->guardDraft((int)$draftId);
+        return$this->template->rander('fiscal/drafts/form',$this->formData((int)$draftId,[]));
+    }
+
+    public function update($draftId=0): void
+    {
+        $this->guard('fiscal.drafts.edit');$this->guardDraft((int)$draftId);$saleIds=array_map('intval',(array)$this->request->getPost('sale_ids'));foreach($saleIds as$id)$this->guardSale($id);
+        try{$workflow=new FiscalDraftWorkflowService();if($this->request->getPost('confirm_receiver_update')){$sale=db_connect()->table('invoices')->where('id',$saleIds[0])->get(1)->getRow();$workflow->updateReceiver((int)$this->request->getPost('receiver_profile_id'),(int)$sale->client_id,(array)$this->request->getPost(),(int)$this->login_user->id);}$result=$workflow->save((array)$this->request->getPost(),(int)$this->login_user->id,(int)$draftId);echo json_encode(['success'=>true,'message'=>'Borrador actualizado correctamente.','redirect'=>get_uri('fiscal/drafts/'.$draftId),'data'=>$result,'csrf'=>['name'=>csrf_token(),'hash'=>csrf_hash()]]);}
+        catch(Throwable$e){echo json_encode(['success'=>false,'message'=>$this->safeMessage($e),'csrf'=>['name'=>csrf_token(),'hash'=>csrf_hash()]]);}
+    }
+
+    public function discard($draftId=0): void
+    {
+        $this->guard('fiscal.drafts.discard');$this->guardDraft((int)$draftId);
+        try{(new FiscalDraftWorkflowService())->discard((int)$draftId,(int)$this->login_user->id,(string)$this->request->getPost('reason'));echo json_encode(['success'=>true,'message'=>'El borrador fue descartado y sus reservas quedaron liberadas.','csrf'=>['name'=>csrf_token(),'hash'=>csrf_hash()]]);}
+        catch(Throwable$e){echo json_encode(['success'=>false,'message'=>$this->safeMessage($e),'csrf'=>['name'=>csrf_token(),'hash'=>csrf_hash()]]);}
+    }
+
+    public function ready($draftId=0):void
+    {
+        $this->guard('fiscal.drafts.edit');$this->guardDraft((int)$draftId);
+        try{(new FiscalDraftWorkflowService())->markReady((int)$draftId,(int)$this->login_user->id);echo json_encode(['success'=>true,'message'=>'El borrador está listo para facturar.','csrf'=>['name'=>csrf_token(),'hash'=>csrf_hash()]]);}
+        catch(Throwable$e){echo json_encode(['success'=>false,'message'=>$this->safeMessage($e),'csrf'=>['name'=>csrf_token(),'hash'=>csrf_hash()]]);}
+    }
+
+    public function preinvoice($draftId=0)
+    {
+        $this->guard('fiscal.drafts.view');$this->guardDraft((int)$draftId);
+        $service=new FiscalDraftWorkflowService();$service->auditPreinvoice((int)$draftId,(int)$this->login_user->id);
+        return view('fiscal/drafts/preinvoice',[
+            'preinvoice'=>(new FiscalPreInvoiceService())->build((int)$draftId),
+            'can_edit'=>$this->allowed('fiscal.drafts.edit'),
+            'issuer_logo'=>function_exists('get_company_logo')?get_company_logo(0,'invoice',true):'',
+        ]);
+    }
+
+    public function updateReceiver($profileId=0):void
+    {
+        $this->guard('fiscal.drafts.edit');
+        $saleId=(int)$this->request->getPost('sale_id');$this->guardSale($saleId);$sale=db_connect()->table('invoices')->where('id',$saleId)->get(1)->getRow();
+        try{(new FiscalDraftWorkflowService())->updateReceiver((int)$profileId,(int)$sale->client_id,(array)$this->request->getPost(),(int)$this->login_user->id);echo json_encode(['success'=>true,'message'=>'Datos fiscales actualizados.','csrf'=>['name'=>csrf_token(),'hash'=>csrf_hash()]]);}
+        catch(Throwable$e){echo json_encode(['success'=>false,'message'=>$this->safeMessage($e),'csrf'=>['name'=>csrf_token(),'hash'=>csrf_hash()]]);}
+    }
+
+    private function formData(?int$id,array$sales):array{return(new FiscalDraftWorkflowService())->formData($id,$sales)+['draft_id'=>$id];}
+    private function guardDraft(int$id):void{if(!$this->canAccessDraft($id))throw PageNotFoundException::forPageNotFound();}
+    private function canAccessDraft(int$id):bool{$rows=db_connect()->table('fiscal_draft_sales')->select('sale_id')->where('fiscal_draft_id',$id)->get()->getResult();if(!$rows)return false;foreach($rows as$row)if(!$this->can_view_invoices((int)$row->sale_id))return false;return true;}
+    private function guardSale(int$id):void{if(!$id||!$this->can_view_invoices($id))throw PageNotFoundException::forPageNotFound();}
+    private function allowed(string$p):bool{if($this->login_user->is_admin)return true;$all=is_array($this->login_user->permissions)?$this->login_user->permissions:(@unserialize((string)$this->login_user->permissions)?:[]);return(bool)get_array_value($all,$p);}
+    private function guard(string$p):void{if(!$this->allowed($p))app_redirect('forbidden');}
+    private function statusOptions():array{return[''=>'Todos','draft'=>'Incompleto','ready'=>'Listo para facturar','stamping'=>'En preparación','stamped'=>'Facturado','discarded'=>'Descartado','expired'=>'Expirado','error'=>'Error'];}
+    private function safeMessage(Throwable$e):string{$known=['La venta no existe.','Selecciona al menos una venta.','Una venta cancelada no puede facturarse.','Las ventas seleccionadas no son compatibles.','La cantidad seleccionada no es válida.','Selecciona al menos un concepto con cantidad mayor que cero.','El saldo disponible de una o más ventas cambió. Revisa las asignaciones antes de guardar nuevamente.'];return in_array($e->getMessage(),$known,true)||str_starts_with($e->getMessage(),'Falta ')||str_contains($e->getMessage(),'fecha de expedición')?$e->getMessage():'No fue posible completar la operación del borrador.';}
+}

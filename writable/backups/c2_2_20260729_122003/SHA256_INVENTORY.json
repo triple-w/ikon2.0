@@ -1,0 +1,1812 @@
+[
+    {
+        "RelativePath": "app/Config/App.php",
+        "Length": 10320,
+        "SHA256": "57F9D4ECC2F113998151206828CF3011F91C9DEBA38ADF9C1682D09ACF2B5140"
+    },
+    {
+        "RelativePath": "app/Config/Autoload.php",
+        "Length": 3454,
+        "SHA256": "0F6D216E297E60BC794AF583ED1BF2F56421475FB6A5DDC6B923A5C7A4B75DAA"
+    },
+    {
+        "RelativePath": "app/Config/Boot/development.php",
+        "Length": 1279,
+        "SHA256": "C0BE469B906BB60156C443053026871A0031A7C186F242D11862D041DD8D7582"
+    },
+    {
+        "RelativePath": "app/Config/Boot/production.php",
+        "Length": 1005,
+        "SHA256": "24389B89227F83219E94A33B0C46DB387764D6BF579FBA246AAD9179AAAB850D"
+    },
+    {
+        "RelativePath": "app/Config/Boot/testing.php",
+        "Length": 1236,
+        "SHA256": "D7467F9D4F07CA597826934E1AA3D9C9AC8077879A3200397D926AAD4AF1A935"
+    },
+    {
+        "RelativePath": "app/Config/CURLRequest.php",
+        "Length": 551,
+        "SHA256": "261913C4FC6CD82E1142452872A33587D33B95E5274558D0BD017DD07B4461E7"
+    },
+    {
+        "RelativePath": "app/Config/Cache.php",
+        "Length": 5828,
+        "SHA256": "141B56F2A4DADA2D0880FC1167C3759FC1071806A193513CE4F74E373F32D9A5"
+    },
+    {
+        "RelativePath": "app/Config/Constants.php",
+        "Length": 3640,
+        "SHA256": "C0B06FD363E600954CB528D815171754EB26D496992C5A04DCF1D50261F1AB61"
+    },
+    {
+        "RelativePath": "app/Config/ContentSecurityPolicy.php",
+        "Length": 4159,
+        "SHA256": "776092A69D04E3FEF3CB411274AE76AB650BEFEC5C63E30CC918C278788F0E77"
+    },
+    {
+        "RelativePath": "app/Config/Cookie.php",
+        "Length": 3502,
+        "SHA256": "20E41B319DC947656E68ACB1D80B0122F9D9BAAE5ECFD35C2949639D8716B5B4"
+    },
+    {
+        "RelativePath": "app/Config/Cors.php",
+        "Length": 3511,
+        "SHA256": "D2EC38E8BFEB8B75AEC83A9D521D875D511722FB627C8F0899A0B0F535B4B314"
+    },
+    {
+        "RelativePath": "app/Config/Database.php",
+        "Length": 2144,
+        "SHA256": "4CF975D9339B1BCCAF28A0820271477FA31AA748F9657C28E3B2CB15E135FD38"
+    },
+    {
+        "RelativePath": "app/Config/DocTypes.php",
+        "Length": 3080,
+        "SHA256": "CD20CB4810912F4B1478D1CB81F57066CF0221C3BAB8BCDBAB400B352A304054"
+    },
+    {
+        "RelativePath": "app/Config/Email.php",
+        "Length": 2143,
+        "SHA256": "47840007BACC5F2C90CB2D83BCFA5FB5594995BAD2F544B92B57C3A511149873"
+    },
+    {
+        "RelativePath": "app/Config/Encryption.php",
+        "Length": 2844,
+        "SHA256": "1790C8F752A9156B26AE67383B1A55853E87E8BB5E3FA78A1792B0C4A926AD9B"
+    },
+    {
+        "RelativePath": "app/Config/Events.php",
+        "Length": 4768,
+        "SHA256": "8E5A2118AD4F666FE45326CD69B7143D813C84180EED721302765F6D0F23C6CA"
+    },
+    {
+        "RelativePath": "app/Config/Exceptions.php",
+        "Length": 4001,
+        "SHA256": "289BD8AAFC3208FBD0C57F1814EDFD5EE7B2CD4667760A886A026E9AB667C5E8"
+    },
+    {
+        "RelativePath": "app/Config/Feature.php",
+        "Length": 1024,
+        "SHA256": "65DA74162A88671EDC99FF29B50CEF2C55FD2C3C3E3D1AD3520AB1F9064932A5"
+    },
+    {
+        "RelativePath": "app/Config/Filters.php",
+        "Length": 3230,
+        "SHA256": "6975E8F0ADDE71089F0C1DEE626DECADE0A5AC6384C2896ED48E349E7B51B2E5"
+    },
+    {
+        "RelativePath": "app/Config/Fiscal.php",
+        "Length": 4102,
+        "SHA256": "0B5BD065A4F7352583DA8571B1087E9576F26BEEDD86A6585E30C3122CAC545B"
+    },
+    {
+        "RelativePath": "app/Config/FiscalPdfProvider.php",
+        "Length": 2505,
+        "SHA256": "1643EC9DB1715776E99E17A52CCFFB28EC3FC3647B875286814847520E14DC2E"
+    },
+    {
+        "RelativePath": "app/Config/FiscalRoutes.php",
+        "Length": 5636,
+        "SHA256": "486981922A53AD98F91DA6D383C0EC3E190518AFC54B82133A6C5CA8F194175C"
+    },
+    {
+        "RelativePath": "app/Config/ForeignCharacters.php",
+        "Length": 152,
+        "SHA256": "5AAD20BC421DF931CA5188B6180E214EB25B995701F819676BDF85DC27D83F9C"
+    },
+    {
+        "RelativePath": "app/Config/Format.php",
+        "Length": 2205,
+        "SHA256": "ED86C70F193B2F2219B532FEC23EF127573236BE6DAF4CBEA10232144C75166B"
+    },
+    {
+        "RelativePath": "app/Config/Generators.php",
+        "Length": 2133,
+        "SHA256": "9FD72CA6975124312457F6D26AEAD5C424AB2AFB3CC4AB1D010F34FD02385D30"
+    },
+    {
+        "RelativePath": "app/Config/Honeypot.php",
+        "Length": 855,
+        "SHA256": "DD9497285AFD25F1B1C312DCC9CCAEB62A3B66E649CBA6640E9662016A4B7D23"
+    },
+    {
+        "RelativePath": "app/Config/Images.php",
+        "Length": 708,
+        "SHA256": "2E476B10393A608A93C40FB94CBF98925DC786721ED9094E26009C502C1D2DE1"
+    },
+    {
+        "RelativePath": "app/Config/Kint.php",
+        "Length": 1887,
+        "SHA256": "E9515A9BEF75F6731F41418CE12FADC0414DA21C1D7126CD680351F416B852AA"
+    },
+    {
+        "RelativePath": "app/Config/Logger.php",
+        "Length": 5877,
+        "SHA256": "4F45B26FD56430E363A08B50441D838FFBC5181DA41E77B272B1C4B59D528E1E"
+    },
+    {
+        "RelativePath": "app/Config/Migrations.php",
+        "Length": 1751,
+        "SHA256": "DF5C66D5B0332DCB95E0730AF86C5A319320EFB99A395F62B29B04199712F23F"
+    },
+    {
+        "RelativePath": "app/Config/Mimes.php",
+        "Length": 15649,
+        "SHA256": "16FDBB9AE28CAC5DD12DBF5A8F41711B1EDA7236CCB377566BA1BC0BBBF2583F"
+    },
+    {
+        "RelativePath": "app/Config/Modules.php",
+        "Length": 2102,
+        "SHA256": "2C51A2F9651F1E7354B535EF8A81FF46EF19314BE4508512B6D384AD859BDEFF"
+    },
+    {
+        "RelativePath": "app/Config/Optimize.php",
+        "Length": 944,
+        "SHA256": "4CCDFDD7C4EAD665E51F82ECA4598843E4D9089E2239AE82D1F49F1E452C90EE"
+    },
+    {
+        "RelativePath": "app/Config/Pager.php",
+        "Length": 1189,
+        "SHA256": "F662DAC48B25A451F2799EB4C174F0A8444E909E7E19E6260CD827AD62C488FF"
+    },
+    {
+        "RelativePath": "app/Config/Paths.php",
+        "Length": 2711,
+        "SHA256": "D2C32DFA7AEA2C2E49E49A0588B729E975854D93E788A493871D3CB06C834EB2"
+    },
+    {
+        "RelativePath": "app/Config/Publisher.php",
+        "Length": 806,
+        "SHA256": "1E2C4AB0CD9B38C0B404ECD7AAD684382C038CCC7A7059E928F23E999DE52FBA"
+    },
+    {
+        "RelativePath": "app/Config/Rise.php",
+        "Length": 1434,
+        "SHA256": "DD6AF08D2B0D4824ED8245CAE26CCD292CC33EA354174F8B589F1E67BB70CC59"
+    },
+    {
+        "RelativePath": "app/Config/RiseCustomHooks.php",
+        "Length": 37,
+        "SHA256": "E769DF5C3E0D1FC69CD8C17D601ACC48F38A6DE6B8B6074E4BCE9609E0C2F0C7"
+    },
+    {
+        "RelativePath": "app/Config/RiseHooks.php",
+        "Length": 358,
+        "SHA256": "A404EFB1DEBCBBF262E8B881B2CD740634EDF0631A107A5C566C1FFFD634D414"
+    },
+    {
+        "RelativePath": "app/Config/Routes.php",
+        "Length": 2528,
+        "SHA256": "37CE85E864F20FE747FAFFF63C9384FD96DD9BFCAA5FE284521F9B5F03DA3472"
+    },
+    {
+        "RelativePath": "app/Config/Routing.php",
+        "Length": 3686,
+        "SHA256": "1B9D53C8C197288E23098117F70D25BC7C365285FEE8EEA1F0A84F97FEC3D179"
+    },
+    {
+        "RelativePath": "app/Config/Security.php",
+        "Length": 2855,
+        "SHA256": "8643F8F342A9673D1C58BCF71092F96DBC96FBB3CE6FE1EF1F45A88800447857"
+    },
+    {
+        "RelativePath": "app/Config/Services.php",
+        "Length": 921,
+        "SHA256": "34CB6EF186F9DDB585AF5273ED5512A0378BF71DC0D208E5EEE7AC1323C57A08"
+    },
+    {
+        "RelativePath": "app/Config/Session.php",
+        "Length": 4601,
+        "SHA256": "5EAC9972045B4B0ADE37BA844B93A3F5CF638E5087062B8C909B4DF893DFC900"
+    },
+    {
+        "RelativePath": "app/Config/TimbradorXpress.php",
+        "Length": 2429,
+        "SHA256": "65E959900FB1C7670094AEAA0B7552DC4B8B50D18AB92B5C30959F469E4CA296"
+    },
+    {
+        "RelativePath": "app/Config/Toolbar.php",
+        "Length": 4556,
+        "SHA256": "4C2662DA25DDF21BCF2DE0523075B2C1CD4DB1061852074089432FCA64FC1CA1"
+    },
+    {
+        "RelativePath": "app/Config/UserAgents.php",
+        "Length": 9813,
+        "SHA256": "18F6BA4D61572386AAEC193091AE8F387650FCEFFFA0C16EA9DE7A2C0325D943"
+    },
+    {
+        "RelativePath": "app/Config/Validation.php",
+        "Length": 1188,
+        "SHA256": "06524DF873A18610A3C8CAB34781FEF95AA518DCDFE628FD3D6D42A6DD2B6F34"
+    },
+    {
+        "RelativePath": "app/Config/View.php",
+        "Length": 1739,
+        "SHA256": "23E73E506C34F0C8147B68A28AC9C9A218DF99D3770A5061B461FEC9615A874D"
+    },
+    {
+        "RelativePath": "app/Config/activated_plugins.json",
+        "Length": 0,
+        "SHA256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+        "RelativePath": "app/Config/fiscal_timbradorxpress_errors.php",
+        "Length": 295,
+        "SHA256": "BA3C9D9159DD1D41DFA3641349C94F39297E238C19D84B3E21F26183005A8609"
+    },
+    {
+        "RelativePath": "app/Controllers/About.php",
+        "Length": 2087,
+        "SHA256": "DA74CCCEF487A5B746808D9C45C977FA6C84B9234F1BF4924526531FC748E650"
+    },
+    {
+        "RelativePath": "app/Controllers/Announcements.php",
+        "Length": 10435,
+        "SHA256": "0CEFCB229707EEAFA48113CF20250BB50B9D94C830323104C6B81791B89FD3E5"
+    },
+    {
+        "RelativePath": "app/Controllers/App_Controller.php",
+        "Length": 14550,
+        "SHA256": "B732CF041D5009BB413627560622DD5F08DD643F88B5F7FCBA090BC6951404B1"
+    },
+    {
+        "RelativePath": "app/Controllers/Attendance.php",
+        "Length": 21862,
+        "SHA256": "93A48DFEEBBA74C67310487E1F2654B6C798309498429E445D60201AB39B246F"
+    },
+    {
+        "RelativePath": "app/Controllers/Automation.php",
+        "Length": 18223,
+        "SHA256": "0A5CE897CB1E56FC8EE4B2BFB49AE3CD43706BB7A6165C32778BDA434F5E7799"
+    },
+    {
+        "RelativePath": "app/Controllers/Checklist_groups.php",
+        "Length": 4749,
+        "SHA256": "F2BEACF6908BB1FA093D5973E051015A4C92659184F7225FE3F090CD45749370"
+    },
+    {
+        "RelativePath": "app/Controllers/Checklist_template.php",
+        "Length": 3646,
+        "SHA256": "EE42836AC9B500FB97FD2ED0C833DDD5588AB78809429374AA66675376173C55"
+    },
+    {
+        "RelativePath": "app/Controllers/Client_groups.php",
+        "Length": 3554,
+        "SHA256": "0F951F446486B577BC8DFB8B7EFCC6410C0CF29092CFAA414F28F1B706DF9EC7"
+    },
+    {
+        "RelativePath": "app/Controllers/Clients.php",
+        "Length": 97538,
+        "SHA256": "4B40E995F7421AC13D3DCF6B4D437F52A78068711FAA5C484BC1695DA92EC672"
+    },
+    {
+        "RelativePath": "app/Controllers/Collect_leads.php",
+        "Length": 6300,
+        "SHA256": "DEC680528F1B392286B023290D2E7AB4F22658016531A651DF99CBDFFF605FDE"
+    },
+    {
+        "RelativePath": "app/Controllers/Company.php",
+        "Length": 5948,
+        "SHA256": "07C36585430AA7CDE35FA27A48D8BE6A91240C7A1AB0A4BF0E20F877787E4CA3"
+    },
+    {
+        "RelativePath": "app/Controllers/Contacts.php",
+        "Length": 5485,
+        "SHA256": "C0405F0DEBE48A41173A42240C14E3784F6C59F1DBAE7D55270FD88C8C480D66"
+    },
+    {
+        "RelativePath": "app/Controllers/Contract.php",
+        "Length": 9917,
+        "SHA256": "8B395A705993FB97D700A53522B28BACBA0E11ED093E0A4311F36EF07F290C2D"
+    },
+    {
+        "RelativePath": "app/Controllers/Contract_templates.php",
+        "Length": 6783,
+        "SHA256": "9EAD8A2FE84D0572F6F30AD2AB45AD49ED2EEF0B2A009798A8937B41CBD7EE8F"
+    },
+    {
+        "RelativePath": "app/Controllers/Contracts.php",
+        "Length": 49822,
+        "SHA256": "D7187A4E1C32930B6CEE6D36A1E95020D5B8AD0EAB14EDA26778F1C725E336B8"
+    },
+    {
+        "RelativePath": "app/Controllers/Cron.php",
+        "Length": 1521,
+        "SHA256": "949FBA83CCFB33A447C100A5BC1C495FC515046BD5BF42BD1A109F2CF50F1D2E"
+    },
+    {
+        "RelativePath": "app/Controllers/Custom_fields.php",
+        "Length": 10153,
+        "SHA256": "47155235F57C432ED9D0F56C4042E91083632E306D6A433B55F85CC6CE802172"
+    },
+    {
+        "RelativePath": "app/Controllers/Dashboard.php",
+        "Length": 55947,
+        "SHA256": "DE456764FCE8AF367860950182831FD20A37B8DF56E0DAA12AFDFE5F6098947A"
+    },
+    {
+        "RelativePath": "app/Controllers/E_invoice_templates.php",
+        "Length": 8329,
+        "SHA256": "04EA84066BD801F02CDC884B064548A7084434C16B85C9696CBD464C94AFDF43"
+    },
+    {
+        "RelativePath": "app/Controllers/Email_templates.php",
+        "Length": 16245,
+        "SHA256": "98472F3742187F983B45AEF824F0A959B05B0805B783E469909CE852AAFBF6B2"
+    },
+    {
+        "RelativePath": "app/Controllers/Estimate.php",
+        "Length": 7943,
+        "SHA256": "2005CC2CC323ABB84535A5451421607AF8776DD4EA48DA748A2CB227794DCF32"
+    },
+    {
+        "RelativePath": "app/Controllers/Estimate_requests.php",
+        "Length": 30105,
+        "SHA256": "5431FE4437B4C20C46440DC8CCD0B8938F67EE30A455BA1718D463237A3F5DC7"
+    },
+    {
+        "RelativePath": "app/Controllers/Estimates.php",
+        "Length": 51818,
+        "SHA256": "07A98F4A42A60C4CF61143024BA76F7FA84F8E74488847159534938868705FD5"
+    },
+    {
+        "RelativePath": "app/Controllers/Event_tracker.php",
+        "Length": 2818,
+        "SHA256": "3C187C984273C7DD799A817F9603C12BC0EF7DAB6716B0A5393B90B777E370CE"
+    },
+    {
+        "RelativePath": "app/Controllers/Events.php",
+        "Length": 49427,
+        "SHA256": "E8069D539A81A405935D59401387F740F8E52EA2DD1C45ED5F5BBEFA4E0885AA"
+    },
+    {
+        "RelativePath": "app/Controllers/Expense_categories.php",
+        "Length": 3616,
+        "SHA256": "3C2E3E50879E071918F9FBFABF023FD30603C8ADFDF7C1CDBDF633B86CE2A8AA"
+    },
+    {
+        "RelativePath": "app/Controllers/Expenses.php",
+        "Length": 38310,
+        "SHA256": "32E0CF89E6DFBD232493738711566DFDF937F5D7BCB56C1ED13B8547D1D7539F"
+    },
+    {
+        "RelativePath": "app/Controllers/External_tickets.php",
+        "Length": 4428,
+        "SHA256": "0E7CFC6CABC6A3FC4684DB93A66B3563B1BEB7EB07A49F52C4BCECF28B22CF46"
+    },
+    {
+        "RelativePath": "app/Controllers/File_manager.php",
+        "Length": 8571,
+        "SHA256": "FB922CB6B6B3FD72972451C23B062A93B0E4173B155369E8E3C6C2E2CDA26A04"
+    },
+    {
+        "RelativePath": "app/Controllers/Filters.php",
+        "Length": 8724,
+        "SHA256": "2B2FC6F786D59A7E84D8F60F0F1BBF57733954AAB0295294C9DAA494FDA735DB"
+    },
+    {
+        "RelativePath": "app/Controllers/Fiscal/.gitkeep",
+        "Length": 1,
+        "SHA256": "01BA4719C80B6FE911B091A7C05124B64EEECE964E09C058EF8F9805DACA546B"
+    },
+    {
+        "RelativePath": "app/Controllers/Fiscal/Certificates.php",
+        "Length": 9536,
+        "SHA256": "292F80125EE5B01B3A40CC0C576494D74989C1DFFF15FA414B64B712842A30C9"
+    },
+    {
+        "RelativePath": "app/Controllers/Fiscal/ClientProfiles.php",
+        "Length": 7690,
+        "SHA256": "CB4050DFFCB2D03A22A549C44B65650B297280AF0E7AD88A307F15166F81044D"
+    },
+    {
+        "RelativePath": "app/Controllers/Fiscal/InvoiceModule.php",
+        "Length": 8328,
+        "SHA256": "0CE4A464F13D6F1B4B187B05AC2685211796143B7A7BB724C5423C2BF03E4351"
+    },
+    {
+        "RelativePath": "app/Controllers/Fiscal/InvoiceReview.php",
+        "Length": 20389,
+        "SHA256": "321138415700FFB594C6D1BB58DE3F3A082AB10D3F6A7C593407B4122849CDAC"
+    },
+    {
+        "RelativePath": "app/Controllers/Fiscal/Invoices.php",
+        "Length": 7051,
+        "SHA256": "26C012023DBDD7694327D956FBED1DDE850584BB35059DDF8AAC4918B1000A0A"
+    },
+    {
+        "RelativePath": "app/Controllers/Fiscal/Issuers.php",
+        "Length": 5513,
+        "SHA256": "D4377BF2D32DB3C512E8089C98F6FC9324AE75D74BF0E3378989449AF5D00C89"
+    },
+    {
+        "RelativePath": "app/Controllers/Fiscal/ItemSettings.php",
+        "Length": 9869,
+        "SHA256": "8188F870ABE363C768A503BEEEF8CF3511177BAC3454C492A36B373675E815DE"
+    },
+    {
+        "RelativePath": "app/Controllers/Fiscal/PdfTemplates.php",
+        "Length": 3092,
+        "SHA256": "7FE106FD7E237BEEDA0022B045E56D2165E45A4B5568ED0A23D3361799521561"
+    },
+    {
+        "RelativePath": "app/Controllers/Fiscal/Series.php",
+        "Length": 3743,
+        "SHA256": "57AB24E9882A84514145537A98EF2DA24D824D7EC4E189606A8F91CBF6075160"
+    },
+    {
+        "RelativePath": "app/Controllers/Fiscal/Stamping.php",
+        "Length": 16867,
+        "SHA256": "49ECD852DF2D2A45957EC706832856D1ED0C74FC084DFAF0ABFA52ED18274967"
+    },
+    {
+        "RelativePath": "app/Controllers/Forbidden.php",
+        "Length": 480,
+        "SHA256": "6B27593A9AE7264C83DEF447DA6388D0CBA892E651B4350491E7A456FB374E9B"
+    },
+    {
+        "RelativePath": "app/Controllers/Google_api.php",
+        "Length": 3095,
+        "SHA256": "59DF5CF4C1F6F0FB705AC8F146020A7F0EC0C90868ED737DD1BEDA107DF8DDBB"
+    },
+    {
+        "RelativePath": "app/Controllers/Help.php",
+        "Length": 18471,
+        "SHA256": "38C92E56D37E304A4C6DDF056121E34C92FEED828BDF2F42C897BE710ACAD3FF"
+    },
+    {
+        "RelativePath": "app/Controllers/Invoice_payments.php",
+        "Length": 28527,
+        "SHA256": "62D1704BDDE8D851B29FC0BE0B64C5184FEBDD770EAD52C7F8D36CF7EE6DC1A1"
+    },
+    {
+        "RelativePath": "app/Controllers/Invoices.php",
+        "Length": 90093,
+        "SHA256": "490A0E238A9F70134C7FC82B7E61166249F19F2A8A1F7852D9F2BBB0FEDE67AE"
+    },
+    {
+        "RelativePath": "app/Controllers/Item_categories.php",
+        "Length": 3553,
+        "SHA256": "610D6CB306E42EC1FD9D994004D3C131DB06EFFD4806A0C2C4851D3324B3588A"
+    },
+    {
+        "RelativePath": "app/Controllers/Items.php",
+        "Length": 15019,
+        "SHA256": "627631BBE377A981ADD0F96F30D3808AA0DCCE35FFA68237C7D5012459326815"
+    },
+    {
+        "RelativePath": "app/Controllers/Knowledge_base.php",
+        "Length": 7971,
+        "SHA256": "970F2668E9E19E1DE2AFA200C571E30C8E22AE6AF88216925316973023284556"
+    },
+    {
+        "RelativePath": "app/Controllers/Labels.php",
+        "Length": 5991,
+        "SHA256": "F498ACD1AF3474DBDFC5E3CA1AACE28ADB71C4F4C75C936086EED461EEF4E1CB"
+    },
+    {
+        "RelativePath": "app/Controllers/Lead_source.php",
+        "Length": 4339,
+        "SHA256": "7C35A4FE9E52B68E3487DF89F3BA87203D540D7DF1374BF4AD1DCB3B0C33006D"
+    },
+    {
+        "RelativePath": "app/Controllers/Lead_status.php",
+        "Length": 4870,
+        "SHA256": "8D10CA0FAA398FC6F69AA027B4A31F86346E4777A35AA0DB8F0926FD57ADC681"
+    },
+    {
+        "RelativePath": "app/Controllers/Leads.php",
+        "Length": 78834,
+        "SHA256": "5BC19DE657E871F3AE001E6491EE28C5CC3EE955979039DB2298AB81580B9C0A"
+    },
+    {
+        "RelativePath": "app/Controllers/Leave_types.php",
+        "Length": 3833,
+        "SHA256": "EEBA0E5F6BACED55CC689FF2F61D46F056C15642595E3EE578B3D4208876B194"
+    },
+    {
+        "RelativePath": "app/Controllers/Leaves.php",
+        "Length": 27788,
+        "SHA256": "CD5701488D707004A60A7D2DD1EBB6615C0501376092E62B39DCEF69836E73C5"
+    },
+    {
+        "RelativePath": "app/Controllers/Left_menus.php",
+        "Length": 5836,
+        "SHA256": "6D823308F85960DA92737D67BAAD9C88960FE2EF71812591628929B3B1CA2D36"
+    },
+    {
+        "RelativePath": "app/Controllers/Messages.php",
+        "Length": 21763,
+        "SHA256": "5B48DAB12F48A04B228D0A849D19A4CAF2C55353FFB31EE1964BA97E75F9A498"
+    },
+    {
+        "RelativePath": "app/Controllers/Microsoft_api.php",
+        "Length": 1191,
+        "SHA256": "FB1A8AB805B526D2317E108F06E748EAEF9E908F0391A6C9C683A141FA508363"
+    },
+    {
+        "RelativePath": "app/Controllers/Notes.php",
+        "Length": 21448,
+        "SHA256": "46F122F38C08BF2419B1FDB4F223380C57179BE638E2836930A91BD5FECC18D7"
+    },
+    {
+        "RelativePath": "app/Controllers/Notification_processor.php",
+        "Length": 12438,
+        "SHA256": "FFCD7AB54323D5E8C05430C762AE2553EAB39E32FE3E87F9DFDA9CEBC398D00C"
+    },
+    {
+        "RelativePath": "app/Controllers/Notifications.php",
+        "Length": 2610,
+        "SHA256": "DAB6B4432F79CD65E0226C7365B2B16D473DED62E264246907167C2212D6090F"
+    },
+    {
+        "RelativePath": "app/Controllers/Offer.php",
+        "Length": 8525,
+        "SHA256": "CFA2C66627218F4F951EE762277B48EF7B85F6DFA9498099202CBE9D40E8AEC6"
+    },
+    {
+        "RelativePath": "app/Controllers/Order_status.php",
+        "Length": 4974,
+        "SHA256": "E49337FB84372AE34002B3C46657A7E2CA87F7588B1B58BCD91B63446D1F79F7"
+    },
+    {
+        "RelativePath": "app/Controllers/Orders.php",
+        "Length": 22179,
+        "SHA256": "93C49D7CFA203F375E99EC6C402D0CAB64F3AB6EDF7E579D9B3C33A587CEE474"
+    },
+    {
+        "RelativePath": "app/Controllers/Pages.php",
+        "Length": 5985,
+        "SHA256": "26DBE2022D1A19B3A716F6C06491AD618B488B248386FC43948986959E0E695E"
+    },
+    {
+        "RelativePath": "app/Controllers/Pay_invoice.php",
+        "Length": 4770,
+        "SHA256": "23EE516CE8E050C1CCB24FADB75E28E85E62F7640E62E5CF4F6FC32F1B710AE8"
+    },
+    {
+        "RelativePath": "app/Controllers/Payment_methods.php",
+        "Length": 8430,
+        "SHA256": "376A2F0221C5FE70CFB38CCC3C865E9B087D12EFFFF9E3FC2B4B05B290D3932E"
+    },
+    {
+        "RelativePath": "app/Controllers/Paypal_redirect.php",
+        "Length": 3259,
+        "SHA256": "FFE99598280E80421519451FBB2B9F78BD105E7D27B9B8FE91DCFDC02A197285"
+    },
+    {
+        "RelativePath": "app/Controllers/Paytm_redirect.php",
+        "Length": 4231,
+        "SHA256": "38573020F8C19595DC9F74A0DE6AF53D823DD2739B1421EE4E6060CC45378423"
+    },
+    {
+        "RelativePath": "app/Controllers/Pre_loader.php",
+        "Length": 279,
+        "SHA256": "D3EB4947DD5779F539298640FC3D5E8839B2B4C01520F4203E5E1105BDE00FED"
+    },
+    {
+        "RelativePath": "app/Controllers/Project_status.php",
+        "Length": 3787,
+        "SHA256": "380AC701ADAE5721BA17E9042319906DD685E6E4DF896F56CE8ADB50662053C1"
+    },
+    {
+        "RelativePath": "app/Controllers/Projects.php",
+        "Length": 168240,
+        "SHA256": "8ED548FA35B9C84D7FCCCDF4E0B4C16882EDEC609A1865405A670834F4682EFA"
+    },
+    {
+        "RelativePath": "app/Controllers/Proposal_templates.php",
+        "Length": 6743,
+        "SHA256": "092B52EEE8F1414328BAFF9B1D6A279E8024FE56EA59519B8C5C55EE922FE00C"
+    },
+    {
+        "RelativePath": "app/Controllers/Proposals.php",
+        "Length": 50259,
+        "SHA256": "039E7B82620620E9649DC4C7EE34DB4E9680DCF281840365BA8180F5A8941E83"
+    },
+    {
+        "RelativePath": "app/Controllers/Pwa.php",
+        "Length": 5283,
+        "SHA256": "71654152747F9AA058481A9D386C22FE69D27FB166E66C7E3DE19589B3ED542E"
+    },
+    {
+        "RelativePath": "app/Controllers/Reminder_settings.php",
+        "Length": 2355,
+        "SHA256": "3FB3F41727AD9C180F85856B433A79CC24E8D9B4B260F4245265746CA6E4AAE1"
+    },
+    {
+        "RelativePath": "app/Controllers/Reports.php",
+        "Length": 1151,
+        "SHA256": "478538932A4C9A1A38ED464B9605F52CCD9F6DACBB8BDFC162541043653BCABE"
+    },
+    {
+        "RelativePath": "app/Controllers/Request_estimate.php",
+        "Length": 9236,
+        "SHA256": "90B5330CB393C5A42937394637C325C4C25689B41DA6E2CA35E83C66752470B9"
+    },
+    {
+        "RelativePath": "app/Controllers/Rise_plugins.php",
+        "Length": 15049,
+        "SHA256": "EAE9F8C53528F3968B009CD06996956F0B25DD89741165A0AF25CFC3A9743013"
+    },
+    {
+        "RelativePath": "app/Controllers/Roles.php",
+        "Length": 36477,
+        "SHA256": "28A90B877332B07138300BB746D9C8CD28044EE32425BD9BA10F727EADC28A71"
+    },
+    {
+        "RelativePath": "app/Controllers/Search.php",
+        "Length": 2655,
+        "SHA256": "AE2428DBB61622489405B4A6CB349F3806AEAAC84D00DA09D65D5F091C22399E"
+    },
+    {
+        "RelativePath": "app/Controllers/Security_Controller.php",
+        "Length": 55360,
+        "SHA256": "8419D37D77987F9ADCFB57D969926E07FE16B47C9788AB1AC4847BDDC5AC6844"
+    },
+    {
+        "RelativePath": "app/Controllers/Settings.php",
+        "Length": 65808,
+        "SHA256": "C72E2FCC4BA89BBDBBB56D71EE8BDCFB0B078D0D67101A9602F6279C7D2C1676"
+    },
+    {
+        "RelativePath": "app/Controllers/Signin.php",
+        "Length": 9664,
+        "SHA256": "9C545121B9495CADD894122DED13E4C741A6A5DF674AE71FD3A5F8CE881F68FF"
+    },
+    {
+        "RelativePath": "app/Controllers/Signup.php",
+        "Length": 17953,
+        "SHA256": "FA0D97D663934499508BA96625FD701F3BC52BBC3F01D8F1F537A351662530FA"
+    },
+    {
+        "RelativePath": "app/Controllers/Store.php",
+        "Length": 30901,
+        "SHA256": "542031D212A4DDDC251A39967540F180F1DD886CCA5C6F0458DA8BFD9FADB1D6"
+    },
+    {
+        "RelativePath": "app/Controllers/Stripe_redirect.php",
+        "Length": 7314,
+        "SHA256": "50065549C82F87FE7BDD8302A2A439BE5C8E33479015179C636F961CF10350DA"
+    },
+    {
+        "RelativePath": "app/Controllers/Subscriptions.php",
+        "Length": 44664,
+        "SHA256": "DF73C50E20534170549D4196792EC34C98FDC83AF881DBF91B4A0D73DEBA9480"
+    },
+    {
+        "RelativePath": "app/Controllers/Task_priority.php",
+        "Length": 3687,
+        "SHA256": "F18D441C722B84D968F63059A7ECBCB7D3F2E6CE93BCE02773BF53DCEBD3E052"
+    },
+    {
+        "RelativePath": "app/Controllers/Task_status.php",
+        "Length": 5238,
+        "SHA256": "CB0340830302DE39745DC31F44FC4446F091CC6DE5ADE76AB630362D48313AC4"
+    },
+    {
+        "RelativePath": "app/Controllers/Tasks.php",
+        "Length": 180797,
+        "SHA256": "AA86D55D6A9409C4722C13CB65F8B169C4B025B6AE81F66877A79D688545A881"
+    },
+    {
+        "RelativePath": "app/Controllers/Taxes.php",
+        "Length": 8704,
+        "SHA256": "34ED490736A4902D57647878CA5B990F5A0331990E4A6B9DF5609BE092EE045F"
+    },
+    {
+        "RelativePath": "app/Controllers/Team.php",
+        "Length": 4431,
+        "SHA256": "3CA1647219953BE3E1A69D313FD34C6A535DE4E243C8DF7FE49827870FA43F94"
+    },
+    {
+        "RelativePath": "app/Controllers/Team_members.php",
+        "Length": 55524,
+        "SHA256": "A8392877FF59C134C1E952FA2E801EBC03F5D7D7002D1EAB9E99F76A70B7DFEA"
+    },
+    {
+        "RelativePath": "app/Controllers/Ticket_types.php",
+        "Length": 3316,
+        "SHA256": "8A5CF4E2FA61C46EAEE7A00F1F9AF7CB8CA05960C009BB7F79CF37EFAA6968FA"
+    },
+    {
+        "RelativePath": "app/Controllers/Tickets.php",
+        "Length": 66207,
+        "SHA256": "CD859ADE25561AEA092667653DFB91C6B22FD83CEEC552E8ED92EEF8BAD3E240"
+    },
+    {
+        "RelativePath": "app/Controllers/Timeline.php",
+        "Length": 6392,
+        "SHA256": "524A14BED8E2A8B8DDE77E458541B06BC55078C70E1619B0B260FD143F45EF91"
+    },
+    {
+        "RelativePath": "app/Controllers/Todo.php",
+        "Length": 14331,
+        "SHA256": "02C54D5E0B2B499F923BE4743D26D21A4078735CC893FBBD160DD45E60D0E62A"
+    },
+    {
+        "RelativePath": "app/Controllers/Updates.php",
+        "Length": 11167,
+        "SHA256": "88B33C53F67BF70ECBF93D109B5C60E8753CAF396124A6C6B927FDC9956C807F"
+    },
+    {
+        "RelativePath": "app/Controllers/Upload_pasted_image.php",
+        "Length": 1460,
+        "SHA256": "F295170CE5601793A88443D028E1CFF1DE93D381883908DEE3EF44464474DC3F"
+    },
+    {
+        "RelativePath": "app/Controllers/Uploader.php",
+        "Length": 2388,
+        "SHA256": "C68A15E9F984E6F4FE74C94E43EBF0F7C5B7FA91A76A5D18284A63BD0C6D9CB8"
+    },
+    {
+        "RelativePath": "app/Controllers/Webhooks_listener.php",
+        "Length": 16837,
+        "SHA256": "A40BDE2DC835B300F71F554B5E73C1D28D7AB86E431AE43B00397203C75132F1"
+    },
+    {
+        "RelativePath": "app/Controllers/index.html",
+        "Length": 145,
+        "SHA256": "951269FCB3FC2D0B1D7E18500AEDA7791F4D5764AC39D19784CDAB3E439AAFCD"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/.gitkeep",
+        "Length": 1,
+        "SHA256": "01BA4719C80B6FE911B091A7C05124B64EEECE964E09C058EF8F9805DACA546B"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Fiscal_document_artifacts_model.php",
+        "Length": 411,
+        "SHA256": "1E57E1A243548E86A50AB57298305C253F069A568D1B6A8FD7C9153EE9B66217"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Fiscal_document_relations_model.php",
+        "Length": 393,
+        "SHA256": "4EAED6576635B39FF88C9C84035557B3555990AB68CD13072F26C32BC906BD69"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Fiscal_document_sales_model.php",
+        "Length": 559,
+        "SHA256": "3C771D26E3A6BE481E37BF6313BA36C2B7A22046F538A346BAB303F9147F9A38"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Fiscal_documents_model.php",
+        "Length": 1351,
+        "SHA256": "FFC6DC914D81758AC160DBBB35AF51020E8585EFFFDD150A74FAADBD2D1FE6E6"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Fiscal_draft_sales_model.php",
+        "Length": 564,
+        "SHA256": "233F0400AB1E848B1B02C76B662965FC24C881AC0FA8267B186C6921C41BAC03"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Fiscal_drafts_model.php",
+        "Length": 853,
+        "SHA256": "0DA0AC6F78036AECAAEE1DE78AA7805905828EB7A75E08F9951B68206A1F29EA"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Fiscal_issuer_certificates_model.php",
+        "Length": 709,
+        "SHA256": "294CC4409B40D70F7A2A933914381536D7193A154EA203FFAA70995DD4433896"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Fiscal_profiles_model.php",
+        "Length": 1859,
+        "SHA256": "4075AFF9F771A68A120A89BEA222358DD3F8A4E87593C8D1DADB061428173249"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Fiscal_series_model.php",
+        "Length": 1004,
+        "SHA256": "017D3023F9216AC0698B4AA5499CE8D522626AA6BE10FD9CA1DB26A75AA82C0D"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Item_fiscal_settings_model.php",
+        "Length": 729,
+        "SHA256": "71E53C8AFDF748AB6FE7048E52455FBE5754B9A26E6E45691EACCD020321039C"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Item_fiscal_taxes_model.php",
+        "Length": 944,
+        "SHA256": "9C6C374AC614F7A8836525F64801E5BF73826900F39E2C0987CB71866C6F79F9"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Sale_fiscal_pricing_preparations_model.php",
+        "Length": 622,
+        "SHA256": "09820C6D31A558178A11BE468A96E8B02311CE35197B85950758F2282726C4AF"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Sat_catalog_model.php",
+        "Length": 719,
+        "SHA256": "76A20B0941BF35A5EDB0554E4A6E1A104AC0F4C85F2EB9D95D47ED81E380D0D0"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Sat_cfdi_uses_model.php",
+        "Length": 160,
+        "SHA256": "DF7963C719D113AE0AEBE29A296B40322605426872C4B61D649D73EA337EE5E2"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Sat_product_service_keys_model.php",
+        "Length": 1150,
+        "SHA256": "EDF3F32FF8F76170C80E7182BF7F0CAAB80BB9E6FDBECF5B3FA2E469B43E58CA"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Sat_tax_codes_model.php",
+        "Length": 160,
+        "SHA256": "34653CC66A407F011AA545EC64D673171C1BE773FBCE3EF978BFD6C1D828CF32"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Sat_tax_factor_types_model.php",
+        "Length": 174,
+        "SHA256": "66191B41990586457F3EF97E40B4C17C4A7CACA9052D80FC69F4C431EA5ED865"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Sat_tax_object_codes_model.php",
+        "Length": 174,
+        "SHA256": "018547B8530C6637844D9E9DC30324EB086E4DBEC60C3714EEFF0B4771718238"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Sat_tax_regimes_model.php",
+        "Length": 164,
+        "SHA256": "9238916A66855EAEA5A66B317444DEDA05CC69676A4048C177BAE6811F4D1365"
+    },
+    {
+        "RelativePath": "app/Models/Fiscal/Sat_unit_keys_model.php",
+        "Length": 1169,
+        "SHA256": "C4854CE1A3047A9D5B67168EF6E62CA4BAEF06D107DF428A170093C753C6161F"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Cancellation/FakeFiscalCancellationAdapter.php",
+        "Length": 1846,
+        "SHA256": "C90098C3238BDBA030BCF3DDF6260555005243E43507B074E8A8FC02CA87AD1E"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Cancellation/FiscalCancellationService.php",
+        "Length": 8229,
+        "SHA256": "4DF9DAB8753E4F2E1E1BC4CF465981F03A007A91A648F3B8B4D50F8E8B33EFA3"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Cfdi40/CfdiDraftMapper.php",
+        "Length": 1528,
+        "SHA256": "2A1F732ADD469A1CCC224598767AAA569633D013010A8AF1FE3F45A3D066CEE3"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Cfdi40/CfdiOriginalChainGenerator.php",
+        "Length": 4200,
+        "SHA256": "524BCC288765090148860CEA0D675D8ED8AB8BDFAB472862B0C412320786467A"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Cfdi40/CfdiPreXmlArtifactService.php",
+        "Length": 4712,
+        "SHA256": "D2D48687C4459EBF5E8D6C3627C37A62265B6290EB82E0DF6E68071547885990"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Cfdi40/CfdiSemanticValidator.php",
+        "Length": 4580,
+        "SHA256": "41424F40E5E983FD5A594B9A64748A4949411BF7CABA44947C3F2B31AE57B6A8"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Cfdi40/CfdiSigningService.php",
+        "Length": 11842,
+        "SHA256": "3D5B352D8B9EFC0D3C751DF9B05E83AD284A8313614B963B3C8D7ACEC7A26082"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Cfdi40/CfdiXmlBuilder.php",
+        "Length": 6422,
+        "SHA256": "737976184521AA3846D1FFF2673A790C84AE7AC48F1D7A82A9981356A69CD321"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Cfdi40/CfdiXsdValidator.php",
+        "Length": 2272,
+        "SHA256": "63D159E8CF99D86F89029844B6A2F7C9B86535E7E93B75B8FC869B00BB1984CC"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/CfdiPaymentRuleService.php",
+        "Length": 2620,
+        "SHA256": "EB81EBB2862880841C832B945F01E43003840328086E03E3DC2AAF0BB3E768EA"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/CsdCertificateService.php",
+        "Length": 14194,
+        "SHA256": "66F530F784EA334E62968D92A0B3DEAE1DD3C006323EBDFFC9B10026C93815FA"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/FiscalArtifactStorageService.php",
+        "Length": 4592,
+        "SHA256": "3B2E1235F9D4192A18C2DAC2F9686D7BE298F6CA3E93FBC53D5FCEBD2247CAB5"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/FiscalDecimal.php",
+        "Length": 1140,
+        "SHA256": "FE7A6B5CB454D11593141F0E3C6B8E48CF3AD802B5731F4EF506D3A4DAC6FF48"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/FiscalDecimalCalculator.php",
+        "Length": 6142,
+        "SHA256": "EF6A0BCEC1EDE97F5D25A84BA5F3A89BC4A583D3852A041C180032F19DEA8F88"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/FiscalDraftCreationService.php",
+        "Length": 18130,
+        "SHA256": "1462A8738F659E7567BD8E47939717E8CE0294375DB87065DBB5565C0A386E6B"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/FiscalFolioService.php",
+        "Length": 1870,
+        "SHA256": "9D494DCF46B67588806548C6A8AC5D07934960819C0CDCA1906F4BBDE5558F55"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/FiscalInvoiceCenterQueryService.php",
+        "Length": 7503,
+        "SHA256": "B4A97CCD26F03710526312696F81789CEBF4BAFFC3709931303E30BECF908E0A"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/FiscalInvoiceGenerationErrorPresenter.php",
+        "Length": 2305,
+        "SHA256": "A62B78F37CE776B306FAEAE8ABA366E59CF2ED281D9439C381F0986018DF6539"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/FiscalInvoiceGenerationService.php",
+        "Length": 15222,
+        "SHA256": "0427A653D1F58BC0A8AB034F6CE8DDEB2519122EE1827EDBBC2218EAC4C0C1BB"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/FiscalIssueDatePolicy.php",
+        "Length": 986,
+        "SHA256": "332F62277204725D65CE13DA4071517B1071053733A5EB1423A49196393FBF11"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/FiscalIssueDateService.php",
+        "Length": 1660,
+        "SHA256": "9EEC599E68D58B1431DEC45EAC52709F82C2B0F313C09BA43E6ECB64F2C537A7"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/FiscalPreInvoiceService.php",
+        "Length": 1533,
+        "SHA256": "27EBBE124B496E249FB296893EFE6CA1CAA41C78FE7165FA0F78DEC3A197372C"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/FiscalReadinessService.php",
+        "Length": 2176,
+        "SHA256": "1864C820DBDEA1ED02751BA2A1B3A1611E9B2A527C22721FBAFC37A842BF346D"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/FiscalSaleAllocationService.php",
+        "Length": 13196,
+        "SHA256": "E7C3D5E24938F4F7BD3BDA5CD26C0D38A7E7F38CF9870F4AE540B89AF3745C24"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/FiscalSaleCancellationPolicy.php",
+        "Length": 1283,
+        "SHA256": "E1891C44D610DD61454D2C23120B1DE3BD63B1B7683CE23FD9E15DC0368EAD45"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/InvoiceFiscalReviewService.php",
+        "Length": 2092,
+        "SHA256": "2802419B87462518DF311A5F3BDA2093FEC07B25738E7EC76FFB97ED68546F8E"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/IssuerFiscalReadinessService.php",
+        "Length": 2156,
+        "SHA256": "7D6C0ED450639DF0B361E60AB8F90FE922BB17DBC7C0939C3C22B9A66045A46C"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/ItemFiscalReadinessService.php",
+        "Length": 4178,
+        "SHA256": "4E4A6B479061326445F7A314A31F4FD842C86E933324A225D3400413A79F24B2"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/.gitkeep",
+        "Length": 1,
+        "SHA256": "01BA4719C80B6FE911B091A7C05124B64EEECE964E09C058EF8F9805DACA546B"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/FakePacAdapter.php",
+        "Length": 5078,
+        "SHA256": "CA58D6562758440F15F1B061A22C2A46DC616C3A7758E00612BBADA93C66CD46"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/FakePacPdfFixture.php",
+        "Length": 1964,
+        "SHA256": "592F17CFAC0A35A8D36448315ADB3C0F301E211718C17A291B9011224E868DDC"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/FakePacPdfFixtureRepairService.php",
+        "Length": 6400,
+        "SHA256": "F4C46CB5BECE6016AD3116CF0E9F4F8F466A4516B4112ECDCFCDDFF7746D63D8"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/FiscalDocumentStatusPresenter.php",
+        "Length": 7877,
+        "SHA256": "4288378F8CB1CDF160EAC5B50326C970FD86A32DA283291C547FFB00C0690AD8"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/FiscalPacAdapterFactory.php",
+        "Length": 2266,
+        "SHA256": "44D92F1C266D2744633E279705AB80B98FF190BC4BFE54B50477A95F69980BAD"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/FiscalStampReconciliationService.php",
+        "Length": 1241,
+        "SHA256": "8C73B58363E752FC20F5A6BBB03A8B3EC63160C8BBE46AA09FDE8DA490747345"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/FiscalStampingService.php",
+        "Length": 29699,
+        "SHA256": "E825AA62C0C832516404DEF876C89E9BC890C771C02531BAE56ED8A990C686DE"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/PacContingencyStorageService.php",
+        "Length": 1580,
+        "SHA256": "EA7BFB0EDB431A9870F09E142DD24216A8E75DAB8CA9D69546C70F2C81AEA9C7"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/PacPdfArtifactService.php",
+        "Length": 5222,
+        "SHA256": "AD9AB90D60AA89E548F0133F690E1EF4ED19E8242E648F60E0282D4EBD151BCE"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/PacPdfValidator.php",
+        "Length": 5385,
+        "SHA256": "79A417404AE8AFCD73EFFDDDE6EF95D1204855DF579F395A9D82CCB3D70909C1"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/PacSecretVault.php",
+        "Length": 1250,
+        "SHA256": "B0E4BD0E03892EB67C1240C7A99C125C077CE71D22DB668CCB2748030C006BA8"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/StampedXmlValidator.php",
+        "Length": 5348,
+        "SHA256": "0B034D3C5F495F6F4E1F2F7D34B5D22E812B4BE4536418E281E24860CC91EB26"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/TimbradorXpressErrorMapper.php",
+        "Length": 1215,
+        "SHA256": "5D07BBD619150D7E0024A7B7FADA5D5705A9FB01C41408E04334D7F2E56A239A"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/TimbradorXpressResponseParser.php",
+        "Length": 1802,
+        "SHA256": "54F7618E8BAC1998BAF4D63C6A6DE2A9AFF1D2BB7A8DA12460C6A7FD9A59718F"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/TimbradorXpressRestAdapter.php",
+        "Length": 3521,
+        "SHA256": "43970980C3F3FAC26009E66B526F86A73C0889F48F67B969897AE7E76433EFC8"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pac/TimbradorXpressStampDataParser.php",
+        "Length": 1198,
+        "SHA256": "8B212CD628D790C92C98A2E06FC6AD88F26C2A9D0B8AFBF1F7FC00F6757AA526"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pdf/FakePacPdfGenerationAdapter.php",
+        "Length": 2591,
+        "SHA256": "99B100AB94F39B9C6582BC0CA280BCDAA6F06868B86321877FEF049DDF2F0DA1"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pdf/FiscalIssuerBrandingService.php",
+        "Length": 863,
+        "SHA256": "1B0394C27555C530502515B2B13F0C3854CEE5373CC9B72831A70D993AC8C356"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pdf/FiscalPacPdfGenerationService.php",
+        "Length": 13091,
+        "SHA256": "9542A7E4A41EB258B9ABE2365CA1A6D24347A5145EE50B35BE1A5F33FA95029D"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pdf/FiscalPdfGenerationAdapterFactory.php",
+        "Length": 926,
+        "SHA256": "36234C722551D1B6CD0677762416195578DF5EEB4E09405AEF49A816E335F8CB"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pdf/FiscalPdfPrintMetadataBuilder.php",
+        "Length": 1077,
+        "SHA256": "92C20589AAEF375C621CA3F1EE27ED682C09B66A0C7C287E4DF4FF9853E2E790"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pdf/FiscalPdfTemplateResolver.php",
+        "Length": 1193,
+        "SHA256": "9958627012884EA629E9C545F8B1111BFFAC5EDCCCA4485F5BBDF17B8D2C2735"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Pdf/TimbradorXpressToolsPdfAdapter.php",
+        "Length": 8836,
+        "SHA256": "34220F1393A7A0C63A570DB5CC81605561F7656E37000B188505029EEBCC4E9D"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/SaleFiscalReadinessService.php",
+        "Length": 5476,
+        "SHA256": "A16895DCC1800690A2B21367B63E0AD730E588C148D73FDECA48738199843875"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/SaleTaxAdjustmentService.php",
+        "Length": 3561,
+        "SHA256": "3B1369F07624C0A322D68EB97070D8A2B1DAB5500445E3C2FB09C0C1BA3ACC8C"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/SaleTaxPricingSimulationService.php",
+        "Length": 8544,
+        "SHA256": "4ABD22B3520B29BB50E0D7B38B78350C99EAC7F0D32B0EF1C7D05FE78F1F270F"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/SatItemCatalogImporter.php",
+        "Length": 5681,
+        "SHA256": "F755F85866D7A8A49FD18FEA9AD16046DA44719E8CECB580F5CD12438FD27138"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Signing/CsdCertificateSecretService.php",
+        "Length": 7672,
+        "SHA256": "1AC61BAA914565FC094BFB804CD345223824B589F776F86ABF3F5B1011084B3A"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Signing/CsdOperationalStatusService.php",
+        "Length": 2797,
+        "SHA256": "9A48D3193DC2119B80BD6E730627AB7B31DF592F4F45A4D66CCD2429B3F03A77"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Signing/CsdSecretVault.php",
+        "Length": 4099,
+        "SHA256": "1E142E3E4F5D76AE790FBA8204BFFDE40B70FA36294B114C387AC6D2EACAD913"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/Signing/SignedXmlVerifier.php",
+        "Length": 6878,
+        "SHA256": "02F4BD03CE9DD77B4411875147398CFBD3A9A1FEA5881D25706EA83E4D72AFF7"
+    },
+    {
+        "RelativePath": "app/Services/Fiscal/TaxFiscalConfigurationService.php",
+        "Length": 2802,
+        "SHA256": "59B904AF1B77EED69181A57CF95C4AF9E990277A194C3B135F74B9B0F8A79388"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/.gitkeep",
+        "Length": 1,
+        "SHA256": "01BA4719C80B6FE911B091A7C05124B64EEECE964E09C058EF8F9805DACA546B"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/certificates/index.php",
+        "Length": 1597,
+        "SHA256": "E0638C5FCA7D242F9B44BC9D57BABC2F644164EAD27E8F7C03D4811A7B3D265E"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/certificates/modal_form.php",
+        "Length": 1744,
+        "SHA256": "DC9714700C0EB4F9B6288BB9644472E538EFC2E64B0978363A37DFD54EC1DCA1"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/certificates/secret_form.php",
+        "Length": 3654,
+        "SHA256": "40914AD16E5EDFF2241233619D891472A515A32DE08C0BB614EFB0ECB24FC094"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/client_profiles/index.php",
+        "Length": 951,
+        "SHA256": "4D44943E11A191937BA1844AAC1427C136D96E4C1DF286A575DAFD08E5CD300C"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/client_profiles/modal_form.php",
+        "Length": 5162,
+        "SHA256": "A6B77A3E77F308F61FEE2CCDCA1EAD6750E7871B6FFD0A61C2E203F570EE221A"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/drafts/preinvoice.php",
+        "Length": 669,
+        "SHA256": "07C7D40C8D084AE75DB8756D0C3F1483B9C54E0FF7C21FF5531875A80E5E8321"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/invoices/cancel_form.php",
+        "Length": 1674,
+        "SHA256": "6FA29EA682CE779C48FB7F8B23F9FF4FD31C20E99C63CCB62F2EF8513FD63741"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/invoices/draft.php",
+        "Length": 15638,
+        "SHA256": "07A73354D203E46AB2B25AE4CA904834DD0740091AC755E0C72964436CBA894B"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/invoices/index.php",
+        "Length": 2318,
+        "SHA256": "0130EE7AAEA3000CC8938AE9CF77900547E9FE55726943DDEB7818598C061D7B"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/invoices/module_index.php",
+        "Length": 7791,
+        "SHA256": "ED4B8C3F70AEB4261D531EDAF97807A04B4C91280297E20DF119074E050E90C4"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/invoices/prexml.php",
+        "Length": 2255,
+        "SHA256": "428743F7ED8464561A32B4F9AF0A0CC02193F6BE75B2952716EB68CFE36ADDD1"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/invoices/review.php",
+        "Length": 11771,
+        "SHA256": "2E22B94F1C9EF9F346A6E5CA6749A21425DFFC3ABDF16FDE6575C4ACD100D8C9"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/invoices/show.php",
+        "Length": 5637,
+        "SHA256": "498198A43F8755F5B6BE5B4A4E84FCABC34A4CE136C447290F7492EC3C2D1D6D"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/invoices/signed_xml.php",
+        "Length": 948,
+        "SHA256": "D7719DD33EEA364FB031C8FBB6DBDD60E6970C699678F371BE7BDE52B90DB7E9"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/issuers/index.php",
+        "Length": 989,
+        "SHA256": "918000E88E870D82D5D9148D63730B5BC8E9A08261C467FB66514DCA76D71FA4"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/issuers/modal_form.php",
+        "Length": 3412,
+        "SHA256": "FCE6127C48D5F99A8AE28223CCCFD3F4B9E4C3FC78545BDE9693B6D84D0ADBFA"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/items/modal_form.php",
+        "Length": 6671,
+        "SHA256": "DA325010ACCC2A17EF9677C699A7C95697B2F671BD9F8D72619E59BEE1DD91A6"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/pac/result.php",
+        "Length": 3431,
+        "SHA256": "2EA6FFD9C6A54E02E460E10A09E63F9E62300F93A86ABF57FD84A60A34BAF86E"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/pac/status.php",
+        "Length": 885,
+        "SHA256": "19A3A6A3E880351CAFD43CA0B40767691DAA8B881379ED0DC912BBFCD0B1EAF3"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/pdf_templates/index.php",
+        "Length": 2596,
+        "SHA256": "68BF47F5D9FAFC473C63ABF8FB19DFEB2D441CCC59EB95304564DAFC40C6A727"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/series/index.php",
+        "Length": 1030,
+        "SHA256": "91587AFA3704E6275F88604060BC8CCA6BAA5F4E9EC72BDBE83ABA243C9B0745"
+    },
+    {
+        "RelativePath": "app/Views/fiscal/series/modal_form.php",
+        "Length": 1958,
+        "SHA256": "925332BED5288E4A3F198E5B34941A9FC0D54AC21476AB1C168A299F7367BB6E"
+    },
+    {
+        "RelativePath": "app/Views/invoices/_paypal_payments_standard_form.php",
+        "Length": 3638,
+        "SHA256": "55742B7062A77E6BEBFD63AA3FC28C18C6839CAF07C5CF2D30A2B17B5A0ECDE7"
+    },
+    {
+        "RelativePath": "app/Views/invoices/_paytm_payment_form.php",
+        "Length": 4470,
+        "SHA256": "E0A7450722A5DAC7140E935F46A695731DED22D5851F3C9C2023F936EAAC4AF6"
+    },
+    {
+        "RelativePath": "app/Views/invoices/_stripe_payment_form.php",
+        "Length": 4007,
+        "SHA256": "4970E49724F4F7BFF83C5FC41377FA24010A6802CCE49844A637DF1B6AF2BCB5"
+    },
+    {
+        "RelativePath": "app/Views/invoices/create_credit_note_modal_form.php",
+        "Length": 1912,
+        "SHA256": "1772AEFE2FD86322305A61535E9B067EAF1911AF1ADA821A0B387F31F78A743D"
+    },
+    {
+        "RelativePath": "app/Views/invoices/details.php",
+        "Length": 7930,
+        "SHA256": "AD461205C155754399BAAC8A491EE2CDA00B0D765DE88ABC33DCB39A609170FE"
+    },
+    {
+        "RelativePath": "app/Views/invoices/discount_modal_form.php",
+        "Length": 2701,
+        "SHA256": "E8B0B70CD1EF9F85DE35A20CAC7C77D7CE3C0E2A1AF88A455D53356741E3D386"
+    },
+    {
+        "RelativePath": "app/Views/invoices/draft_invoices_widget.php",
+        "Length": 24,
+        "SHA256": "0631FCFF5A1F2DC8FD27451E1E0BF378D775AA47703336B2FFBC1D3638D41AFC"
+    },
+    {
+        "RelativePath": "app/Views/invoices/file_preview.php",
+        "Length": 130,
+        "SHA256": "8DB2C0AA283F43B9025D43F40B919BE5D6B39A5B09543D7182902F2E9CE40407"
+    },
+    {
+        "RelativePath": "app/Views/invoices/fiscal_summary.php",
+        "Length": 2258,
+        "SHA256": "00713AA21D1A7868FDC801BCDA05D560491B9B6ADE46011D99FF6B7DB7F17407"
+    },
+    {
+        "RelativePath": "app/Views/invoices/index.php",
+        "Length": 5937,
+        "SHA256": "CB7087B45B117F2179C0C2EED45164FCA2BD64270D746068964CD66E53901F6C"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_actions.php",
+        "Length": 2589,
+        "SHA256": "07437E36EBD7CA5E0A132CEA37F6F064C15C96C62E5FBB439B2FCE98AB744150"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_info.php",
+        "Length": 7266,
+        "SHA256": "220EA393A9CC8CFDFE72954E557774F03B062C7290BAAEFEFBD95C3DF8291A27"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_overview_widget.php",
+        "Length": 18581,
+        "SHA256": "926CA7AD74D6A795FD7748BC6204A3902BD3013A4E97781CC0650274996C4553"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_parts/bill_from.php",
+        "Length": 66,
+        "SHA256": "DB599AC4989575A0D42FDBCB7BB4E0574D0EF2DFD4A8C67A54E0CD124ABDBA02"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_parts/bill_to.php",
+        "Length": 2086,
+        "SHA256": "78E8E0F132C2BCD63B23B6E1735995E9D87A354AD39F040ED92BBE7BF9D54891"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_parts/company_logo.php",
+        "Length": 68,
+        "SHA256": "762D5083D52698E20D69D6F377866A2BBB2499063AC155BBB48BE872143E565D"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_parts/header_style_1.php",
+        "Length": 1089,
+        "SHA256": "A2BA724A2B2C1D3887335443BA74AB3CCD2A1A7C2BB4E4B0AC657807395A8914"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_parts/header_style_2.php",
+        "Length": 1072,
+        "SHA256": "AC5718194130E10560B694042FF0C5CE88F4903350E96413A3002ADEFC3AB816"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_parts/header_style_3.php",
+        "Length": 1160,
+        "SHA256": "85CFAE2F85E1FD160E8EF55188F8344A77A224F5F312F73E7F63BF242A663F40"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_parts/invoice_info.php",
+        "Length": 2760,
+        "SHA256": "10B680B39764A471D71A251870102BAF8BB47279A4BDEC38CB8CEA68D8E75A83"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_pdf.php",
+        "Length": 8156,
+        "SHA256": "3DFD840651735029E7E138A6420FB7102FD2E2B0041277CAC2E59F809644FCFB"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_preview.php",
+        "Length": 4563,
+        "SHA256": "5D7AAB4ACDC737C365549B6F855EAB0DBE93EED596B1F0454C47B66308B32D06"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_recurring_info_bar.php",
+        "Length": 1417,
+        "SHA256": "F47C8699DCF2EFD8C6BA6FBD5ADBBB95EB6B4550F1B4AC2419B2B3C51882EAC9"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_statistics_widget/index.php",
+        "Length": 891,
+        "SHA256": "3D606C8637FE2F1B720ED755F388775A05A9C078A5D14725DF5571F6FA08B894"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_statistics_widget/widget_data.php",
+        "Length": 4876,
+        "SHA256": "7F3C1098A8A62475D8158518B8A205494FC1B852E743444B4D75EED46E943BAB"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_statuses_dropdown.php",
+        "Length": 611,
+        "SHA256": "35EC03B135FC3F156D10173A3B539FC0C3759BEAB4901CD3FE8352E218ED6DCE"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_top_bar.php",
+        "Length": 3807,
+        "SHA256": "113C5F2C59E42FA38950A8A97120BD8FC979A90999AA045A90861D43C65068F9"
+    },
+    {
+        "RelativePath": "app/Views/invoices/invoice_total_section.php",
+        "Length": 4149,
+        "SHA256": "B36206E60EA52E611EC96861F43746B609FBE010E68900EB83306AAAF07CD674"
+    },
+    {
+        "RelativePath": "app/Views/invoices/item_modal_form.php",
+        "Length": 8737,
+        "SHA256": "2031A363DD395F9FEB4DA407CA664097B2AACA5389165753681BCB15325A5945"
+    },
+    {
+        "RelativePath": "app/Views/invoices/modal_form.php",
+        "Length": 19449,
+        "SHA256": "83793EE322B54F01BC47331FE6D68A73945EC3DB10D33DE08DF27E0A483E6480"
+    },
+    {
+        "RelativePath": "app/Views/invoices/payment_modal_form.php",
+        "Length": 6948,
+        "SHA256": "5927BD11E28E64850D127D30CD813FAB9A2AA75377C995F245F8A796709867C0"
+    },
+    {
+        "RelativePath": "app/Views/invoices/payment_received.php",
+        "Length": 3392,
+        "SHA256": "217FFBC762B7E0990C54165F4B1D63502892AF93A70E36FBD418D853D701A0F0"
+    },
+    {
+        "RelativePath": "app/Views/invoices/payments/index.php",
+        "Length": 2296,
+        "SHA256": "2800A6442ACA02B3AA0A94FA77009340051D30B9F17A78353847205A4443E6A3"
+    },
+    {
+        "RelativePath": "app/Views/invoices/print_invoice.php",
+        "Length": 660,
+        "SHA256": "A2877B3B06C15A79E8032306A291C27B3AE43455CE10AD22AD8092BAEBE835A1"
+    },
+    {
+        "RelativePath": "app/Views/invoices/public_invoice_preview.php",
+        "Length": 3784,
+        "SHA256": "B469E6B2A23FA50DFC7A6B810921696EB32C4F4959635BFA6FB205BA9E11DE07"
+    },
+    {
+        "RelativePath": "app/Views/invoices/recurring_fields.php",
+        "Length": 4538,
+        "SHA256": "2621834B148D3EEAE1FD5D3A9EDE8591433B48DD8E4295F8443A0C8471CD66BA"
+    },
+    {
+        "RelativePath": "app/Views/invoices/recurring_invoices_list.php",
+        "Length": 2243,
+        "SHA256": "7B1FD782C5C8394B765EDD892003987AD8AFD2656ABB9F027DB88554E22B5979"
+    },
+    {
+        "RelativePath": "app/Views/invoices/recurring_modal_form.php",
+        "Length": 1632,
+        "SHA256": "8930269AAEA31729C9EF35DD4724A2F455F19F7CEFCE814637B1FC5F1196E03F"
+    },
+    {
+        "RelativePath": "app/Views/invoices/reports/clients_payment_summary.php",
+        "Length": 1551,
+        "SHA256": "5B0D00CC6A4F5BF0CFA30840C2602796B417AA245AA157D090B68D476A48E744"
+    },
+    {
+        "RelativePath": "app/Views/invoices/reports/custom_invoice_details.php",
+        "Length": 302,
+        "SHA256": "67CBDC348ADB66F093FEC231A800A8AE246260719D357E238655E080F86874CD"
+    },
+    {
+        "RelativePath": "app/Views/invoices/reports/custom_invoices_summary.php",
+        "Length": 312,
+        "SHA256": "26B3813862FACE7A28395F034985B617B3480DF81475A9155C5471D124D20915"
+    },
+    {
+        "RelativePath": "app/Views/invoices/reports/invoice_details.php",
+        "Length": 4520,
+        "SHA256": "324D92C80AF13BFCC3BF8365346911C5B1AF3AACDB218AB12A1FBAC292985694"
+    },
+    {
+        "RelativePath": "app/Views/invoices/reports/invoices_summary.php",
+        "Length": 4077,
+        "SHA256": "C79FB5DA329629596C81D17E47A25B20FFAEE54F96022D2A7DBBC61ABFD0ACF3"
+    },
+    {
+        "RelativePath": "app/Views/invoices/reports/monthly_invoice_details.php",
+        "Length": 305,
+        "SHA256": "E0796A163D7D1FABB9B37F30D1A67728B61C14C8ACBBD668ADE8DCE75858FD1B"
+    },
+    {
+        "RelativePath": "app/Views/invoices/reports/monthly_invoices_summary.php",
+        "Length": 315,
+        "SHA256": "52986AB45999CA0C12BB73DBCD4A73F5B94A3ECDA9460585FDF39546BCC10890"
+    },
+    {
+        "RelativePath": "app/Views/invoices/reports/yearly_payments_summary.php",
+        "Length": 2589,
+        "SHA256": "E8A51A68B8E3E4273928C26280AF4BB7ADF5FB0A426EFA2DF8C3007B2D7F67E2"
+    },
+    {
+        "RelativePath": "app/Views/invoices/send_invoice_modal_form.php",
+        "Length": 7764,
+        "SHA256": "AE1A3C02E4F459C9595312DF5E36BD7E646C3F1200A2ECA8A82968748B92845F"
+    },
+    {
+        "RelativePath": "app/Views/invoices/sub_invoices.php",
+        "Length": 1774,
+        "SHA256": "72A617A9EEF13B8BAD968C1B38802BBB9CDA5A4F7A456DAC6F4C70D338AB64BE"
+    },
+    {
+        "RelativePath": "app/Views/invoices/tasks/index.php",
+        "Length": 3687,
+        "SHA256": "24CB6DB119E65338093A34E11E485F32F7475CE003AE00BCA9E08425C73E4EE7"
+    },
+    {
+        "RelativePath": "app/Views/invoices/total_invoices_value_widget.php",
+        "Length": 1651,
+        "SHA256": "A273CC25E999710654FC224EC39AA78394A342BE6C69BD538EE52F473E0ECC93"
+    },
+    {
+        "RelativePath": "app/Views/invoices/view.php",
+        "Length": 6381,
+        "SHA256": "136B340F986977DC71380C978F8761BDD540EF72F979066BAD839254F283A3BB"
+    },
+    {
+        "RelativePath": "app/Views/invoices/yearly_payments_chart.php",
+        "Length": 4486,
+        "SHA256": "294122E5AEDA32DF11D79465D1FCBD2E794955CE24B6DBBA7333F9F4ADBB0C0A"
+    },
+    {
+        "RelativePath": "env.backup",
+        "Length": 2013,
+        "SHA256": "67224378CD51B8F997E23B1F413230E30662961280A20E1014D5F38B04210B62"
+    },
+    {
+        "RelativePath": "ikontrol_new.sql",
+        "Length": 9143300,
+        "SHA256": "B5A915B864649D26F2DAB4EF17D9A0775D1ED46B34DBF9E7181E68A0F3D453C1"
+    },
+    {
+        "RelativePath": "writable/fiscal-private/artifacts/bfd124f12f3cd0fee3a7f5e5414a628afa583e02c3a75d2d.xml",
+        "Length": 4872,
+        "SHA256": "3BEA0D3D8F65D21D95BD42739C27FA2C0B72E47F55A882566EC5A6A0255FA876"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/03878b736d4a9dfce154c444913b3c501fc2459e20ca16bd.xml",
+        "Length": 4545,
+        "SHA256": "D92256351490AE9EF680C8E3D5711899B9E6FB3E0462750A22426323F6664247"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/04423ddfab39468b2f0f10114a6f3e9afe9b48125728e015.txt",
+        "Length": 330,
+        "SHA256": "C3250D6651715B35B74E2DF399A9E18A658C4970A65DE3ACDC4CA09DEA2BA23D"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/06bcc47c635fa97a2f7af76a8332fa3e591e7667bd9c986c.xml",
+        "Length": 3812,
+        "SHA256": "46B2103337380C50E8089012736684F0F1EEF8AF62FD436732EB746EE2E5C895"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/06ca2874b1b63d22bcc385585444caa5c90129eb4adcf388.txt",
+        "Length": 330,
+        "SHA256": "E21ABCE363ECBDFAD4E51492F026773E62B9956B598EC236AC9525B731B5BE95"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/0eeeaf394ed5a7f69fc81ba4c47c96cd77e93f7076ceb21e.txt",
+        "Length": 330,
+        "SHA256": "B63E47B49B2F28273505C368AB3BE706ED547F98009518ED819C3DC596AC606B"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/17d6255aa3832e95ada528e3ea8e320ae14f7dc1b809401a.txt",
+        "Length": 330,
+        "SHA256": "2FC9DD1F8A4C7DA691FDA6059B801AAECEA692D86492B64986A90BE97D2EA17C"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/2187fe54125ed47987cc475bc53dd0c61d44f72aa0d6d7a3.xml",
+        "Length": 4549,
+        "SHA256": "C8E0B6B228A0ACEA3A226540D8B84A2CF045CEA3EDD0EF3B45DD1C35473250A4"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/242804c80a34b29e175aec612e8716c8644ddd7c8bf63283.txt",
+        "Length": 331,
+        "SHA256": "EC5E71D45384C8BEE83AE9E138386928DD6B2CBA5BE5710D3B3133724DEFA6BF"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/25f8d1bbceaacd4444608ae80fac750b1c965c2d2c2d44a5.xml",
+        "Length": 4558,
+        "SHA256": "7F127588FB48BC4B6DEFE620A57D78B5A613239A1075BB4EC9F32D8048CAAA29"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/389c10c3472912a342ed6b757aaa17e445833548af322b22.xml",
+        "Length": 3803,
+        "SHA256": "96E93DE59C075D7F57E4524548CD06AD7EB94C1B753CA8CBC90F2FA1F301E754"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/45f87217371d52934404804ee73f2ae8455d02fd9de5f938.txt",
+        "Length": 330,
+        "SHA256": "A7B93EB81FE3F81C7FBCE144FF7B5D5E3F9380998552384CC0C004AA3E097295"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/50a3882e62180354267812c27cd663948bfb125c0ad27cb5.txt",
+        "Length": 326,
+        "SHA256": "978B82AB0BCBFFCE7AD198BEFF1174D49654943C03C930419C49512352F71EB5"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/714d443c0ddad0832251d8ef842005b1c5f72b63db44abe3.xml",
+        "Length": 3796,
+        "SHA256": "E1700BD140656EC9474CEB262C8A39C77850D731FB70FBE86BBF0AAC6D1C1562"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/8605c97f53efd0950fe4a5a17455941d699960003b79cda2.txt",
+        "Length": 331,
+        "SHA256": "595630F692BD02F716C02EF1406C6F60FCEC96D6E481E23E914915233F3E9C97"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/878b27d6cee3e9227b2bf2b028067090c15f2450338a87ab.xml",
+        "Length": 3804,
+        "SHA256": "74EA956607A50EDA3BC82E34D4BA5F7FF9ACEE9E90F375A09EB7D04B8A527D53"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/91812471c001fb4fd4900175b6dcdb8bb65ad48a6325aa68.xml",
+        "Length": 3803,
+        "SHA256": "49CAAEEE92E32E6A901A5359E6D3C34F9DF0D877CB4C73E1808CB40057D2A969"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/9cbcb744fe5275059a0f0ac7d759d941336145234b1d65c1.xml",
+        "Length": 3804,
+        "SHA256": "2E32ECE99FE3C5C2AFF25C64805C0FE47201906FA9601CC19049363F4C08B7FE"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/a2c87b1b6d95208617bd00af82120b2a25206ff419d9d190.txt",
+        "Length": 339,
+        "SHA256": "64C24D33A1E8394687861F92522A89EDA0175F7C3E28679BD6B54DDB21B634C9"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/a6e2642564a70e9e5bd4f8e384c31fb8ef46cba4696ef936.txt",
+        "Length": 323,
+        "SHA256": "633A368EEC2F7EB90BD89A6A1892AD33EB35E0884133C3A50D4A29D90C280C6B"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/ad47c93b0ea487d80fed7df10b6f9a5a4b939a6cf743b75f.xml",
+        "Length": 3803,
+        "SHA256": "0D20DE5D7F7F4483EB8C99D504825DEF11557E35A489680C31E62C937EA15D64"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/b4e724b3ade412e765efb3eb2a07fcedb2c9cdfd9ffe63fc.txt",
+        "Length": 331,
+        "SHA256": "F4BD7233888EA5AA42D84A39525D7A0CBD2C559C889242D4E96D4A43C296BEEC"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/bc00b4eb99439bc7d2f70840f535d8efd09a3db2275eeeab.xml",
+        "Length": 3803,
+        "SHA256": "C4AEEB384CAA72E47152C97BCA824026AD8539B32F0D5FCBBD2540EB4E81E02F"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/d2449ebecf13c1ffab8373db4636f4e34e3073a10562fc8b.xml",
+        "Length": 3803,
+        "SHA256": "62A4AA80D8C495388407A741C0DAAD90D7504269120277920BD48815EE0CC9CA"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/d26079d6b6ce37ef425076dab45b4c2a5458b36056582433.xml",
+        "Length": 3799,
+        "SHA256": "34D8C5BEF437AB36ED3DFBDF9B032C115CD2A16E0137A236886BD4B47B1A3440"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/e764386c333d9475f783ddb7aee1e0ad8b119fd4b9675b56.txt",
+        "Length": 330,
+        "SHA256": "8A0494F9CA8C35FD9B65E10F807916910BDD0F343B3FBDED7D450F640A2100D5"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/f500e953534ea26dfadf29b5ceda5bd636f1f776acabb162.xml",
+        "Length": 3803,
+        "SHA256": "9B79734EF0E577D3042695E0470BB5E071E312569340832A37149DA2D508238C"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/f9c5ce0e4a6dd32dd7d734aa3d7fd670e398afbd2acf9a50.xml",
+        "Length": 3804,
+        "SHA256": "B203A45078EC1A81B739E5CC736CA88D958146763F172F1BE686EA199F3FE261"
+    },
+    {
+        "RelativePath": "writable/fiscal/artifacts/fd334ae80ec1e1ad22dc725e65bb6dfb4f71e1e1d22fad80.xml",
+        "Length": 4549,
+        "SHA256": "E3F2AE836121A877C72766BEB8284AE98DC2DB96EF5E8C0FEADB89668094446D"
+    },
+    {
+        "RelativePath": "writable/fiscal/certificates/2/6d24957ea0a861152ee3c61b89ad5cb24ef0939d438e7a15.cer",
+        "Length": 1556,
+        "SHA256": "E9F223E075490CCA2428F4DF6AE51DED155BE7B660EB929EC3499758EBDA17E5"
+    },
+    {
+        "RelativePath": "writable/fiscal/certificates/2/7fbb99eedf2e969fc2b198f3ed3e6691be1474351d79a58e.key",
+        "Length": 1298,
+        "SHA256": "BE57F86D0C9FAEEB8C09DE188E159CFE8B43756B24B2C55AB0A6A502D4D69E7F"
+    },
+    {
+        "RelativePath": "writable/fiscal/pac-contingency/33c893950553ba8c888c921b0e9213646dfb4393c6d66846.enc",
+        "Length": 6172,
+        "SHA256": "57864CB7C741D4A747D8DC1EC2DFA471A69E9930A550C708E02FAEF4A977E1F3"
+    },
+    {
+        "RelativePath": "writable/fiscal/pac-contingency/8dc4e21fe88fbf2d1bcfea8d7d5821558978abc4dfa1c5bd.enc",
+        "Length": 6184,
+        "SHA256": "FE4AE292DF1F872F1CAD69C21D78964C5B6A5AA9AF3223523C379B26855CA59F"
+    },
+    {
+        "RelativePath": "writable/fiscal/pac-contingency/989fb79cadd2bbb35a908a72d392e8d10710ad67f1d2b437.enc",
+        "Length": 6172,
+        "SHA256": "1BEB6B557EF0C7602F1F90CEE5AAD86F05DEEB548853C3467E81E4FD2D5484A2"
+    },
+    {
+        "RelativePath": "writable/fiscal/pac-contingency/af7de3164497efd80105f4dc0b3c54e1a25c8812e4821306.enc",
+        "Length": 6168,
+        "SHA256": "AC9194CEA88138E8B51E75FA022D8C9B8CCD14479BD32B42BB4547A31FA9C73D"
+    },
+    {
+        "RelativePath": "writable/fiscal/prexml/22d018b45294aa16859adf77c5c6b865faf7237c9dcedd48.xml",
+        "Length": 1411,
+        "SHA256": "099AFCFEAB2CA1F4BD5A4D4AC312F1523AE33FC2400BDE12F1C0D3877566E0F3"
+    },
+    {
+        "RelativePath": "writable/fiscal/prexml/2a49dd469c6b0718b581bffc3332f404df4211b2a5d2627e.xml",
+        "Length": 1420,
+        "SHA256": "9C43F2F290BCDECB9A1C14AB6D3CCE62733DD44DCFEF1791852567E34ECBF220"
+    },
+    {
+        "RelativePath": "writable/fiscal/prexml/2d4067e7483fc69de299107a80018fa661a629b10f68064f.xml",
+        "Length": 1411,
+        "SHA256": "4663FF5684D86B3CAF7174A33F9688CABE3861DF8AA5C2A03B874D06F5620542"
+    },
+    {
+        "RelativePath": "writable/fiscal/prexml/38bee4ce617653181e3abdede31588a41d16eabd9c123484.xml",
+        "Length": 1411,
+        "SHA256": "89DAC40CC9B7F4C380FC2AC6D7F2EE7E153FC43267C68C6FFF50FDEAA637345D"
+    },
+    {
+        "RelativePath": "writable/fiscal/prexml/3a14240f3530441c0b45da5a1026cf2e5f67bb43e532dfc4.xml",
+        "Length": 1411,
+        "SHA256": "8A546C4A774A3297030C037E0D0E187EB6CC9C8873A9A8DFC81A6BA6ADA5AD1E"
+    },
+    {
+        "RelativePath": "writable/fiscal/prexml/41dbc897e596b4048c7853d67feb3ef35be25e24c57f67a2.xml",
+        "Length": 1412,
+        "SHA256": "51F8901134468887606ED9156082E39FFA6435B2DC34C4CA0FC2ADE0E1B24CAF"
+    },
+    {
+        "RelativePath": "writable/fiscal/prexml/4303299d3566aa91696f7f828b540a0852ddc6018c0e0779.xml",
+        "Length": 1412,
+        "SHA256": "B37DA14C74906C83492157C5DD986410ADC036B27E5756CA31464F46394C834E"
+    },
+    {
+        "RelativePath": "writable/fiscal/prexml/6baaf1739af3c9d2dcce546b0d676f133ff29b73932267e7.xml",
+        "Length": 1411,
+        "SHA256": "0B84FD935ECDD9F270B41A8F42CE4E16D150708A7094F8E96D03FB030150CD1D"
+    },
+    {
+        "RelativePath": "writable/fiscal/prexml/6e21c78113cc0db91cbf21b9d6e611d593d9795602d44dac.xml",
+        "Length": 1411,
+        "SHA256": "056763B9BC732A1B6434152F89D5C3A16EF97C2E5CAF04C17F0B59D8A216C82A"
+    },
+    {
+        "RelativePath": "writable/fiscal/prexml/84806484d9d6b95bdab64a2af6a41dc265c2f28fa77caabd.xml",
+        "Length": 1436,
+        "SHA256": "F16C85F7234F8D223FC6A349DBBFCBBA19939581D56C79863DEEDCD587986097"
+    },
+    {
+        "RelativePath": "writable/fiscal/prexml/9d85370030c4c3e0601b735064e0923fd8cfbb1976f11c7f.xml",
+        "Length": 1407,
+        "SHA256": "965F82B838CAF6C8816D6284F03D4FA837B4E1D45B425C8D9073F0A89E1716AA"
+    },
+    {
+        "RelativePath": "writable/fiscal/prexml/a8c70cb9051430bcedd8e49394e93d176dc5bbd3768a65c4.xml",
+        "Length": 1404,
+        "SHA256": "A0A1DF42A6AF5DAA42E5BBE9CBB5AF693C5C527638D92112F0672DD1BA16B842"
+    },
+    {
+        "RelativePath": "writable/fiscal/prexml/e4105b34cd4e5d74eeeba0ab7b0e335b041122824e06bf5c.xml",
+        "Length": 1412,
+        "SHA256": "27375F3F63C7AB6686D3A1FB667D2640029013E9FA0E780D0E79CA95244E6A3E"
+    },
+    {
+        "RelativePath": "writable/fiscal/prexml/eb202891581cf8e50d91ca2d79afe83a74c37977d8562bc9.xml",
+        "Length": 1411,
+        "SHA256": "E1BD2B944FCE85B24C682334AFF04331D6BA9D3936C2E52135E0F705AA46024B"
+    }
+]
