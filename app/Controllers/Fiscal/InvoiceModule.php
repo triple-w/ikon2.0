@@ -8,14 +8,19 @@ use App\Services\Fiscal\FiscalInvoiceCenterQueryService;
 use App\Services\Fiscal\Pdf\FiscalPdfTemplateResolver;
 use CodeIgniter\Exceptions\PageNotFoundException;
 use Throwable;
+use App\Services\Fiscal\Stamps\FiscalStampAccountService;
 
 final class InvoiceModule extends Security_Controller
 {
     public function index()
     {
         $this->guardAny(['fiscal.invoices.view','fiscal_invoices_view']);
+        $db=db_connect();$issuer=$db->table('fiscal_profiles')->where(['profile_type'=>'issuer','is_default'=>1,'is_active'=>1])->get(1)->getRow();
+        $stampBalance=$issuer?(new FiscalStampAccountService($db))->getBalance((int)$issuer->id):['available'=>0,'reserved'=>0];
         return $this->template->rander('fiscal/invoices/module_index', [
             'advanced_view' => $this->allowed('fiscal.advanced.view'),
+            'stamp_balance' => $stampBalance,
+            'can_view_stamp_balance' => $this->allowed('fiscal.stamps.view_balance'),
         ]);
     }
 

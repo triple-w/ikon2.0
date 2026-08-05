@@ -2,10 +2,12 @@
 declare(strict_types=1);
 namespace App\Services\Fiscal\Pac;
 use RuntimeException;
+use App\Services\Fiscal\Stamps\FiscalStampAccountService;
 
 final class FiscalStampReconciliationService
 {
-    public function __construct(private $db=null,private ?PacSecretVault $vault=null,private ?string $contingencyRoot=null){$this->db=$db?:db_connect();}
+    private FiscalStampAccountService $stampAccounts;
+    public function __construct(private $db=null,private ?PacSecretVault $vault=null,private ?string $contingencyRoot=null,?FiscalStampAccountService $stampAccounts=null){$this->db=$db?:db_connect();$this->stampAccounts=$stampAccounts??new FiscalStampAccountService($this->db);}
     public function recoverFromContingency(int $attemptId,int $userId,bool $authorized):array
     {
         if(!$authorized)throw new RuntimeException('No tiene permiso para conciliar timbrados.');
@@ -15,5 +17,17 @@ final class FiscalStampReconciliationService
         $vault=$this->vault??new PacSecretVault();
         $xml=(new PacContingencyStorageService($vault,$this->contingencyRoot))->read($attempt->contingency_path);
         return ['attempt'=>$attempt,'xml'=>$xml,'sha256'=>hash('sha256',$xml),'requires_validation'=>true,'automatic_resend'=>false];
+    }
+
+    public function consumeConfirmedStamp(int $attemptId,int $stampId,int $userId,bool $authorized):array
+    {
+        if(!$authorized)throw new RuntimeException('No tiene permiso para conciliar timbrados.');
+        return $this->stampAccounts->consumeFromReconciliation($attemptId,$stampId,$userId);
+    }
+
+    public function releaseDefinitiveRejection(int $attemptId,int $userId,bool $authorized):array
+    {
+        if(!$authorized)throw new RuntimeException('No tiene permiso para conciliar timbrados.');
+        return $this->stampAccounts->releaseFromReconciliation($attemptId,$userId);
     }
 }

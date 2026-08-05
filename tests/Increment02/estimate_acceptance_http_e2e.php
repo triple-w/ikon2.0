@@ -173,7 +173,8 @@ try {
     $invoice = $invoices[0] ?? null;
     $assert(($enabledResult['success'] ?? false) && ($enabledResult['invoice_action'] ?? '') === 'created', 'public HTTP controller reports created when the persisted setting is "1"');
     $assert(count($invoices) === 1 && $invoice !== null, 'enabled acceptance creates exactly one sale');
-    $assert($testDb->table('estimates')->where(['id' => $enabledEstimateId, 'status' => 'accepted'])->countAllResults() === 1, 'enabled acceptance marks the estimate accepted');
+    $converted=$testDb->table('estimates')->where(['id'=>$enabledEstimateId,'status'=>'converted'])->get(1)->getRow();
+    $assert($converted&&(int)$converted->converted_sale_id===(int)$invoice->id&&$converted->converted_at&&$converted->converted_by,'enabled acceptance records the completed sale conversion');
     $assert((int) $invoice->client_id === (int) $client->id && (int) $invoice->estimate_id === $enabledEstimateId, 'sale keeps client_id and estimate_id');
     $assert((int) $invoice->project_id === 0 && $testDb->table('projects')->countAllResults() === $projectsBefore, 'acceptance creates zero projects');
     $invoiceItems = $testDb->table('invoice_items')->where(['invoice_id' => $invoice->id, 'deleted' => 0])->orderBy('sort')->get()->getResult();

@@ -110,9 +110,12 @@ if ($source && $db->table('estimate_items')->where(['estimate_id'=>$source['id']
         try{(new App\Services\EstimateAcceptanceService($failingConverter))->acceptAndFulfill($fixtureEstimateId,[],true,(int)$source['created_by']);$rolledBack=false;}catch(RuntimeException $e){$rolledBack=$e->getMessage()==='Injected item failure';}
         $afterFailureInvoices=$db->table('invoices')->where(['estimate_id'=>$fixtureEstimateId,'deleted'=>0])->countAllResults();$afterFailureStatus=(new App\Models\Estimates_model())->get_one($fixtureEstimateId)->status;
         $assert($rolledBack && $afterFailureInvoices===0 && $afterFailureStatus==='sent',"item failure rolls back acceptance and invoice header [caught=".(int)$rolledBack." invoices=$afterFailureInvoices status=$afterFailureStatus]");
-        $first=$service->acceptAndFulfill($fixtureEstimateId,[],true,(int)$source['created_by']);
+        $first=$service->acceptAndFulfill($fixtureEstimateId,['accepted_by'=>(int)$source['created_by']],true,(int)$source['created_by']);
         $invoice=$db->table('invoices')->where('id',$first['invoice_id'])->get()->getRow();
+        $convertedEstimate=$db->table('estimates')->where('id',$fixtureEstimateId)->get()->getRow();
         $assert($first['created_invoice'] && $invoice->status==='not_paid','accepted estimate creates an unpaid sale');
+        $assert((int)$convertedEstimate->converted_sale_id===(int)$invoice->id && $convertedEstimate->converted_at && (int)$convertedEstimate->converted_by===(int)$source['created_by'],'conversion stores sale, timestamp and actor');
+        $assert((int)$convertedEstimate->accepted_by===(int)$source['created_by'],'conversion preserves accepted_by');
         $assert((int)$invoice->estimate_id===$fixtureEstimateId && (int)$invoice->client_id===(int)$source['client_id'],'sale keeps estimate and client references');
         $assert((int)$invoice->company_id===(int)$source['company_id'] && (int)$invoice->tax_id===(int)$source['tax_id'] && (int)$invoice->tax_id2===(int)$source['tax_id2'],'sale keeps company and administrative taxes');
         $assert((string)$invoice->discount_amount===(string)$source['discount_amount'] && $invoice->discount_type===$source['discount_type'] && $invoice->discount_amount_type===$source['discount_amount_type'],'sale keeps discount configuration');
@@ -133,9 +136,10 @@ if ($source && $db->table('estimate_items')->where(['estimate_id'=>$source['id']
             $assert((bool)(new App\Models\Invoice_payments_model())->get_details(['id'=>$paymentId,'invoice_id'=>$invoice->id])->getRow(),'generated sale accepts and exposes a real payment fixture');
         }else{echo "[SKIP] no active payment method was available for payment regression\n";}
         $draftData=['status'=>'draft']; (new App\Models\Invoices_model())->ci_save($draftData,$invoice->id);
+        $acceptedAgain=['status'=>'accepted']; (new App\Models\Estimates_model())->ci_save($acceptedAgain,$fixtureEstimateId);
         $promoted=$service->fulfill($fixtureEstimateId,true,(int)$source['created_by']);
         $assert($promoted['repaired_invoice'] && (new App\Models\Invoices_model())->get_one($invoice->id)->status==='not_paid','an exact automatic draft is safely promoted to unpaid');
-        $second=$service->fulfill($fixtureEstimateId,true,(int)$source['created_by']);
+        $second=$service->acceptAndFulfill($fixtureEstimateId,['accepted_by'=>(int)$source['created_by']],true,(int)$source['created_by']);
         $assert(!$second['created_invoice'] && $db->table('invoices')->where(['estimate_id'=>$fixtureEstimateId,'deleted'=>0])->countAllResults()===1,'reprocessing is idempotent');
     } finally {
         $invoiceIds=array_column($db->table('invoices')->select('id')->where('estimate_id',$fixtureEstimateId)->get()->getResultArray(),'id');

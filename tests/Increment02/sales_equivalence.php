@@ -90,7 +90,7 @@ try {
     $assert($db->table('projects')->whereIn('estimate_id',[$estimateB,$estimateC,$estimateN])->countAllResults()===0,'no project was created');
     $assert($estimateB + 1 === $estimateC && $estimateC + 1 === $estimateN,'three controlled estimates receive consecutive internal/visible numbers');
     $before=(int)(new App\Models\Estimates_model())->get_one($estimateC)->id;
-    (new App\Services\EstimateAcceptanceService())->fulfill($estimateC,true,1);
+    (new App\Services\EstimateAcceptanceService())->acceptAndFulfill($estimateC,[],true,1);
     $assert((int)(new App\Models\Estimates_model())->get_one($estimateC)->id===$before,'acceptance/reprocessing does not change estimate number');
     $assert($db->table('invoices')->where(['estimate_id'=>$estimateC,'deleted'=>0])->countAllResults()===1,'second automatic execution creates no duplicate');
     $onePartEstimate=$createEstimate('one-part',[$items[0]]);

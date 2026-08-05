@@ -14,6 +14,7 @@ $assert(str_contains($migration,"'type'=>'DECIMAL'") && !preg_match("/'type'\s*=
 $assert(str_contains($migration,"'use_for_fiscal' => ['type'=>'TINYINT'") && str_contains($migration,"'default'=>0"),'Existing taxes remain non-fiscal by default.');
 $flow=file_get_contents($root.'/app/Services/EstimateAcceptanceService.php');
 $assert((bool) preg_match("/get_all_where\(\['estimate_id'\s*=>\s*\\\$estimateId/",$flow) && str_contains($flow,'transRollback'),'Acceptance service checks existing relations and rolls back failures.');
+$assert(!preg_match('/ci_save\s*\(\s*\[/s',$flow) && str_contains($flow,'ci_save($conversionData, $estimateId)'),'Estimate conversion passes an assignable variable to reference-based ci_save().');
 $converter=file_get_contents($root.'/app/Services/EstimateToInvoiceService.php');
 $assert((bool) preg_match("/'estimate_id'\s*=>\s*(?:\(int\)\s*)?\\\$estimate->id/",$converter) && (bool) preg_match("/'project_id'\s*=>\s*0/",$converter) && (bool) preg_match("/'status'\s*=>\s*\\\$status/",$converter) && (bool) preg_match("/\['status'\s*=>\s*'not_paid'\]/",$flow),'Generated sale retains estimate, has no project, and is promoted to unpaid.');
 $assert(!str_contains($flow, 'Projects_model'), 'Acceptance service has no project dependency.');

@@ -162,12 +162,13 @@ class EstimateAcceptanceService
 
     private function markConverted(int $estimateId, int $invoiceId, int $userId): void
     {
-        (new Estimates_model())->ci_save([
+        $conversionData = [
             'status' => 'converted',
             'converted_sale_id' => $invoiceId,
             'converted_at' => get_current_utc_time(),
             'converted_by' => $userId,
-        ], $estimateId);
+        ];
+        (new Estimates_model())->ci_save($conversionData, $estimateId);
         db_connect()->table('commercial_lifecycle_audit')->insert([
             'entity_type'=>'quotation','entity_id'=>$estimateId,'event'=>'quotation_converted',
             'old_status'=>'accepted','new_status'=>'converted','reason'=>null,

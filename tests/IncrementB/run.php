@@ -13,6 +13,8 @@ $assert = static function (bool $condition, string $message) use (&$pass, &$fail
 };
 
 $db = require dirname(__DIR__) . '/Increment02/isolated_database.php';
+require_once APPPATH.'Database/Migrations/2026-08-04-170000_CreateFiscalStampCommercialControl.php';
+(new App\Database\Migrations\CreateFiscalStampCommercialControl())->up();
 $settings = [];
 foreach ($db->table('settings')->get()->getResult() as $setting) {
     $settings[$setting->setting_name] = $setting->setting_value;
@@ -108,6 +110,8 @@ $fiscal->environment = 'local';
 $fiscal->allowRealPac = false;
 $fiscal->pacAdapter = 'fake';
 $provider = config('TimbradorXpress');
+$stampAccounts = new App\Services\Fiscal\Stamps\FiscalStampAccountService($db);
+$stampAccounts->allocate((int)$reference->issuer_profile_id,10,'Fixture commercial stamps',null,'increment-b:allocation');
 
 $makeService = static function (App\Services\Fiscal\Pac\FakePacAdapter $adapter) use (
     $db, $fiscal, $provider, $preXmlRoot, $artifactRoot, $contingencyRoot

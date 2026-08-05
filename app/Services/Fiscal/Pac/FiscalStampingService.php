@@ -11,6 +11,8 @@ use App\Services\Fiscal\Signing\SignedXmlVerifier;
 use App\Services\Fiscal\Signing\CsdCertificateSecretService;
 use App\Services\Fiscal\CsdCertificateService;
 use App\Services\Fiscal\FiscalPreviewModeGuard;
+use App\Services\Fiscal\Stamps\FiscalStampAccountService;
+use App\Services\Fiscal\Stamps\FiscalStampBalanceException;
 use Config\TimbradorXpress;
 use RuntimeException;
 use Throwable;
@@ -26,7 +28,8 @@ final class FiscalStampingService
         private ?PacSecretVault $vault = null,
         private ?string $artifactRoot = null,
         private ?string $contingencyRoot = null,
-        private $signedXmlVerifier = null
+        private $signedXmlVerifier = null,
+        private ?FiscalStampAccountService $stampAccounts = null
     ) {
         $this->db = $db ?: db_connect();
     }
@@ -71,8 +74,21 @@ final class FiscalStampingService
             );
         }
 
+        try {
+            ($this->stampAccounts ??= new FiscalStampAccountService($this->db))
+                ->reserveForAttempt((int)$attempt->id, $userId);
+        } catch (FiscalStampBalanceException $balanceError) {
+            $this->db->transStart();
+            $this->db->table('fiscal_stamp_attempts')->where('id',$attempt->id)->update(['status'=>'insufficient_balance','retryable'=>1,'error_category'=>'commercial_balance','updated_at'=>get_current_utc_time()]);
+            $this->db->table('fiscal_documents')->where('id',$documentId)->update(['status'=>'stamping_error','stamp_updated_at'=>get_current_utc_time()]);
+            $this->audit($documentId,$userId,'stamp_balance_blocked',['attempt_id'=>$attempt->id]);
+            $this->db->transComplete();
+            throw $balanceError;
+        }
+
         if (!hash_equals($verification->xmlSha256, hash('sha256', $xml))) {
             $this->markPreparationFailure((int) $attempt->id, $documentId);
+            $this->releaseCommercialReservation((int)$attempt->id,$userId,'Signed XML changed before PAC transport.');
             throw new RuntimeException('El XML firmado cambió después de su verificación.');
         }
 
@@ -85,11 +101,12 @@ final class FiscalStampingService
                 'No fue posible preparar de forma segura el transporte al PAC.',
                 0
             );
+            $this->releaseCommercialReservation((int)$attempt->id,$userId,'Transport preparation failed before PAC request.');
             throw $preTransportError;
         }
 
         // This update must succeed immediately before the adapter is invoked.
-        $this->markSending((int) $attempt->id, $documentId);
+        try{$this->markSending((int)$attempt->id,$documentId);}catch(Throwable$e){$this->releaseCommercialReservation((int)$attempt->id,$userId,'Local persistence failed before PAC request.');throw$e;}
         $started = microtime(true);
         try {
             $response = $adapter->stamp(new StampRequest(
@@ -107,6 +124,7 @@ final class FiscalStampingService
                 'El adaptador rechazó la solicitud antes del transporte.',
                 (int)round((microtime(true)-$started)*1000)
             );
+            $this->releaseCommercialReservation((int)$attempt->id,$userId,'PAC adapter failed before request transport.');
             throw $preTransportError;
         }
         unset($keyPem);
@@ -115,6 +133,7 @@ final class FiscalStampingService
         if ($response->transportError) {
             if (($response->metadata['request_sent'] ?? null) === false && !$response->timeout) {
                 $this->finishNotSent((int) $attempt->id, $documentId, $response->message, $duration);
+                $this->releaseCommercialReservation((int)$attempt->id,$userId,'PAC confirmed request was not sent.');
 
                 return new FiscalStampingResult(
                     false, 'transport_not_sent', $documentId, (int) $attempt->id,
@@ -255,6 +274,7 @@ final class FiscalStampingService
                 'pdf_template' => $providerConfig->pdfTemplate,
                 'created_at' => get_current_utc_time(),
             ]);
+            $stampId=(int)$this->db->insertID();
             $this->db->table('fiscal_stamp_attempts')->where('id', $attempt->id)->update([
                 'status' => 'success',
                 'responded_at' => get_current_utc_time(),
@@ -280,6 +300,15 @@ final class FiscalStampingService
                 throw new RuntimeException('No fue posible persistir el timbre.');
             }
             $this->db->transCommit();
+
+            try {
+                ($this->stampAccounts ??= new FiscalStampAccountService($this->db))
+                    ->consumeReservation((int)$attempt->id,$stampId,$userId);
+            } catch (Throwable $commercialError) {
+                $this->db->table('fiscal_stamp_attempts')->where('id',$attempt->id)->update(['status'=>'reconciliation_required','requires_reconciliation'=>1,'error_category'=>'commercial_consumption','updated_at'=>get_current_utc_time()]);
+                $this->db->table('fiscal_documents')->where('id',$documentId)->update(['status'=>'stamp_status_unknown','stamp_updated_at'=>get_current_utc_time()]);
+                throw new RuntimeException('El timbre fiscal fue persistido, pero su consumo comercial requiere conciliación.',0,$commercialError);
+            }
 
             $pdfResult = $this->persistOptionalPacPdf(
                 $documentId,
@@ -382,7 +411,7 @@ final class FiscalStampingService
                 ->where('idempotency_key', $key)->get(1)->getRow();
             if ($existing) {
                 if ((int)($existing->retryable ?? 0) !== 1
-                    || !in_array((string)$existing->status, ['transport_not_sent','provider_rejected','rejected'], true)) {
+                    || !in_array((string)$existing->status, ['transport_not_sent','provider_rejected','rejected','insufficient_balance'], true)) {
                     $this->db->transCommit();
                     return [$document, $artifact, $existing, $xml, true];
                 }
@@ -612,6 +641,7 @@ final class FiscalStampingService
             'category' => $error->category,
         ]);
         $this->db->transComplete();
+        $this->releaseCommercialReservation((int)$attempt->id,$userId,'PAC definitively rejected the CFDI.');
 
         return new FiscalStampingResult(
             false, 'rejected', $documentId, (int) $attempt->id,
@@ -619,6 +649,12 @@ final class FiscalStampingService
             $response->httpStatus, null, $error->retryable,
             $error->requiresReconciliation, $error->recommendedAction
         );
+    }
+
+    private function releaseCommercialReservation(int$attemptId,int$userId,string$reason):void
+    {
+        try{($this->stampAccounts??=new FiscalStampAccountService($this->db))->releaseReservation($attemptId,$reason,$userId);}
+        catch(FiscalStampBalanceException$e){if($e->getMessage()!=='STAMP_RESERVATION_MISSING')throw$e;}
     }
 
     private function finishUnknown(

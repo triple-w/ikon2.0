@@ -93,3 +93,4 @@ $routes->post('fiscal/series/list', 'Fiscal\Series::list_data');
 $routes->post('fiscal/series/form', 'Fiscal\Series::form');
 $routes->post('fiscal/series/save', 'Fiscal\Series::save');
 $routes->post('fiscal/series/deactivate', 'Fiscal\Series::deactivate');
+$routes->get('fiscal/stamps/balance', 'Fiscal\StampBalance::index');

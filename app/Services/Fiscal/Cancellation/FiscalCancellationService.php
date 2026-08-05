@@ -7,13 +7,16 @@ use App\Contracts\Fiscal\Cancellation\FiscalCancellationAdapterInterface;
 use RuntimeException;
 use Throwable;
 use App\Services\Fiscal\FiscalPreviewModeGuard;
+use App\Services\Fiscal\Stamps\FiscalStampAccountService;
+use App\Services\Fiscal\Stamps\FiscalStampBalanceException;
 
 final class FiscalCancellationService
 {
     private $db;
-    public function __construct($db=null, private readonly ?FiscalCancellationAdapterInterface $adapter=null)
+    public function __construct($db=null, private readonly ?FiscalCancellationAdapterInterface $adapter=null, private ?FiscalStampAccountService $stampAccounts=null)
     {
         $this->db=$db?:db_connect();
+        $this->stampAccounts ??= new FiscalStampAccountService($this->db);
     }
 
     public function cancel(int $documentId,string $reason,?string $replacementUuid,int $userId,bool $authorized):array
@@ -51,11 +54,22 @@ final class FiscalCancellationService
             if(!$this->db->transStatus())throw new RuntimeException('No fue posible preparar la cancelación durable.');
             $this->db->transCommit();
 
+            try {
+                $this->stampAccounts->reserveForCancellation($requestId, (int) $document->issuer_profile_id, $userId);
+            } catch (FiscalStampBalanceException $e) {
+                $now=get_current_utc_time();
+                $this->db->table('fiscal_cancellation_requests')->where('id',$requestId)->update(['status'=>'insufficient_balance','updated_at'=>$now]);
+                $this->db->table('fiscal_cancellation_attempts')->where('id',$attemptId)->update(['status'=>'insufficient_balance','updated_at'=>$now]);
+                $this->db->table('fiscal_documents')->where('id',$documentId)->update(['status'=>'stamped','updated_at'=>$now]);
+                throw $e;
+            }
+
             $result=($this->adapter??new FakeFiscalCancellationAdapter())->cancel(['uuid'=>$stamp->uuid,'reason'=>$reason,'replacement_uuid'=>$replacementUuid]);
             if(!empty($result['force_persistence_error']))throw new RuntimeException('Fallo de persistencia posterior simulado.');
             return $this->persistResult($documentId,$requestId,$attemptId,$result,$userId);
         }catch(Throwable $e){
             $this->db->transRollback();
+            if($e instanceof FiscalStampBalanceException)throw $e;
             if(isset($requestId)){
                 $now=get_current_utc_time();
                 $this->db->table('fiscal_cancellation_requests')->where('id',$requestId)->update(['status'=>'unknown','requires_reconciliation'=>1,'updated_at'=>$now]);
@@ -84,6 +98,16 @@ final class FiscalCancellationService
             if(!$this->db->transStatus())throw new RuntimeException('No fue posible persistir el resultado de cancelación.');
             $this->db->transCommit();
         }catch(Throwable$e){$this->db->transRollback();throw$e;}
+        try{
+            if($status==='accepted'){
+                $this->stampAccounts->consumeCancellation($requestId,$userId);
+            }elseif(in_array($status,['rejected','transport_not_sent'],true)){
+                $this->stampAccounts->releaseCancellation($requestId,'Cancelacion no aceptada por el PAC.',$userId);
+            }
+        }catch(Throwable$commercialError){
+            $this->db->table('fiscal_cancellation_requests')->where('id',$requestId)->update(['requires_reconciliation'=>1,'updated_at'=>get_current_utc_time()]);
+            throw new RuntimeException('El resultado fiscal fue persistido, pero el movimiento comercial requiere conciliacion.',0,$commercialError);
+        }
         return['success'=>$status==='accepted','status'=>$status,'request_id'=>$requestId,'attempt_id'=>$attemptId,'ack_artifact_id'=>$ackId,'requires_reconciliation'=>(bool)$requires,'message'=>$result['message']];
     }
 }

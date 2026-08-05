@@ -460,7 +460,7 @@ class Roles extends Security_Controller {
               'fiscal.sales.invoice','fiscal.drafts.view','fiscal.drafts.create','fiscal.drafts.edit','fiscal.invoices.stamp',
             'fiscal.drafts.discard','fiscal.invoices.view','fiscal.invoices.download_xml',
             'fiscal.invoices.download_pdf','fiscal.invoices.send','fiscal.invoices.cancel',
-            'fiscal.advanced.view','fiscal.advanced.reconcile','fiscal.advanced.regenerate_pdf'
+            'fiscal.advanced.view','fiscal.advanced.reconcile','fiscal.advanced.regenerate_pdf','fiscal.stamps.view_balance'
           ) as $permission) {
               if ($this->request->getPost($permission)) $permissions[$permission] = '1';
           }
