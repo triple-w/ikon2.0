@@ -50,6 +50,8 @@ $assert(str_contains($acceptance, "'invoice_action' => 'existing'") && str_conta
 $assert(str_contains($converter, "'proposal_id' => (int) \$proposal->id") && str_contains($converter, "'estimate_id' => 0"), 'Venta conserva origen Proposal.');
 $assert(str_contains($converter, "'total' => \$quantity * \$rate") && str_contains($converter, 'quantity <= 0'), 'Partidas se validan y recalculan.');
 $assert(str_contains($policy, "status === 'accepted'") && str_contains($policy, 'converted_sale_id'), 'Policy cierra Proposal.');
+$assert((new App\Services\ProposalEditabilityPolicy())->isEditable(0), 'Policy permite la creacion de una Proposal nueva con ID 0.');
+$assert(!str_contains($proposalController, 'proposal.accept_and_convert') || str_contains($proposalController, 'ProposalAcceptanceService'), 'Modal no exige el permiso dedicado de conversion.');
 $assert(substr_count($proposalController, '_is_proposal_editable') >= 8, 'Rutas comerciales aplican policy central.');
 $assert(str_contains($invoiceController, 'Proposal conversions are atomic'), 'Ruta manual Proposal a venta esta bloqueada.');
 $assert(!preg_match('/Fiscal|CFDI|stamp|timbre/i', $converter), 'Conversor no invoca flujo fiscal/timbres.');
@@ -93,12 +95,15 @@ $isolatedDb->table('proposal_items')->insert([
     'quantity' => 2, 'unit_type' => 'pieza', 'rate' => 125, 'total' => 250,
     'item_id' => 0, 'sort' => 1, 'deleted' => 0,
 ]);
+$documentPolicy = new App\Services\ProposalEditabilityPolicy($isolatedDb);
+$assert($documentPolicy->isEditable($proposalId), 'Proposal sent sin conversion permanece editable segun la politica vigente.');
 $result = (new App\Services\ProposalAcceptanceService(null, $isolatedDb))->acceptAndConvert($proposalId, (int) $actor->id);
 $savedProposal = $isolatedDb->table('proposals')->where('id', $proposalId)->get()->getRow();
 $savedInvoice = $isolatedDb->table('invoices')->where('id', $result['invoice_id'])->get()->getRow();
 $assert($result['invoice_action'] === 'created' && $savedProposal->status === 'accepted', 'Aceptacion interna crea venta y cierra Proposal.');
 $assert((int) $savedProposal->converted_sale_id === (int) $savedInvoice->id && (int) $savedInvoice->proposal_id === $proposalId, 'Backlinks Proposal/Invoice son coherentes.');
 $assert((int) $savedInvoice->estimate_id === 0, 'Venta de Proposal conserva estimate_id=0.');
+$assert(!$documentPolicy->isEditable($proposalId), 'Proposal aceptada y convertida permanece bloqueada.');
 $second = (new App\Services\ProposalAcceptanceService(null, $isolatedDb))->acceptAndConvert($proposalId, (int) $actor->id);
 $assert($second['invoice_action'] === 'existing' && (int) $second['invoice_id'] === (int) $savedInvoice->id, 'Segunda aceptacion devuelve la misma venta.');
 $assert($isolatedDb->table('invoices')->where('proposal_id', $proposalId)->countAllResults() === 1, 'Idempotencia impide una segunda venta.');
