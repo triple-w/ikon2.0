@@ -51,12 +51,25 @@ class Estimate extends Security_Controller {
         }
 
         $estimate_info = $this->Estimates_model->get_one($estimate_id);
-        if (!($estimate_info->id && $estimate_info->public_key === $public_key)) {
+        if (!($estimate_info->id && !$estimate_info->deleted && $estimate_info->public_key === $public_key)) {
             show_404();
         }
 
-        //client can only update the status once and the value should be either accepted or declined
-        if ($status == "accepted" || $status == "declined") {
+        $public_url = get_uri("estimate/preview/{$estimate_id}/{$public_key}");
+
+        // A repeated acceptance of an already converted estimate is successful and read-only.
+        if ($status === "accepted" && ($estimate_info->status === "converted" || $estimate_info->converted_sale_id)) {
+            echo json_encode(array(
+                "success" => true,
+                "status" => "converted",
+                "message" => app_lang("estimate_already_accepted_and_processed"),
+                "public_url" => $public_url
+            ));
+            return;
+        }
+
+        // Public decisions are only valid while the estimate is pending.
+        if (($status == "accepted" || $status == "declined") && $estimate_info->status === "sent") {
             $estimate_data = array("status" => $status);
             if ($status === "accepted") {
                 $acceptance_service = new EstimateAcceptanceService();
@@ -76,6 +89,8 @@ class Estimate extends Security_Controller {
                 $estimate_id = $this->Estimates_model->ci_save($estimate_data, $estimate_id);
             }
 
+            $fresh_estimate = $this->Estimates_model->get_one($estimate_id);
+
             //create notification
             if ($status == "accepted") {
                 log_notification("estimate_accepted", array("estimate_id" => $estimate_id), isset($this->login_user->id) ? $this->login_user->id : "999999996");
@@ -84,7 +99,25 @@ class Estimate extends Security_Controller {
                 log_notification("estimate_rejected", array("estimate_id" => $estimate_id), isset($this->login_user->id) ? $this->login_user->id : "999999996");
                 $this->session->setFlashdata("error_message", app_lang('estimate_rejected'));
             }
+
+            echo json_encode(array(
+                "success" => true,
+                "status" => $fresh_estimate->status,
+                "message" => $status === "accepted"
+                    ? app_lang($acceptance_service->resultMessageKey($result))
+                    : app_lang("estimate_rejected"),
+                "public_url" => $public_url
+            ));
+            return;
         }
+
+
+        echo json_encode(array(
+            "success" => false,
+            "status" => $estimate_info->status,
+            "message" => app_lang("estimate_status_cannot_be_changed"),
+            "public_url" => $public_url
+        ));
     }
 
     function accept_estimate_modal_form($estimate_id = 0, $public_key = "") {
@@ -94,7 +127,7 @@ class Estimate extends Security_Controller {
         }
 
         $estimate_info = $this->Estimates_model->get_one($estimate_id);
-        if (!$estimate_info->id) {
+        if (!$estimate_info->id || $estimate_info->deleted || $estimate_info->status !== "sent") {
             show_404();
         }
 
@@ -134,13 +167,28 @@ class Estimate extends Security_Controller {
 
         $estimate_id = $this->request->getPost("id");
         $estimate_info = $this->Estimates_model->get_one($estimate_id);
-        if (!$estimate_info->id) {
+        if (!$estimate_info->id || $estimate_info->deleted) {
             show_404();
         }
 
         $public_key = $this->request->getPost("public_key");
         if ($estimate_info->public_key !== $public_key) {
             show_404();
+        }
+
+        if ($estimate_info->status === "converted" || $estimate_info->converted_sale_id) {
+            echo json_encode(array(
+                "success" => true,
+                "status" => "converted",
+                "message" => app_lang("estimate_already_accepted_and_processed"),
+                "public_url" => get_uri("estimate/preview/{$estimate_id}/{$public_key}")
+            ));
+            return;
+        }
+
+        if ($estimate_info->status !== "sent") {
+            echo json_encode(array("success" => false, "message" => app_lang("estimate_status_cannot_be_changed")));
+            return;
         }
 
         $name = $this->request->getPost("name");
@@ -196,12 +244,14 @@ class Estimate extends Security_Controller {
             return;
         }
         if ($result["accepted"] ?? false) {
+            $fresh_estimate = $this->Estimates_model->get_one($estimate_id);
             log_notification("estimate_accepted", array("estimate_id" => $estimate_id), ($name ? "999999996" : $this->login_user->id));
             echo json_encode(array(
                 "success" => true,
+                "status" => $fresh_estimate->status,
                 "message" => app_lang($acceptance_service->resultMessageKey($result)),
                 "invoice_action" => $result["invoice_action"],
-                "invoice_id" => $result["invoice_id"],
+                "public_url" => get_uri("estimate/preview/{$estimate_id}/{$public_key}")
             ));
         } else {
             echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));

@@ -7,7 +7,21 @@ app/Config/*Local.php
 *.secret
 *.secrets
 
-
+# Runtime data
+writable/cache/**
+writable/logs/**
+writable/session/**
+writable/uploads/**
+writable/debugbar/**
+writable/backups/**
+writable/reports/**
+writable/releases/**
+writable/*.php
+writable/fiscal-private/**
+writable/fiscal/prexml/**
+writable/fiscal/certificates/**
+writable/fiscal/artifacts/**
+writable/fiscal/pac-contingency/**
 
 # Runtime-generated temporary documents; keep the access-control sentinel.
 /files/temp/*

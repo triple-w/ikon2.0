@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Services\EstimateAcceptanceService;
+use App\Services\EstimateItemPricingService;
 
 use App\Libraries\Dropdown_list;
 
@@ -640,8 +641,16 @@ class Estimates extends Security_Controller {
         }
 
         $id = $this->request->getPost('id');
-        $rate = unformat_currency($this->request->getPost('estimate_item_rate'));
-        $quantity = unformat_currency($this->request->getPost('estimate_item_quantity'));
+        $pricing = new EstimateItemPricingService();
+        try {
+            $rate = $pricing->requiredNonNegativeDecimal($this->request->getPost('estimate_item_rate'), app_lang('sale_price'));
+            $quantity = $pricing->positiveDecimal($this->request->getPost('estimate_item_quantity'), app_lang('quantity'));
+            $cost = $pricing->optionalNonNegativeDecimal($this->request->getPost('estimate_item_cost'), app_lang('cost'));
+            $profit_percentage = $pricing->optionalNonNegativeDecimal($this->request->getPost('estimate_item_profit_percentage'), app_lang('profit_over_cost_percentage'));
+        } catch (\InvalidArgumentException $e) {
+            echo json_encode(array("success" => false, "message" => $e->getMessage()));
+            return;
+        }
         $estimate_item_title = $this->request->getPost('estimate_item_title');
         $item_id = $this->request->getPost('item_id');
 
@@ -663,8 +672,10 @@ class Estimates extends Security_Controller {
             "description" => $this->request->getPost('estimate_item_description'),
             "quantity" => $quantity,
             "unit_type" => $this->request->getPost('estimate_unit_type'),
-            "rate" => unformat_currency($this->request->getPost('estimate_item_rate')),
-            "total" => $rate * $quantity,
+            "cost" => $cost,
+            "profit_percentage" => $profit_percentage,
+            "rate" => $rate,
+            "total" => (float) $rate * (float) $quantity,
             "item_id" => $item_id
         );
 

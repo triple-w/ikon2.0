@@ -93,6 +93,11 @@ class Invoices extends Security_Controller {
         $contract_id = $this->request->getPost('contract_id');
         $proposal_id = $this->request->getPost('proposal_id');
         $order_id = $this->request->getPost('order_id');
+
+        // Proposal conversions are atomic and may only be created by ProposalAcceptanceService.
+        if ($proposal_id) {
+            app_redirect("forbidden");
+        }
         $view_data['estimate_id'] = $estimate_id;
         $view_data['contract_id'] = $contract_id;
         $view_data['proposal_id'] = $proposal_id;
@@ -279,6 +284,10 @@ class Invoices extends Security_Controller {
         $contract_id = $this->request->getPost('contract_id');
         $proposal_id = $this->request->getPost('proposal_id');
         $order_id = $this->request->getPost('order_id');
+
+        if ($proposal_id) {
+            app_redirect("forbidden");
+        }
 
         $main_invoice_id = "";
         if (($is_clone && $id) || $estimate_id || $order_id || $contract_id || $proposal_id) {

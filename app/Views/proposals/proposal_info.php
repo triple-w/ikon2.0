@@ -22,8 +22,8 @@
                     <?php if ($show_estimate_option) { ?>
                         <li role="presentation"><?php echo modal_anchor(get_uri("estimates/modal_form/"), "<i data-feather='file' class='icon-16'></i> " . app_lang('create_estimate'), array("title" => app_lang("create_estimate"), "data-post-proposal_id" => $proposal_info->id, "class" => "dropdown-item")); ?> </li>
                     <?php } ?>
-                    <?php if ($show_invoice_option) { ?>
-                        <li role="presentation"><?php echo modal_anchor(get_uri("invoices/modal_form/"), "<i data-feather='file-text' class='icon-16'></i> " . app_lang('create_invoice'), array("title" => app_lang("create_invoice"), "data-post-proposal_id" => $proposal_info->id, "class" => "dropdown-item")); ?> </li>
+                    <?php if (!empty($proposal_info->converted_sale_id)) { ?>
+                        <li role="presentation"><?php echo anchor(get_uri("invoices/view/" . $proposal_info->converted_sale_id), "<i data-feather='file-text' class='icon-16'></i> " . app_lang('view_invoice'), array("class" => "dropdown-item")); ?> </li>
                     <?php } ?>
                     <?php if ($show_contract_option) { ?>
                         <li role="presentation"><?php echo modal_anchor(get_uri("contracts/modal_form/"), "<i data-feather='file-plus' class='icon-16'></i> " . app_lang('create_contract'), array("title" => app_lang("create_contract"), "data-post-proposal_id" => $proposal_info->id, "class" => "dropdown-item")); ?> </li>
@@ -38,10 +38,6 @@
                     <?php if ($proposal_status == "draft") { ?>
                         <li role="presentation"><?php echo ajax_anchor(get_uri("proposals/update_proposal_status/" . $proposal_info->id . "/sent"), "<i data-feather='send' class='icon-16'></i> " . app_lang('mark_as_sent'), array("data-reload-on-success" => "1", "class" => "dropdown-item")); ?> </li>
                     <?php } ?>
-                <?php } else if ($proposal_status == "accepted") { ?>
-                    <li role="presentation"><?php echo ajax_anchor(get_uri("proposals/update_proposal_status/" . $proposal_info->id . "/declined"), "<i data-feather='x-circle' class='icon-16'></i> " . app_lang('mark_as_rejected'), array("data-reload-on-success" => "1", "class" => "dropdown-item")); ?> </li>
-                <?php } else if ($proposal_status == "declined") { ?>
-                    <li role="presentation"><?php echo ajax_anchor(get_uri("proposals/update_proposal_status/" . $proposal_info->id . "/accepted"), "<i data-feather='check-circle' class='icon-16'></i> " . app_lang('mark_as_accepted'), array("data-reload-on-success" => "1", "class" => "dropdown-item")); ?> </li>
                 <?php } ?>
 
             </ul>
@@ -92,6 +88,18 @@
             <?php if ($proposal_info->project_id) { ?>
                 <li class="list-group-item">
                     <span title="<?php echo app_lang("project"); ?>"><i data-feather="command" class="icon-16 mr5"></i> <?php echo anchor(get_uri("projects/view/" . $proposal_info->project_id), $proposal_info->project_title); ?></span>
+                </li>
+            <?php } ?>
+
+            <?php if (!empty($proposal_info->converted_sale_id)) { ?>
+                <li class="list-group-item">
+                    <span><i data-feather="file-text" class="icon-16 mr5"></i> <?php echo anchor(get_uri("invoices/view/" . $proposal_info->converted_sale_id), app_lang("view_invoice")); ?></span>
+                </li>
+            <?php } ?>
+
+            <?php if (!empty($proposal_info->accepted_at)) { ?>
+                <li class="list-group-item">
+                    <strong><?php echo app_lang("accepted") . ": "; ?></strong><?php echo format_to_datetime($proposal_info->accepted_at); ?>
                 </li>
             <?php } ?>
         </ul>

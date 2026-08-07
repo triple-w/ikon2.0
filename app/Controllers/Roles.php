@@ -65,6 +65,7 @@ class Roles extends Security_Controller {
             $view_data['estimate'] = get_array_value($permissions, "estimate");
             $view_data['contract'] = get_array_value($permissions, "contract");
             $view_data['proposal'] = get_array_value($permissions, "proposal");
+            $view_data['proposal_accept_and_convert'] = get_array_value($permissions, "proposal.accept_and_convert");
             $view_data['expense'] = get_array_value($permissions, "expense");
             $view_data['order'] = get_array_value($permissions, "order");
             $view_data['client'] = get_array_value($permissions, "client");
@@ -196,6 +197,7 @@ class Roles extends Security_Controller {
         $estimate = $this->request->getPost('estimate_permission');
         $contract = $this->request->getPost('contract_permission');
         $proposal = $this->request->getPost('proposal_permission');
+        $proposal_accept_and_convert = $this->request->getPost('proposal_accept_and_convert');
         $expense = $this->request->getPost('expense_permission');
         $order = $this->request->getPost('order_permission');
         $client = $this->request->getPost('client_permission');
@@ -347,6 +349,7 @@ class Roles extends Security_Controller {
             "estimate" => $estimate,
             "contract" => $contract,
             "proposal" => $proposal,
+            "proposal.accept_and_convert" => $proposal_accept_and_convert,
             "expense" => $expense,
             "order" => $order,
             "client" => $client,

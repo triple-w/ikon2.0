@@ -6,9 +6,9 @@ class Invoices_model extends Crud_model {
 
     protected $table = null;
 
-    function __construct() {
+    function __construct($db = null) {
         $this->table = 'invoices';
-        parent::__construct($this->table);
+        parent::__construct($this->table, $db);
     }
 
     function get_details($options = array()) {
@@ -47,6 +47,11 @@ class Invoices_model extends Crud_model {
         $project_id = $this->_get_clean_value($options, "project_id");
         if ($project_id) {
             $where .= " AND $invoices_table.project_id=$project_id";
+        }
+
+        $proposal_id = $this->_get_clean_value($options, "proposal_id");
+        if ($proposal_id) {
+            $where .= " AND $invoices_table.proposal_id=$proposal_id";
         }
 
         $order_id = $this->_get_clean_value($options, "order_id");

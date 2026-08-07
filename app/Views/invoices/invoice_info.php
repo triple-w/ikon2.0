@@ -68,6 +68,11 @@
                     <span title="<?php echo app_lang("created_from"); ?>"><i data-feather="corner-down-right" class="icon-16 mr5"></i> <?php echo anchor(get_uri("estimates/view/" . $invoice_info->estimate_id), get_estimate_id($invoice_info->estimate_id)); ?></span>
                 </li>
             <?php } ?>
+            <?php if (!empty($invoice_info->proposal_id) && $login_user->is_admin) { ?>
+                <li class="list-group-item">
+                    <span title="<?php echo app_lang("created_from"); ?>"><i data-feather="corner-down-right" class="icon-16 mr5"></i> <?php echo anchor(get_uri("proposals/view/" . $invoice_info->proposal_id), get_proposal_id($invoice_info->proposal_id)); ?></span>
+                </li>
+            <?php } ?>
 
             <?php if ($invoice_info->cancelled_at && $invoice_info->cancelled_by) { ?>
                 <li class="list-group-item">

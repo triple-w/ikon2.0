@@ -6,9 +6,9 @@ class Proposal_items_model extends Crud_model {
 
     protected $table = null;
 
-    function __construct() {
+    function __construct($db = null) {
         $this->table = 'proposal_items';
-        parent::__construct($this->table);
+        parent::__construct($this->table, $db);
     }
 
     function get_details($options = array()) {

@@ -2,6 +2,9 @@
 
 namespace App\Controllers;
 
+use App\Services\ProposalAcceptanceService;
+use App\Services\ProposalEditabilityPolicy;
+
 class Proposals extends Security_Controller {
 
     function __construct() {
@@ -109,6 +112,9 @@ class Proposals extends Security_Controller {
         $id = $this->request->getPost("id");
 
         $this->validate_proposal_access($id);
+        if (! $this->_is_proposal_editable($id)) {
+            app_redirect("forbidden");
+        }
 
         $proposal_data = array(
             "content" => decode_ajax_post_data($this->request->getPost('view'))
@@ -172,6 +178,13 @@ class Proposals extends Security_Controller {
             $proposal_data["content"] = $main_proposal_info->content;
             $proposal_data["public_key"] = make_random_string();
             $proposal_data["created_by"] = $this->login_user->id;
+            $proposal_data["status"] = "draft";
+            $proposal_data["accepted_by"] = 0;
+            $proposal_data["accepted_at"] = null;
+            $proposal_data["converted_sale_id"] = null;
+            $proposal_data["converted_at"] = null;
+            $proposal_data["converted_by"] = null;
+            $proposal_data["meta_data"] = serialize(array());
         }
 
         $proposal_id = $this->Proposals_model->ci_save($proposal_data, $id);
@@ -218,7 +231,6 @@ class Proposals extends Security_Controller {
                     if ($status == "accepted") {
                         $proposal_data["accepted_by"] = $this->login_user->id;
                     }
-
                     $proposal_id = $this->Proposals_model->ci_save($proposal_data, $proposal_id);
 
                     //create notification
@@ -230,7 +242,25 @@ class Proposals extends Security_Controller {
                 }
             } else {
                 //updating by team members
-                if ($status == "accepted" || $status == "declined" || $status == "sent") {
+                if ($status === "accepted") {
+                    try {
+                        $result = (new ProposalAcceptanceService())->acceptAndConvert((int) $proposal_id, (int) $this->login_user->id);
+                        log_notification("proposal_accepted", array("proposal_id" => $proposal_id));
+                        echo json_encode(array(
+                            "success" => true,
+                            "proposal_id" => (int) $proposal_id,
+                            "invoice_id" => $result["invoice_id"],
+                            "invoice_action" => $result["invoice_action"],
+                            "invoice_url" => get_uri("invoices/view/" . $result["invoice_id"]),
+                            "message" => app_lang("proposal_accepted_and_converted")
+                        ));
+                        return;
+                    } catch (\Throwable $e) {
+                        echo json_encode(array("success" => false, "message" => $e->getMessage()));
+                        return;
+                    }
+                }
+                if (($status == "declined" || $status == "sent") && $this->_is_proposal_editable($proposal_info)) {
                     $proposal_data = array("status" => $status);
                     $proposal_id = $this->Proposals_model->ci_save($proposal_data, $proposal_id);
                 }
@@ -247,6 +277,9 @@ class Proposals extends Security_Controller {
 
         $id = $this->request->getPost('id');
         $this->validate_proposal_access($id);
+        if (! $this->_is_proposal_editable($id)) {
+            app_redirect("forbidden");
+        }
 
         if ($this->Proposals_model->delete($id)) {
             //delete signature file
@@ -384,12 +417,13 @@ class Proposals extends Security_Controller {
 
         $edit = "";
         if ($this->_is_proposal_editable($data)) {
-            $edit = modal_anchor(get_uri("proposals/modal_form"), "<i data-feather='edit' class='icon-16'></i>", array("class" => "edit", "title" => app_lang('edit_proposal'), "data-post-id" => $data->id));
+            $edit = modal_anchor(get_uri("proposals/modal_form"), "<i data-feather='edit' class='icon-16'></i>", array("class" => "edit", "title" => app_lang('edit_proposal'), "data-post-id" => $data->id))
+                . js_anchor("<i data-feather='x' class='icon-16'></i>", array('title' => app_lang('delete_proposal'), "class" => "delete", "data-id" => $data->id, "data-action-url" => get_uri("proposals/delete"), "data-action" => "delete-confirmation"));
         }
 
         $row_data[] = anchor(get_uri("offer/preview/" . $data->id . "/" . $data->public_key), "<i data-feather='external-link' class='icon-16'></i>", array("class" => "edit", "title" => app_lang('proposal') . " " . app_lang("url"), "target" => "_blank"))
-            . $edit
-            . js_anchor("<i data-feather='x' class='icon-16'></i>", array('title' => app_lang('delete_proposal'), "class" => "delete", "data-id" => $data->id, "data-action-url" => get_uri("proposals/delete"), "data-action" => "delete-confirmation"));
+            . (!empty($data->converted_sale_id) ? anchor(get_uri("invoices/view/" . $data->converted_sale_id), "<i data-feather='file-text' class='icon-16'></i>", array("class" => "edit", "title" => app_lang("view_invoice"))) : "")
+            . $edit;
 
         return $row_data;
     }
@@ -953,7 +987,11 @@ class Proposals extends Security_Controller {
 
         if (send_app_mail($contact->email, $subject, $message, array("attachments" => $attachments, "cc" => $cc, "bcc" => $bcc_emails))) {
             // change email status
-            $status_data = array("status" => "sent", "last_email_sent_date" => get_my_local_time());
+            $current = $this->Proposals_model->get_one($proposal_id);
+            $status_data = array("last_email_sent_date" => get_my_local_time());
+            if ($this->_is_proposal_editable($current)) {
+                $status_data["status"] = "sent";
+            }
             if ($this->Proposals_model->ci_save($status_data, $proposal_id)) {
                 echo json_encode(array('success' => true, 'message' => app_lang("proposal_sent_message"), "proposal_id" => $proposal_id));
             }
@@ -986,6 +1024,12 @@ class Proposals extends Security_Controller {
                 $id = get_array_value($sort_item, 0);
                 validate_numeric_value($id);
 
+                $item = $this->Proposal_items_model->get_one($id);
+                $this->validate_proposal_access($item->proposal_id);
+                if (! $this->_is_proposal_editable($item->proposal_id)) {
+                    app_redirect("forbidden");
+                }
+
                 $sort = get_array_value($sort_item, 1);
                 validate_numeric_value($sort);
 
@@ -997,24 +1041,20 @@ class Proposals extends Security_Controller {
 
     function editor($proposal_id = 0) {
         validate_numeric_value($proposal_id);
+        $this->validate_proposal_access($proposal_id);
+        if (! $this->_is_proposal_editable($proposal_id)) {
+            app_redirect("forbidden");
+        }
         $view_data['proposal_info'] = $this->Proposals_model->get_details(array("id" => $proposal_id))->getRow();
         return $this->template->view("proposals/proposal_editor", $view_data);
     }
 
     //prevent editing of proposal after certain state
     private function _is_proposal_editable($_proposal, $is_clone = 0) {
-        if (get_setting("enable_proposal_lock_state")) {
-            $proposal_info = is_object($_proposal) ? $_proposal : $this->Proposals_model->get_one($_proposal);
-            if (!$proposal_info->id || $is_clone) {
-                return true;
-            }
-
-            if ($proposal_info->status != "accepted") {
-                return true;
-            }
-        } else {
+        if ($is_clone) {
             return true;
         }
+        return (new ProposalEditabilityPolicy())->isEditable(is_object($_proposal) ? $_proposal : (int) $_proposal);
     }
 
     function email_view_report($proposal_id) {

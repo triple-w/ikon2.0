@@ -9,11 +9,11 @@ class Invoice_items_model extends Crud_model {
     protected $table = null;
     private $_Invoices_model = null;
 
-    function __construct() {
+    function __construct($db = null) {
         $this->table = 'invoice_items';
-        parent::__construct($this->table);
+        parent::__construct($this->table, $db);
 
-        $this->_Invoices_model = model("App\Models\Invoices_model");
+        $this->_Invoices_model = new Invoices_model($db);
     }
 
     function get_details($options = array()) {

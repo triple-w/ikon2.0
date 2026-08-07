@@ -996,6 +996,15 @@
                             ?>
                             <label for="proposal_yes_own"><?php echo app_lang("yes_only_own_proposals"); ?></label>
                         </div>
+                        <div class="mt10">
+                            <?php echo form_checkbox(
+                                "proposal_accept_and_convert",
+                                "1",
+                                $proposal_accept_and_convert ? true : false,
+                                "id='proposal_accept_and_convert' class='form-check-input'"
+                            ); ?>
+                            <label for="proposal_accept_and_convert"><?php echo app_lang("proposal_accept_and_convert"); ?></label>
+                        </div>
                     </li>
                 <?php } ?>
 

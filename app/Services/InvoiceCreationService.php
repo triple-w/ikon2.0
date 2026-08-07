@@ -5,23 +5,31 @@ namespace App\Services;
 
 use App\Models\Invoice_items_model;
 use App\Models\Invoices_model;
+use CodeIgniter\Database\BaseConnection;
 use RuntimeException;
 
 /** Creates a complete RISE invoice header, items and official totals atomically. */
 class InvoiceCreationService
 {
-    public function create(array $header, array $items): int
+    public function __construct(private ?BaseConnection $db = null)
+    {
+        $this->db ??= db_connect('default');
+    }
+
+    public function create(array $header, array $items, bool $manageTransaction = true): int
     {
         if (! $items) {
             throw new RuntimeException('La venta requiere al menos una partida.');
         }
 
-        $db = db_connect('default');
-        $db->transBegin();
+        $db = $this->db;
+        if ($manageTransaction) {
+            $db->transBegin();
+        }
 
         try {
-            $invoices = new Invoices_model();
-            $invoiceItems = new Invoice_items_model();
+            $invoices = new Invoices_model($db);
+            $invoiceItems = new Invoice_items_model($db);
 
             $header += [
                 'type' => 'invoice',
@@ -92,11 +100,15 @@ class InvoiceCreationService
             if (! $db->transStatus()) {
                 throw new RuntimeException('La transacción de creación de venta no pudo completarse.');
             }
-            $db->transCommit();
+            if ($manageTransaction) {
+                $db->transCommit();
+            }
             return $invoiceId;
         } catch (\Throwable $e) {
-            $db->transRollback();
-            $db->resetTransStatus();
+            if ($manageTransaction) {
+                $db->transRollback();
+                $db->resetTransStatus();
+            }
             log_message('error', 'Complete invoice creation failed: {exception}', ['exception' => $e]);
             throw $e;
         }
