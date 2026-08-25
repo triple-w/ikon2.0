@@ -1,7 +1,8 @@
+<?php $canonical_tax_breakdown=$canonical_tax_breakdown??[]; ?>
 <table id="proposal-item-table" class="table display dataTable text-right strong table-responsive no-body-top-bottom-border mb0">     
     <tr>
         <td><?php echo app_lang("sub_total"); ?></td>
-        <td style="width: 120px;"><?php echo to_currency($proposal_total_summary->proposal_subtotal, $proposal_total_summary->currency_symbol); ?></td>
+        <td style="width: 120px;"><?php echo to_currency(!empty($canonical_tax_breakdown['ready'])?$canonical_tax_breakdown['subtotal']:$proposal_total_summary->proposal_subtotal, $proposal_total_summary->currency_symbol); ?></td>
         <?php if ($is_proposal_editable) { ?>
             <td style="width: 100px;"> </td>
         <?php } ?>
@@ -59,9 +60,10 @@
     }
     ?>
 
+    <?php if (!empty($canonical_tax_breakdown['ready']) && \App\Services\Fiscal\FiscalDecimal::micros($canonical_tax_breakdown['transferred']) > 0) { ?><tr><td>Impuestos trasladados</td><td><?php echo to_currency($canonical_tax_breakdown['transferred'],$proposal_total_summary->currency_symbol); ?></td><?php echo $table_data; ?></tr><?php } ?>
     <tr>
         <td><?php echo app_lang("total"); ?></td>
-        <td><?php echo to_currency($proposal_total_summary->proposal_total, $proposal_total_summary->currency_symbol); ?></td>
+        <td><?php echo to_currency(!empty($canonical_tax_breakdown['ready'])?$canonical_tax_breakdown['total']:$proposal_total_summary->proposal_total, $proposal_total_summary->currency_symbol); ?></td>
         <?php $table_data; ?>
     </tr>
 </table>

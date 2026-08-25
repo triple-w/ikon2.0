@@ -4,6 +4,7 @@
         <input type="hidden" name="id" value="<?php echo $model_info->id; ?>" />
         <input type="hidden" id="item_id" name="item_id" value="<?php echo $model_info->item_id; ?>" />
         <input type="hidden" name="invoice_id" value="<?php echo $invoice_id; ?>" />
+        <input type="hidden" name="fiscal_only" value="<?php echo !empty($fiscal_only)?1:0;?>" />
         <input type="hidden" name="add_new_item_to_library" value="" id="add_new_item_to_library" />
         <div class="form-group">
             <div class="row">
@@ -74,9 +75,10 @@
                 </div>
             </div>
         </div>
+        <?php echo view('items/_commercial_margin_fields',['field_prefix'=>'invoice','model_info'=>$model_info]); ?>
         <div class="form-group">
             <div class="row">
-                <label for="invoice_item_rate" class=" col-md-3"><?php echo app_lang('rate'); ?></label>
+                <label for="invoice_item_rate" class=" col-md-3">Precio de venta</label>
                 <div class="col-md-9">
                     <?php
                     echo form_input(array(
@@ -92,16 +94,7 @@
                 </div>
             </div>
         </div>
-        <div class="form-group">
-            <div class="row">
-                <label for="taxable" class=" col-md-3 col-xs-5 col-sm-4"><?php echo app_lang('taxable'); ?></label>
-                <div class=" col-md-9 col-xs-7 col-sm-8">
-                    <?php
-                    echo form_checkbox("taxable", "1", $model_info->taxable ? true : false, "id='taxable' class='form-check-input'");
-                    ?>
-                </div>
-            </div>
-        </div>
+        <?php echo view('items/_fiscal_item_fields',['fiscal_configuration'=>$fiscal_configuration??[],'sat_tax_codes'=>$sat_tax_codes??[],'sat_tax_objects'=>$sat_tax_objects??[],'can_update_master_fiscal'=>$can_update_master_fiscal??false]); ?>
     </div>
 </div>
 
@@ -180,14 +173,10 @@
                             $("#invoice_item_description").val(response.item_info.description);
 
                             $("#invoice_unit_type").val(response.item_info.unit_type);
-
+                            $("#invoice_item_cost").val(response.item_info.cost || "").trigger('change');
                             $("#invoice_item_rate").val(response.item_info.rate);
 
-                            if (response.item_info.taxable == 1) {
-                                $("#taxable").prop("checked", true);
-                            } else {
-                                $("#taxable").prop("checked", false);
-                            }
+                            $("#invoice-item-form").trigger('fiscal:item:load',[response.item_info.fiscal||{},response.item_info]);
                         }
                     }
                 });

@@ -51,7 +51,7 @@
                                 <img class="dashboard-image float-start max-height-width-logo" src="<?php echo get_logo_url(); ?>" />
                                 <div class="strong float-end mt4">
                                     <?php echo ajax_anchor(get_uri("estimate/update_estimate_status/$estimate_info->id/$estimate_info->public_key/declined"), "<i data-feather='x-circle' class='icon-16'></i> " . app_lang('reject'), array("class" => "btn btn-danger mr10", "title" => app_lang('reject_estimate'), "data-reload-on-success" => "1")); ?>
-                                    <?php echo modal_anchor(get_uri("estimate/accept_estimate_modal_form/$estimate_info->id/$estimate_info->public_key"), "<i data-feather='check-circle' class='icon-16'></i> " . app_lang('accept'), array("class" => "btn btn-success mr5", "title" => app_lang('accept_estimate'))); ?>
+                                    <?php echo modal_anchor(get_uri("estimate/accept_estimate_modal_form/$estimate_info->id/$estimate_info->public_key"), "<i data-feather='check-circle' class='icon-16'></i> " . app_lang('accept'), array("class" => "btn btn-success mr5", "title" => app_lang('accept_estimate'), "data-action-method" => "GET")); ?>
                                 </div>
                             <?php } ?>
                         </div>
@@ -81,7 +81,6 @@
         </script>
     </body>
 </html>
-
 
 
 

@@ -101,7 +101,7 @@ class Left_menu {
             }
 
             $fiscal_submenu = array();
-            if ($this->ci->login_user->is_admin || get_array_value($permissions, "fiscal.drafts.view")) {
+            if ($this->ci->login_user->is_admin || get_array_value($permissions, "fiscal.advanced.view")) {
                 $fiscal_submenu[] = array("name" => "fiscal_drafts", "url" => "fiscal/drafts", "class" => "edit-3");
             }
             if ($this->ci->login_user->is_admin || get_array_value($permissions, "fiscal_invoices_view")) {

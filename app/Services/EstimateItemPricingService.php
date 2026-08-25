@@ -50,9 +50,10 @@ final class EstimateItemPricingService
         if ($cost === null || $profitPercentage === null) {
             return null;
         }
-
-        return number_format((float) $cost * (1 + ((float) $profitPercentage / 100)), 6, '.', '');
+        return (new CommercialMarginService())->priceFromMargin($cost, $profitPercentage);
     }
+
+    public function marginFromRate(string $cost,string $rate):string{return(new CommercialMarginService())->marginFromPrice($cost,$rate);}
 
     private function normalizeDecimal(string $value): string
     {

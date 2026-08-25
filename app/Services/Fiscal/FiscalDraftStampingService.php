@@ -49,6 +49,7 @@ final class FiscalDraftStampingService
             $documentId=(int)($prepared->fiscal_document_id??0);
             $this->preflight->requireReady($draftId, $documentId>0);
             if($documentId===0)$documentId = $this->materializer->materialize($draftId, $userId);
+            else if(!$this->db->table('fiscal_stamp_attempts')->where('fiscal_document_id',$documentId)->countAllResults())$this->materializer->reconcileLocalDocumentCurrencyTotals($documentId);
             $signature=$this->db->table('fiscal_document_signatures')->where([
                 'fiscal_document_id'=>$documentId,'signature_verified'=>1,'xsd_status'=>'valid',
             ])->orderBy('id','DESC')->get(1)->getRow();
@@ -96,8 +97,20 @@ final class FiscalDraftStampingService
             } else {
                 $this->setDraftState($draftId, 'ready', $userId);
             }
-            return ['document_id' => $documentId, 'result' => $result->toArray()];
+            $resultArray = $result->toArray();
+            if ($result->xmlAvailable && $result->uuid) {
+                $persistedStamp = $this->db->table('fiscal_document_stamps')->where('fiscal_document_id', $documentId)->get(1)->getRow();
+                $resultArray['success'] = true;
+                $resultArray['status'] = ($persistedStamp->pdf_status ?? '') === 'valid' ? 'stamped' : 'stamped_pdf_pending';
+                $resultArray['pdfAvailable'] = ($persistedStamp->pdf_status ?? '') === 'valid' && (int)($persistedStamp->pac_pdf_artifact_id ?? 0) > 0;
+            }
+            return ['document_id' => $documentId, 'result' => $resultArray];
         } catch (Throwable $e) {
+            $this->audit($draftId,$userId,'draft_stamp_failed',[
+                'document_id'=>$documentId,'error_class'=>get_class($e),
+                'message'=>mb_substr(preg_replace('/[\r\n\t]+/',' ',(string)$e->getMessage()),0,300),
+                'pac_attempt_exists'=>$documentId!==null&&(bool)$this->db->table('fiscal_stamp_attempts')->where('fiscal_document_id',$documentId)->countAllResults(),
+            ]);
             if ($documentId !== null) {
                 $attempt = $this->db->table('fiscal_stamp_attempts')->where('fiscal_document_id', $documentId)
                     ->orderBy('id', 'DESC')->get(1)->getRow();

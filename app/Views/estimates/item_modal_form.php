@@ -75,34 +75,8 @@
                 </div>
             </div>
         </div>
-        <div class="form-group">
-            <div class="row">
-                <label for="estimate_item_cost" class="col-md-3"><?php echo app_lang('cost'); ?></label>
-                <div class="col-md-9">
-                    <?php echo form_input(array(
-                        "id" => "estimate_item_cost",
-                        "name" => "estimate_item_cost",
-                        "value" => isset($model_info->cost) && $model_info->cost !== null ? to_decimal_format($model_info->cost) : "",
-                        "class" => "form-control",
-                        "placeholder" => app_lang('cost')
-                    )); ?>
-                </div>
-            </div>
-        </div>
-        <div class="form-group">
-            <div class="row">
-                <label for="estimate_item_profit_percentage" class="col-md-3"><?php echo app_lang('profit_over_cost_percentage'); ?></label>
-                <div class="col-md-9">
-                    <?php echo form_input(array(
-                        "id" => "estimate_item_profit_percentage",
-                        "name" => "estimate_item_profit_percentage",
-                        "value" => isset($model_info->profit_percentage) && $model_info->profit_percentage !== null ? to_decimal_format($model_info->profit_percentage) : "",
-                        "class" => "form-control",
-                        "placeholder" => app_lang('profit_over_cost_percentage')
-                    )); ?>
-                </div>
-            </div>
-        </div>
+        <?php echo view('items/_commercial_margin_fields',['field_prefix'=>'estimate','model_info'=>$model_info]); ?>
+        <?php echo view('items/_fiscal_item_fields',['fiscal_configuration'=>$fiscal_configuration??[],'sat_tax_codes'=>$sat_tax_codes??[],'sat_tax_objects'=>$sat_tax_objects??[],'can_update_master_fiscal'=>$can_update_master_fiscal??false]); ?>
         <div class="form-group">
             <div class="row">
                 <label for="estimate_item_rate" class=" col-md-3"><?php echo app_lang('sale_price'); ?></label>
@@ -143,21 +117,6 @@
         if (!isUpdate) {
             applySelect2OnItemTitle();
         }
-
-        function recalculateSalePrice() {
-            var costText = String($("#estimate_item_cost").val() || "").trim();
-            var profitText = String($("#estimate_item_profit_percentage").val() || "").trim();
-            if (!costText || !profitText) {
-                return;
-            }
-            var cost = Number(costText.replace(/,/g, ""));
-            var profit = Number(profitText.replace(/,/g, ""));
-            if (Number.isFinite(cost) && Number.isFinite(profit) && cost >= 0 && profit >= 0) {
-                $("#estimate_item_rate").val((cost * (1 + profit / 100)).toFixed(2));
-            }
-        }
-
-        $("#estimate_item_cost, #estimate_item_profit_percentage").on("change input", recalculateSalePrice);
 
         //re-initialize item suggestion dropdown on request
         $("#estimate_item_title_dropdwon_icon").click(function () {
@@ -207,8 +166,9 @@
                             $("#estimate_item_description").val(response.item_info.description);
 
                             $("#estimate_unit_type").val(response.item_info.unit_type);
-
+                            $("#estimate_item_cost").val(response.item_info.cost || "").trigger('change');
                             $("#estimate_item_rate").val(response.item_info.rate);
+                            $("#estimate-item-form").trigger('fiscal:item:load',[response.item_info.fiscal||{},response.item_info]);
                         }
                     }
                 });

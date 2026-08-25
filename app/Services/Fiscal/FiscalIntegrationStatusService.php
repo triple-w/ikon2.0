@@ -10,8 +10,8 @@ final class FiscalIntegrationStatusService
     public function inspect(int $draftId=3):array
     {
         $f=config('Fiscal');$pac=config('TimbradorXpress');$pdf=config('FiscalPdfProvider');
-        $issuer=$this->db->table('fiscal_profiles')->where(['profile_type'=>'issuer','environment'=>'development'])->whereIn('status',['active','ready'])->orderBy('is_default','DESC')->get(1)->getRow();
-        $series=$issuer?$this->db->table('fiscal_series')->where(['issuer_profile_id'=>$issuer->id,'series'=>'TEST','environment'=>'development','is_active'=>1,'deleted'=>0])->get(1)->getRow():null;
+        $issuer=(new FiscalIssuerResolver($this->db))->resolve(null,'development');
+        $series=$issuer?$this->db->table('fiscal_series')->where(['issuer_profile_id'=>$issuer->id,'environment'=>'development','is_active'=>1,'deleted'=>0])->whereIn('document_type',['ingreso','I'])->orderBy('is_default','DESC')->get(1)->getRow():null;
         $certificate=$issuer?$this->db->table('fiscal_issuer_certificates')->where(['issuer_profile_id'=>$issuer->id,'status'=>'valid','deleted'=>0])->orderBy('valid_to','DESC')->get(1)->getRow():null;
         $csdValid=false;$rfcMatch=false;
         $keyExportable=false;
@@ -25,7 +25,7 @@ final class FiscalIntegrationStatusService
         $unknownForDocument=$documentId>0?$this->db->table('fiscal_stamp_attempts')->where('fiscal_document_id',$documentId)
             ->groupStart()->where('requires_reconciliation',1)->orWhereIn('status',$unknownStatuses)->groupEnd()->countAllResults():0;
         $unknownForDraft=$draftId>0?$this->db->table('fiscal_stamp_attempts a')
-            ->join('fiscal_documents d','d.id=a.fiscal_document_id')->where('d.source_draft_id',$draftId)
+            ->join($this->db->prefixTable('fiscal_documents').' d','d.id=a.fiscal_document_id')->where('d.source_draft_id',$draftId)
             ->groupStart()->where('a.requires_reconciliation',1)->orWhereIn('a.status',$unknownStatuses)->groupEnd()->countAllResults():0;
         $inflightGlobal=$this->db->table('fiscal_stamp_attempts')->whereIn('status',['pending','sending'])->countAllResults();
         $draftPreflight=false;
@@ -38,7 +38,7 @@ final class FiscalIntegrationStatusService
             'pac_api_key_fingerprint'=>$pac->isConfigured()?substr(hash('sha256',$pac->apiKey),0,12):null,
             'credits_known'=>'not_queried','issuer_configured'=>(bool)$issuer,
             'issuer_id'=>$issuer?->id,'issuer_rfc_masked'=>$issuer?$this->mask((string)$issuer->rfc):null,
-            'series_test_configured'=>(bool)$series,'series_id'=>$series?->id,
+            'series_configured'=>(bool)$series,'series_test_configured'=>(bool)$series,'series_id'=>$series?->id,'series_name'=>$series?->series,
             'csd_active'=>(bool)$certificate,'csd_valid'=>$csdValid,'csd_rfc_matches'=>$rfcMatch,'csd_transport_key_exportable'=>$keyExportable,
             'soap_client'=>class_exists(\SoapClient::class),'curl'=>extension_loaded('curl'),
             'pdf_provider'=>$pdf->provider,'pdf_enabled'=>$pdf->enabled,
@@ -47,6 +47,7 @@ final class FiscalIntegrationStatusService
             'complete_clients'=>$this->db->table('fiscal_profiles')->where(['profile_type'=>'receiver','environment'=>'development'])->whereIn('status',['active','ready'])->countAllResults(),
             'configured_products'=>$this->db->table('item_fiscal_settings')->whereIn('status',['active','ready'])->where('deleted',0)->countAllResults(),
             'active_unknown_attempts_global'=>$unknownGlobal,
+            'global_unknown_is_diagnostic_only'=>true,
             'active_unknown_attempts_for_draft'=>$unknownForDraft,
             'active_unknown_attempts_for_document'=>$unknownForDocument,
             'active_inflight_attempts_global'=>$inflightGlobal,

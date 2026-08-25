@@ -35,6 +35,14 @@ $routes->post('collect_leads/save', 'Collect_leads::save', ['filter' => 'cors'])
 $routes->options('collect_leads/save', 'Collect_leads::save', ['filter' => 'cors']);
 $routes->post('invoices/close_sale/(:num)', 'Invoices::close_sale/$1', ['filter' => 'csrf']);
 
+// C2.3.1-R1: Estimate acceptance has an explicit read-only modal GET and a POST mutation.
+// Keep these before the legacy controller catch-all routes so method arguments are unambiguous.
+$routes->get('estimate/accept_estimate_modal_form/(:num)', 'Estimate::accept_estimate_modal_form/$1');
+$routes->get('estimate/accept_estimate_modal_form/(:num)/(:segment)', 'Estimate::accept_estimate_modal_form/$1/$2');
+$routes->post('estimate/accept_estimate', 'Estimate::accept_estimate', ['filter' => 'csrf']);
+$routes->get('estimate/update_estimate_status/(:num)/(:segment)/(:segment)', 'Estimate::update_estimate_status/$1/$2/$3');
+$routes->get('estimates/update_estimate_status/(:num)/(:segment)', 'Estimates::update_estimate_status/$1/$2');
+
 foreach ($controller_dropdown as $controller) {
     $routes->get(strtolower($controller), "$controller::index");
     $routes->get(strtolower($controller) . '/(:any)', "$controller::$1");

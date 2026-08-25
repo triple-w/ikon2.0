@@ -90,7 +90,7 @@ final class FiscalDocumentStatusPresenter
             if ($cancellation->status === 'accepted') return ['cancelled', 'El CFDI está cancelado fiscalmente.', false, false, null];
             if (in_array($cancellation->status, ['requested', 'sending', 'pending'], true)) return ['cancellation_pending', 'La cancelación fiscal está pendiente.', false, false, 'Esperar o consultar el resultado.'];
             if ($cancellation->status === 'rejected') return ['cancellation_rejected', 'La cancelación fiscal fue rechazada.', false, false, 'Revisar el motivo del rechazo.'];
-            if ($cancellation->status === 'unknown') return ['unknown', 'No fue posible confirmar la cancelación fiscal.', true, false, 'Conciliar cancelación sin reenviar.'];
+            if ($cancellation->status === 'unknown') return ['stamped', 'El CFDI continúa timbrado mientras se verifica la cancelación.', true, false, 'Consultar el estado sin reenviar la cancelación.'];
         }
         if ($stamp && trim((string) ($stamp->uuid ?? '')) !== '' && $stampedXml) {
             if (($stamp->pdf_status ?? '') === 'processing'

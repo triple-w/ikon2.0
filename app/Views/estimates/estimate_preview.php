@@ -22,7 +22,7 @@
                         <div class="mr15 strong float-start">
                             <?php
                             if (get_setting("add_signature_option_on_accepting_estimate")) {
-                                echo modal_anchor(get_uri("estimate/accept_estimate_modal_form/$estimate_info->id"), "<i data-feather='check-circle' class='icon-16'></i> " . app_lang('mark_as_accepted'), array("class" => "btn btn-success mr15", "title" => app_lang('accept_estimate')));
+                                echo modal_anchor(get_uri("estimate/accept_estimate_modal_form/$estimate_info->id"), "<i data-feather='check-circle' class='icon-16'></i> " . app_lang('mark_as_accepted'), array("class" => "btn btn-success mr15", "title" => app_lang('accept_estimate'), "data-action-method" => "GET"));
                             } else {
                                 echo ajax_anchor(get_uri("estimates/update_estimate_status/$estimate_info->id/accepted"), "<i data-feather='check-circle' class='icon-16'></i> " . app_lang('mark_as_accepted'), array("class" => "btn btn-success mr15", "title" => app_lang('mark_as_accepted'), "data-reload-on-success" => "1"));
                             }

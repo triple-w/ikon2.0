@@ -10,12 +10,12 @@ $ok(str_contains($migration,"addUniqueKey('issuer_profile_id'")&&str_contains($m
 $ok(str_contains($migration,'quantity <> 0')&&str_contains($migration,'available_balance >= 0'),'Database checks reject zero movements and negative balances.');
 $ok(str_contains($service,'FOR UPDATE'),'Every account mutation locks the issuer account.');
 $ok(str_contains($service,'stamp-reservation:')&&str_contains($service,'stamp-consumption:')&&str_contains($service,'stamp-release:'),'Document operations have stable idempotency keys.');
-$ok(str_contains($service,'cancellation-reservation:')&&str_contains($service,'cancellation-consumption:')&&str_contains($service,'cancellation-release:'),'Cancellation has independent stable idempotency keys.');
+$ok(str_contains($service,'cancellation-request:')&&str_contains($service,'cancellation-status-query:'),'Cancellation request and query have independent stable idempotency keys.');
 $ok(str_contains($stamping,'reserveForAttempt')&&strpos($stamping,'reserveForAttempt')<strpos($stamping,'markSending'),'Reservation occurs before PAC sending state.');
 $ok(str_contains($stamping,'consumeReservation'),'Successful stamp converts the reservation to consumption.');
 $ok(str_contains($stamping,'releaseCommercialReservation'),'Rejected or unsent document operations release reservations.');
 $ok(str_contains($stamping,'reconciliation_required'),'Unknown transport outcomes remain reconcilable.');
-$ok(str_contains($cancel,'reserveForCancellation')&&str_contains($cancel,'consumeCancellation')&&str_contains($cancel,'releaseCancellation'),'Cancellation reserves, consumes accepted, and releases rejected.');
+$ok(str_contains($cancel,'consumeCancellationRequest')&&str_contains($cancel,'consumeCancellationStatusQuery'),'Cancellation request and status query each consume one commercial stamp after provider call.');
 $ok(str_contains($cli,'--confirm-rfc')&&str_contains($cli,'--dry-run')&&str_contains($cli,'--execute'),'Adjustment CLI requires explicit safe execution mode and RFC confirmation.');
 $ok(str_contains($cli,'is_platform_superadmin')&&str_contains($cli,'platform.fiscal_stamps.manage'),'Normal admin alone cannot adjust stamps.');
 $ok(str_contains($identity,'platform_identity_audit'),'Platform identity changes are audited.');

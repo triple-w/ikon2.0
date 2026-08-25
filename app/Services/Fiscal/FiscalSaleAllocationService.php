@@ -89,7 +89,10 @@ final class FiscalSaleAllocationService
     {
         $micros = FiscalDecimal::micros($allocatedTotal);
         if ($micros <= 0) throw new RuntimeException('FISCAL_ALLOCATION_MUST_BE_POSITIVE');
-        if ($micros > FiscalDecimal::micros($this->getAvailableAmount($saleId, $excludeDraftId))) {
+        $available=FiscalDecimal::micros($this->getAvailableAmount($saleId,$excludeDraftId));
+        // Commercial totals are currency amounts (two decimals), while fiscal
+        // concepts retain six decimals. Compare their monetary cents.
+        if (self::currencyCents($micros)>self::currencyCents($available)) {
             throw new RuntimeException('FISCAL_ALLOCATION_EXCEEDS_AVAILABLE');
         }
     }
@@ -166,8 +169,8 @@ final class FiscalSaleAllocationService
             $sum = array_sum(array_map(
                 static fn(array $row): int => FiscalDecimal::micros((string) $row['allocated_total']), $rows
             ));
-            if ($sum !== FiscalDecimal::micros((string) $draft->total)
-                || $sum !== FiscalDecimal::micros((string) $document->total)) {
+            if (self::currencyCents($sum)!==self::currencyCents(FiscalDecimal::micros((string)$draft->total))
+                || self::currencyCents($sum)!==self::currencyCents(FiscalDecimal::micros((string)$document->total))) {
                 throw new RuntimeException('FISCAL_DOCUMENT_ALLOCATION_TOTAL_MISMATCH');
             }
             foreach ($rows as $row) {
@@ -231,8 +234,10 @@ final class FiscalSaleAllocationService
         return $this->db->table('fiscal_document_sales a')
             ->join('fiscal_stamp_attempts s','s.fiscal_document_id=a.fiscal_document_id')
             ->where('a.sale_id',$saleId)
-            ->whereIn('s.status',['sending','unknown','pending'])
-            ->groupStart()->where('s.responded_at',null)->orWhere('s.requires_reconciliation',1)->groupEnd()
+            ->groupStart()
+                ->groupStart()->whereIn('s.status',['sending','pending'])->where('s.responded_at',null)->groupEnd()
+                ->orWhere('s.requires_reconciliation',1)
+            ->groupEnd()
             ->countAllResults() > 0;
     }
 
@@ -276,4 +281,6 @@ final class FiscalSaleAllocationService
         if (!$activeCount && !$draftCount && !$cancelledCount) return 'not_invoiced';
         return 'mixed';
     }
+
+    private static function currencyCents(int$micros):int{return $micros<0?-intdiv(abs($micros)+5000,10000):intdiv($micros+5000,10000);}
 }

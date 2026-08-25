@@ -83,10 +83,14 @@ $routes->post('fiscal/drafts/(:num)', 'Fiscal\Drafts::update/$1', ['filter'=>'cs
 $routes->post('fiscal/drafts/(:num)/discard', 'Fiscal\Drafts::discard/$1', ['filter'=>'csrf']);
 $routes->post('fiscal/drafts/(:num)/ready', 'Fiscal\Drafts::ready/$1', ['filter'=>'csrf']);
 $routes->post('fiscal/drafts/(:num)/stamp', 'Fiscal\Drafts::stamp/$1', ['filter'=>'csrf']);
+$routes->post('fiscal/drafts/(:num)/invoice-flow', 'Fiscal\Drafts::invoiceFlow/$1', ['filter'=>'csrf']);
+$routes->post('fiscal/sales/(:num)/invoice-flow', 'Fiscal\Drafts::invoiceSale/$1', ['filter'=>'csrf']);
 $routes->get('fiscal/drafts/(:num)/preinvoice', 'Fiscal\Drafts::preinvoice/$1');
 $routes->post('fiscal/receivers/(:num)', 'Fiscal\Drafts::updateReceiver/$1', ['filter'=>'csrf']);
 $routes->post('fiscal/invoices/cancel/form', 'Fiscal\Invoices::cancelForm');
 $routes->post('fiscal/invoices/cancel', 'Fiscal\Invoices::cancel', ['filter' => 'csrf']);
+$routes->post('fiscal/invoices/cancellation/status', 'Fiscal\Invoices::cancellationStatus', ['filter' => 'csrf']);
+$routes->post('fiscal/invoices/cancellation/status/form', 'Fiscal\Invoices::cancellationStatusForm');
 $routes->get('fiscal/invoices/cancellation/ack/(:num)', 'Fiscal\Invoices::ack/$1');
 $routes->get('fiscal/series', 'Fiscal\Series::index');
 $routes->post('fiscal/series/list', 'Fiscal\Series::list_data');

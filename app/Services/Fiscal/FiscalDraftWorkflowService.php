@@ -65,20 +65,26 @@ final class FiscalDraftWorkflowService
         $receiver = $this->db->table('fiscal_profiles')->where([
             'client_id' => $anchor->client_id, 'profile_type' => 'receiver',
         ])->whereIn('status',['active','ready'])->orderBy('is_default', 'DESC')->get(1)->getRow();
-        $issuer = $this->db->table('fiscal_profiles')->where('profile_type','issuer')
-            ->whereIn('status',['active','ready'])->orderBy('is_default', 'DESC')->get(1)->getRow();
-        $series = $issuer ? $this->db->table('fiscal_series')->where([
-            'issuer_profile_id' => $issuer->id, 'is_active' => 1, 'deleted' => 0,
-        ])->groupStart()->where('document_type', 'income')->orWhere('document_type', 'ingreso')->orWhere('document_type', 'I')->groupEnd()
-            ->orderBy('is_default','DESC')->get()->getResult() : [];
+        $issuerResolver=new FiscalIssuerResolver($this->db);$issuers=$issuerResolver->candidates((int)$anchor->company_id,config('Fiscal')->environment);
+        $selectedIssuerId=(int)($draft->issuer_id??($issuers[0]->id??0));$issuer=null;foreach($issuers as$candidate)if((int)$candidate->id===$selectedIssuerId){$issuer=$candidate;break;}
+        $issuerIds=array_map(static fn($row)=>(int)$row->id,$issuers);$series=[];
+        if($issuerIds)$series=$this->db->table('fiscal_series')->whereIn('issuer_profile_id',$issuerIds)->where(['environment'=>config('Fiscal')->environment,'is_active'=>1,'deleted'=>0])
+            ->groupStart()->where('document_type','income')->orWhere('document_type','ingreso')->orWhere('document_type','I')->groupEnd()->orderBy('is_default','DESC')->orderBy('id')->get()->getResult();
         $catalog = static fn($db, string $table): array => $db->table($table)->where('is_active',1)->orderBy('code')->get()->getResult();
+        $dateConstraints=(new FiscalIssueDatePolicy())->constraints();
+        $paymentSuggestion=(new CfdiPaymentRuleService($this->db))->suggest((int)$anchor->id);
         return [
-            'draft'=>$draft,'sales'=>$sales,'compatible_sales'=>$compatible,'receiver'=>$receiver,'issuer'=>$issuer,'series'=>$series,
+            'draft'=>$draft,'sales'=>$sales,'compatible_sales'=>$compatible,'receiver'=>$receiver,'issuer'=>$issuer,'issuers'=>$issuers,'series'=>$series,
             'payment_forms'=>$catalog($this->db,'sat_payment_forms'),
             'payment_methods'=>$catalog($this->db,'sat_payment_methods'),
             'cfdi_uses'=>$catalog($this->db,'sat_cfdi_uses'),
             'tax_regimes'=>$catalog($this->db,'sat_tax_regimes'),
-            'max_issue_age_hours'=>(int)config('Fiscal')->maxIssueAgeHours,
+            'product_service_keys'=>$catalog($this->db,'sat_product_service_keys'),
+            'unit_keys'=>$catalog($this->db,'sat_unit_keys'),
+            'tax_object_codes'=>$catalog($this->db,'sat_tax_object_codes'),
+            'tax_codes'=>$catalog($this->db,'sat_tax_codes'),
+            'payment_suggestion'=>$paymentSuggestion,
+            'issue_date_constraints'=>$dateConstraints,
             'saved_items'=>$draftId?$this->db->table('fiscal_draft_items')->where('fiscal_draft_id',$draftId)->get()->getResult():[],
         ];
     }
@@ -87,6 +93,10 @@ final class FiscalDraftWorkflowService
     {
         $saleIds = array_values(array_unique(array_filter(array_map('intval', (array)($input['sale_ids'] ?? [])))));
         if (!$saleIds) throw new RuntimeException('Selecciona al menos una venta.');
+        if($draftId===null){
+            $candidate=$this->db->table('fiscal_drafts d')->select('d.id')->join('fiscal_draft_sales a','a.fiscal_draft_id=d.id')->where('a.sale_id',$saleIds[0])->whereIn('d.status',['draft','ready','error'])->where('d.data_origin','operational')->orderBy('d.id','DESC')->get(1)->getRow();
+            if($candidate){$candidateSales=array_map('intval',array_column($this->db->table('fiscal_draft_sales')->select('sale_id')->where('fiscal_draft_id',$candidate->id)->where('allocation_status','reserved')->get()->getResultArray(),'sale_id'));sort($candidateSales);$requested=$saleIds;sort($requested);if($candidateSales===$requested)$draftId=(int)$candidate->id;}
+        }
         $existing = $draftId ? $this->draft($draftId) : null;
         if ($existing && !in_array($existing->status, ['draft','ready','error'], true)) {
             throw new RuntimeException('El estado del borrador no permite edición.');
@@ -96,8 +106,10 @@ final class FiscalDraftWorkflowService
         $receiverId = (int)($input['receiver_profile_id'] ?? 0);
         $currency = strtoupper(trim((string)($input['currency_code'] ?? 'MXN')));
         $quantities = (array)($input['quantities'] ?? []);
+        $fiscalOverrides=(array)($input['fiscal_items']??[]);
         $concepts = [];
         $bySale = [];
+        $resolvedLines=new FiscalResolvedInvoiceLineService($this->db);
         foreach ($saleIds as $saleId) {
             $sale = $this->sale($saleId);
             if ((int)$sale->client_id !== (int)$anchor->client_id || (int)$sale->company_id !== (int)$anchor->company_id
@@ -116,7 +128,18 @@ final class FiscalDraftWorkflowService
                 $taxHeader = FiscalDecimal::add((string)$sale->tax,(string)$sale->tax2,(string)$sale->tax3);
                 $tax = FiscalDecimal::prorate($taxHeader, $subtotal, (string)$sale->invoice_subtotal);
                 $total = FiscalDecimal::add(FiscalDecimal::subtract($subtotal,$discount),$tax);
-                $snapshot = $this->itemSnapshot($item);
+                $override=(array)($fiscalOverrides[$item->id]??[]);
+                // Normal users may only supply invoice-specific fiscal data for a
+                // genuine free line. Catalog products must be fixed at their master.
+                if (($input['ux_mode'] ?? '') === 'normal' && (int)$item->item_id > 0) $override=[];
+                if (($input['ux_mode'] ?? '') === 'normal') {
+                    $line=$resolvedLines->resolve($item,$quantity,$discount,$issuerId);
+                    if(!$line['ready'])throw new RuntimeException($line['blockers'][0]??'Falta la configuración fiscal del concepto.');
+                    $concepts[]=['sale_id'=>$saleId]+$line+['_resolved'=>true,'_taxes'=>$line['taxes']];
+                    continue;
+                }
+                if($draftId){$savedSnapshot=$this->db->table('fiscal_draft_items')->select('fiscal_snapshot')->where(['fiscal_draft_id'=>$draftId,'sale_item_id'=>$item->id])->get(1)->getRow();$previous=$savedSnapshot?(json_decode((string)$savedSnapshot->fiscal_snapshot,true)?:[]):[];if($this->snapshotIsComplete($previous))$override+=$previous;}
+                $snapshot = $this->itemSnapshot($item,$override);
                 $concepts[] = [
                     'sale_id'=>$saleId,'sale_item_id'=>(int)$item->id,'product_id'=>(int)$item->item_id,
                     'quantity'=>$quantity,'unit_price'=>FiscalDecimal::format(FiscalDecimal::micros((string)$item->rate)),
@@ -132,6 +155,7 @@ final class FiscalDraftWorkflowService
         $issuerPricing=$this->db->table('fiscal_profiles')->select('tax_pricing_mode')->where('id',$issuerId)->get(1)->getRow();
         $pricingMode=(string)($issuerPricing->tax_pricing_mode??'tax_inclusive');$taxSnapshots=new FiscalDraftTaxSnapshotService($this->db);$bySale=[];
         foreach($concepts as&$concept){
+            if(!empty($concept['_resolved'])){$sid=(int)$concept['sale_id'];$bySale[$sid]??=['subtotal'=>'0.000000','tax'=>'0.000000','total'=>'0.000000'];$bySale[$sid]['subtotal']=FiscalDecimal::add($bySale[$sid]['subtotal'],FiscalDecimal::subtract($concept['subtotal'],$concept['discount']));$bySale[$sid]['tax']=FiscalDecimal::add($bySale[$sid]['tax'],$concept['tax']);$bySale[$sid]['total']=FiscalDecimal::add($bySale[$sid]['total'],$concept['total']);continue;}
             $calculated=$taxSnapshots->calculate($concept,$pricingMode);
             $concept['subtotal']=FiscalDecimal::add($calculated['base'],$concept['discount']);
             $concept['tax']=FiscalDecimal::subtract($calculated['transferred'],$calculated['withheld']);
@@ -158,15 +182,17 @@ final class FiscalDraftWorkflowService
             $tax=FiscalDecimal::add($tax,$concept['tax']);
             $total=FiscalDecimal::add($total,$concept['total']);
         }
-        $issueDate = str_replace('T',' ',trim((string)($input['issue_date']??'')));
-        if (strlen($issueDate) === 16) $issueDate .= ':00';
-        $issuer=$this->db->table('fiscal_profiles')->where(['id'=>$issuerId,'profile_type'=>'issuer'])->whereIn('status',['active','ready'])->get(1)->getRow();
+        try{$issueDate=(new FiscalIssueDateNormalizer())->normalizeTransport($input['issue_date']??null);}
+        catch(RuntimeException$e){throw new RuntimeException(match($e->getMessage()){'FISCAL_ISSUE_DATE_REQUIRED'=>'La fecha de expedición es obligatoria.',default=>'La fecha de expedición no tiene un formato válido.'});}
+        $issuer=(new FiscalIssuerResolver($this->db))->resolveById($issuerId,(int)$anchor->company_id,config('Fiscal')->environment);
         $receiver=$this->db->table('fiscal_profiles')->where(['id'=>$receiverId,'client_id'=>$anchor->client_id,'profile_type'=>'receiver'])->whereIn('status',['active','ready'])->get(1)->getRow();
         $regime=$receiver?$this->db->table('sat_tax_regimes')->where('id',$receiver->tax_regime_id)->get(1)->getRow():null;
         $issuerRegime=$issuer?$this->db->table('sat_tax_regimes')->where('id',$issuer->tax_regime_id)->get(1)->getRow():null;
-        $cfdiUse=$receiver?$this->db->table('sat_cfdi_uses')->where('id',$receiver->default_cfdi_use_id)->get(1)->getRow():null;
+        $cfdiUseCode=strtoupper(trim((string)($input['cfdi_use_code']??'')));
+        $cfdiUse=$cfdiUseCode!==''?$this->db->table('sat_cfdi_uses')->where(['code'=>$cfdiUseCode,'is_active'=>1])->get(1)->getRow():null;
+        if(!$cfdiUse&&$receiver?->default_cfdi_use_id)$cfdiUse=$this->db->table('sat_cfdi_uses')->where(['id'=>$receiver->default_cfdi_use_id,'is_active'=>1])->get(1)->getRow();
         $seriesId=(int)($input['fiscal_series_id']??0);
-        $series=$this->db->table('fiscal_series')->where(['id'=>$seriesId,'issuer_profile_id'=>$issuerId,'is_active'=>1,'deleted'=>0])->get(1)->getRow();
+        $series=$this->db->table('fiscal_series')->where(['id'=>$seriesId,'issuer_profile_id'=>$issuerId,'environment'=>config('Fiscal')->environment,'is_active'=>1,'deleted'=>0])->groupStart()->where('document_type','income')->orWhere('document_type','ingreso')->orWhere('document_type','I')->groupEnd()->get(1)->getRow();
         $draftData = [
             'issuer_id'=>$issuerId,'receiver_profile_id'=>$receiverId,
             'fiscal_series_id'=>$seriesId?:null,
@@ -189,8 +215,9 @@ final class FiscalDraftWorkflowService
         $validation = $this->validation->validate($draftData,$allocations,$concepts);
         $fatal = array_filter($validation['errors'], static fn(array $error): bool => in_array($error['section'], ['sales','concepts','document'],true));
         if ($fatal) throw new RuntimeException($fatal[0]['message']);
-        $draftData['status']=$validation['valid']?'ready':'draft';
-        $draftData['ready_at']=$validation['valid']?get_current_utc_time():null;
+        $keepAsDraft=(bool)($input['save_as_draft']??false);
+        $draftData['status']=$validation['valid']&&!$keepAsDraft?'ready':'draft';
+        $draftData['ready_at']=$draftData['status']==='ready'?get_current_utc_time():null;
         $draftData['fiscal_payload']=json_encode([
             'issuer_profile_id'=>$issuerId,'receiver_profile_id'=>$receiverId,
             'issuer_snapshot'=>$issuer?((array)$issuer+['tax_regime_code'=>(string)($issuerRegime->code??'')]):[],
@@ -198,7 +225,7 @@ final class FiscalDraftWorkflowService
             'series_snapshot'=>$series?(array)$series:[],
             'concepts'=>$concepts,'taxes'=>array_map(static fn(array$c):array=>['sale_item_id'=>$c['sale_item_id'],'tax'=>$c['tax']],$concepts),
             'observations'=>$draftData['observations'],'validation'=>$validation,
-        ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+        ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE);
         $now=get_current_utc_time();
         $this->db->transBegin();
         try {
@@ -216,9 +243,9 @@ final class FiscalDraftWorkflowService
             if($oldItemIds)$this->db->table('fiscal_draft_item_taxes')->whereIn('fiscal_draft_item_id',$oldItemIds)->delete();
             $this->db->table('fiscal_draft_items')->where('fiscal_draft_id',$id)->delete();
             foreach ($concepts as $concept) {
-                $snapshot=$concept['snapshot'];$itemTaxes=$concept['_taxes'];unset($concept['snapshot'],$concept['_taxes']);
+                $snapshot=$concept['snapshot'];$itemTaxes=$concept['_taxes'];unset($concept['snapshot'],$concept['_taxes'],$concept['_resolved'],$concept['ready'],$concept['source'],$concept['blockers'],$concept['taxes']);
                 $this->db->table('fiscal_draft_items')->insert($concept+[
-                    'fiscal_draft_id'=>$id,'fiscal_snapshot'=>json_encode($snapshot,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),
+                    'fiscal_draft_id'=>$id,'fiscal_snapshot'=>json_encode($snapshot,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE),
                     'created_at'=>$now,'updated_at'=>$now,
                 ]);
                 $draftItemId=(int)$this->db->insertID();foreach($itemTaxes as$tax)$this->db->table('fiscal_draft_item_taxes')->insert($tax+[
@@ -291,21 +318,35 @@ final class FiscalDraftWorkflowService
     }
     private function draft(int$id):object{$row=$this->db->table('fiscal_drafts')->where('id',$id)->get(1)->getRow();if(!$row)throw new RuntimeException('El borrador no existe.');return$row;}
     private function currencyForSale(object$sale):string{$client=$this->db->table('clients')->select('currency')->where('id',$sale->client_id)->get(1)->getRow();return strtoupper(trim((string)($client->currency??''))?:get_setting('default_currency')?:'MXN');}
-    private function saleItems(int$saleId,?int$draftId):array{return$this->db->table('invoice_items')->where(['invoice_id'=>$saleId,'deleted'=>0])->orderBy('sort')->get()->getResult();}
-    private function itemSnapshot(object$item):array
+    private function saleItems(int$saleId,?int$draftId):array{return$this->db->table('invoice_items ii')
+        ->select('ii.*,s.fiscal_description,p.code product_service_code,u.code unit_code,o.code tax_object_code')
+        ->join('item_fiscal_settings s','s.item_id=ii.item_id AND s.is_default=1 AND s.deleted=0','left')
+        ->join('sat_product_service_keys p','p.id=s.sat_product_service_key_id','left')
+        ->join('sat_unit_keys u','u.id=s.sat_unit_key_id','left')
+        ->join('sat_tax_object_codes o','o.id=s.tax_object_code_id','left')
+        ->where(['ii.invoice_id'=>$saleId,'ii.deleted'=>0])->orderBy('ii.sort')->get()->getResult();}
+    private function itemSnapshot(object$item,array$override=[]):array
     {
-        $settings=$this->db->table('item_fiscal_settings s')->select('s.*,p.code product_service_code,u.code unit_code,o.code tax_object_code')
-            ->join('sat_product_service_keys p','p.id=s.sat_product_service_key_id','left')
-            ->join('sat_unit_keys u','u.id=s.sat_unit_key_id','left')
-            ->join('sat_tax_object_codes o','o.id=s.tax_object_code_id','left')
-            ->where(['s.item_id'=>$item->item_id,'s.deleted'=>0])->whereIn('s.status',['active','ready'])
-            ->orderBy('s.is_default','DESC')->get(1)->getRowArray();
-        return [
+        $resolved=(new ProductFiscalConfigurationResolver($this->db))->resolve((int)$item->item_id);$settings=$resolved['ready']?$resolved['setting']:null;
+        $snapshot=[
             'title'=>(string)$item->title,'description'=>(string)$item->description,'commercial_unit'=>(string)$item->unit_type,
             'product_service_code'=>(string)($settings['product_service_code']??''),
             'unit_code'=>(string)($settings['unit_code']??''),'tax_object_code'=>(string)($settings['tax_object_code']??''),
             'fiscal_description'=>(string)($settings['fiscal_description']??$item->description??$item->title),
         ];
+        if($resolved['ready'])$snapshot['taxes']=$resolved['taxes'];
+        $storedOverride=json_decode((string)($item->fiscal_override_json??''),true);$itemOverride=(new FiscalItemOverrideContract())->normalizeStored(is_array($storedOverride)?$storedOverride:null,(int)($item->item_id??0));if($itemOverride&&$itemOverride['ready']){$snapshot=array_replace($snapshot,array_intersect_key($itemOverride,array_flip(['fiscal_description','product_service_code','unit_code','tax_object_code','commercial_unit','taxes','pricing_mode'])));}
+        foreach(['fiscal_description','product_service_code','unit_code','tax_object_code','commercial_unit']as$field){
+            $value=trim((string)($override[$field]??''));if($value!=='')$snapshot[$field]=$value;
+        }
+        $taxes=array_values(array_filter((array)($override['taxes']??[]),static fn($tax)=>is_array($tax)&&trim((string)($tax['tax_code']??''))!==''));
+        if($taxes)$snapshot['taxes']=$taxes;
+        return$snapshot;
+    }
+    private function snapshotIsComplete(array$snapshot):bool
+    {
+        foreach(['fiscal_description','product_service_code','unit_code','tax_object_code','commercial_unit']as$field)if(trim((string)($snapshot[$field]??''))==='')return false;
+        return($snapshot['tax_object_code']??'')==='01'||!empty($snapshot['taxes']);
     }
     private function audit(?int$draftId,?int$saleId,int$userId,string$event,array$summary):void{$this->db->table('fiscal_draft_audit')->insert(['fiscal_draft_id'=>$draftId,'sale_id'=>$saleId,'user_id'=>$userId,'event'=>$event,'summary_json'=>json_encode($summary,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),'created_at'=>get_current_utc_time()]);}
 }

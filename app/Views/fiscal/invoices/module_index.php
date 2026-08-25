@@ -25,7 +25,7 @@
                 <div class="col-md-3 mb10"><label>Tipo CFDI</label><?php echo form_dropdown('type',[''=>'Todos','I'=>'Ingreso','E'=>'Egreso','P'=>'Pago','T'=>'Traslado','N'=>'Nómina'],'',"id='fi-type' class='form-control'"); ?></div>
                 <div class="col-md-3 mb10"><label>Estado fiscal</label><?php echo form_dropdown('status',[''=>'Todos','draft'=>'Borrador','ready_to_stamp'=>'Listo para timbrar','stamping'=>'Enviando','stamped'=>'Timbrado','stamping_error'=>'Error','stamp_status_unknown'=>'Resultado desconocido','cancelled'=>'Cancelado'],'',"id='fi-status' class='form-control'"); ?></div>
                 <div class="col-md-3 mb10"><label>Estado PDF</label><?php echo form_dropdown('pdf_status',[''=>'Todos','pending'=>'Pendiente','processing'=>'Procesando','valid'=>'Disponible','error'=>'Error','unknown'=>'Desconocido'],'',"id='fi-pdf-status' class='form-control'"); ?></div>
-                <div class="col-md-3 mb10"><label>Cancelación</label><?php echo form_dropdown('cancellation_status',[''=>'Todos','none'=>'No solicitada','requested'=>'Solicitada','pending'=>'Pendiente','accepted'=>'Aceptada','rejected'=>'Rechazada','unknown'=>'Desconocida'],'',"id='fi-cancellation-status' class='form-control'"); ?></div>
+                <div class="col-md-3 mb10"><label>Cancelación</label><?php echo form_dropdown('cancellation_status',[''=>'Todos','none'=>'No solicitada','requested'=>'Pendiente','pending'=>'Pendiente','accepted'=>'Cancelada','rejected'=>'Rechazada','unknown'=>'Verificando'],'',"id='fi-cancellation-status' class='form-control'"); ?></div>
                 <div class="col-md-3 mb10 d-flex align-items-end"><button type="button" id="fi-clear" class="btn btn-default w-100">Limpiar filtros</button></div>
             </div>
         </details>
@@ -60,7 +60,7 @@ $(document).ready(function(){
         if(window.InstanceCollection&&window.InstanceCollection['fiscal-invoices-table']){
             window.InstanceCollection['fiscal-invoices-table'].filterParams=currentFilters();
         }
-        table.appTable({reload:true});
+        $('#fiscal-invoices-table').appTable({reload:true});
     }
     var table=$('#fiscal-invoices-table').appTable({
         source:'<?php echo_uri('fiscal/invoices/list'); ?>',
@@ -99,7 +99,7 @@ $(document).ready(function(){
         button.data('busy',true).addClass('disabled');$('#pdf-confirm-submit').prop('disabled',true);$('#pdf-confirm-progress').text('Generando PDF…');
         $.post('<?php echo get_uri('fiscal/documents'); ?>/'+button.data('document-id')+'/pdf/generate',data,function(result){
             if(result.csrf)token.attr('name',result.csrf.name).val(result.csrf.hash);
-            if(result.success){appAlert.success(result.message||'PDF generado correctamente.');confirmModal.hide();table.appTable({reload:true});}
+            if(result.success){appAlert.success(result.message||'PDF generado correctamente.');confirmModal.hide();$('#fiscal-invoices-table').appTable({reload:true});}
             else{appAlert.error(result.message||'No fue posible generar el PDF.');$('#pdf-confirm-progress').text(result.message||'No fue posible generar el PDF.');}
         },'json').fail(function(){appAlert.error('No fue posible generar el PDF.');})
           .always(function(){button.data('busy',false).removeClass('disabled');$('#pdf-confirm-submit').prop('disabled',false).text('Generar PDF');});

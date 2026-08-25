@@ -43,6 +43,13 @@ final class FiscalDecimal
         return self::format(intdiv(self::micros($left) * self::micros($right), 1000000));
     }
 
+    public static function divide(string $dividend, string $divisor): string
+    {
+        if (self::micros($divisor) === 0) throw new RuntimeException('FISCAL_DECIMAL_DIVISION_BY_ZERO');
+        if (function_exists('bcdiv')) return self::normalize(bcdiv($dividend, $divisor, 12));
+        return self::format(intdiv(self::micros($dividend) * 1000000, self::micros($divisor)));
+    }
+
     public static function prorate(string $amount, string $part, string $whole): string
     {
         if (self::micros($whole) <= 0) throw new RuntimeException('FISCAL_DECIMAL_DIVISION_BY_ZERO');

@@ -6,6 +6,7 @@ namespace App\Services;
 use App\Models\Invoice_items_model;
 use App\Models\Invoices_model;
 use CodeIgniter\Database\BaseConnection;
+use App\Services\Fiscal\FiscalDecimal;
 use RuntimeException;
 
 /** Creates a complete RISE invoice header, items and official totals atomically. */
@@ -77,9 +78,12 @@ class InvoiceCreationService
                     'description' => $item['description'] ?? '',
                     'quantity' => $quantity,
                     'unit_type' => $item['unit_type'] ?? '',
+                    'cost' => $item['cost'] ?? null,
+                    'profit_percentage' => $item['profit_percentage'] ?? null,
                     'rate' => $rate,
-                    'total' => $item['total'] ?? ((string) $quantity * (string) $rate),
+                    'total' => $item['total'] ?? FiscalDecimal::multiply((string) $quantity, (string) $rate),
                     'taxable' => array_key_exists('taxable', $item) ? (int) $item['taxable'] : 1,
+                    'fiscal_override_json' => $item['fiscal_override_json'] ?? null,
                     'sort' => $item['sort'] ?? $position,
                     'deleted' => 0,
                 ];

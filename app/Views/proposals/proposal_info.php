@@ -24,6 +24,8 @@
                     <?php } ?>
                     <?php if (!empty($proposal_info->converted_sale_id)) { ?>
                         <li role="presentation"><?php echo anchor(get_uri("invoices/view/" . $proposal_info->converted_sale_id), "<i data-feather='file-text' class='icon-16'></i> " . app_lang('view_invoice'), array("class" => "dropdown-item")); ?> </li>
+                    <?php } else { ?>
+                        <li role="presentation"><?php echo ajax_anchor(get_uri("proposals/update_proposal_status/".$proposal_info->id."/accepted"), "<i data-feather='refresh-cw' class='icon-16'></i> Convertir en venta", array("data-reload-on-success"=>"1","class"=>"dropdown-item")); ?></li>
                     <?php } ?>
                     <?php if ($show_contract_option) { ?>
                         <li role="presentation"><?php echo modal_anchor(get_uri("contracts/modal_form/"), "<i data-feather='file-plus' class='icon-16'></i> " . app_lang('create_contract'), array("title" => app_lang("create_contract"), "data-post-proposal_id" => $proposal_info->id, "class" => "dropdown-item")); ?> </li>

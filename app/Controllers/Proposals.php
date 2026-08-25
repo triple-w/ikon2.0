@@ -148,8 +148,9 @@ class Proposals extends Security_Controller {
             "client_id" => $client_id,
             "proposal_date" => $this->request->getPost('proposal_date'),
             "valid_until" => $this->request->getPost('valid_until'),
-            "tax_id" => $this->request->getPost('tax_id') ? $this->request->getPost('tax_id') : 0,
-            "tax_id2" => $this->request->getPost('tax_id2') ? $this->request->getPost('tax_id2') : 0,
+            // Columnas legacy NOT NULL: 0 es neutral y no participa en el motor por partida.
+            "tax_id" => $id && !$is_clone ? (int) $this->Proposals_model->get_one($id)->tax_id : 0,
+            "tax_id2" => $id && !$is_clone ? (int) $this->Proposals_model->get_one($id)->tax_id2 : 0,
             "company_id" => $this->request->getPost('company_id') ? $this->request->getPost('company_id') : get_default_company_id(),
             "note" => $this->request->getPost('proposal_note')
         );
@@ -519,6 +520,7 @@ class Proposals extends Security_Controller {
 
     private function _get_proposal_total_view($proposal_id = 0) {
         $view_data["proposal_total_summary"] = $this->Proposals_model->get_proposal_total_summary($proposal_id);
+        $view_data["canonical_tax_breakdown"] = (new \App\Services\Fiscal\CommercialTaxBreakdownService())->forProposal((int)$proposal_id);
         $view_data["proposal_id"] = $proposal_id;
         $view_data["is_proposal_editable"] = $this->_is_proposal_editable($proposal_id);
         return $this->template->view('proposals/proposal_total_section', $view_data);
@@ -592,6 +594,11 @@ class Proposals extends Security_Controller {
             $proposal_id = $view_data['model_info']->proposal_id;
         }
         $view_data['proposal_id'] = $proposal_id;
+        $permissions=is_array($this->login_user->permissions)?$this->login_user->permissions:(@unserialize((string)$this->login_user->permissions)?:[]);
+        $view_data['fiscal_configuration']=$view_data['model_info']->id?(new \App\Services\Fiscal\CommercialItemFiscalOverrideService())->effective('proposal_items',(int)$view_data['model_info']->id):[];
+        $view_data['sat_tax_codes']=db_connect()->table('sat_tax_codes')->where('is_active',1)->orderBy('code')->get()->getResult();
+        $view_data['sat_tax_objects']=db_connect()->table('sat_tax_object_codes')->where('is_active',1)->orderBy('code')->get()->getResult();
+        $view_data['can_update_master_fiscal']=false;
         return $this->template->view('proposals/item_modal_form', $view_data);
     }
 
@@ -610,14 +617,18 @@ class Proposals extends Security_Controller {
         }
 
         $id = $this->request->getPost('id');
-        $rate = unformat_currency($this->request->getPost('proposal_item_rate'));
-        $quantity = unformat_currency($this->request->getPost('proposal_item_quantity'));
+        $pricing = new \App\Services\CommercialMarginService();
+        try{$rate=$pricing->normalize($this->request->getPost('proposal_item_rate'),'Precio de venta',true);$quantity=$pricing->normalize($this->request->getPost('proposal_item_quantity'),'Cantidad',true);$cost=$pricing->normalize($this->request->getPost('proposal_item_cost'),'Costo');$postedMargin=$pricing->normalize($this->request->getPost('proposal_item_profit_percentage'),'Margen');if($postedMargin!==null&&\App\Services\Fiscal\FiscalDecimal::micros($postedMargin)>=100000000)throw new \InvalidArgumentException('El margen debe ser menor que 100%.');$margin=$cost!==null&&$postedMargin!==null?$pricing->marginFromPrice($cost,$rate):null;}catch(\InvalidArgumentException $e){echo json_encode(['success'=>false,'message'=>$e->getMessage()]);return;}
         $proposal_item_title = $this->request->getPost('proposal_item_title');
         $item_id = 0;
 
         if (!$id) {
             //on adding item for the first time, get the id to store
             $item_id = $this->request->getPost('item_id');
+        } else {
+            // Editing does not always repost the autocomplete selection.
+            $stored_item = $this->Proposal_items_model->get_one($id);
+            $item_id = (int) ($stored_item->item_id ?? 0);
         }
 
         //check if the add_new_item flag is on, if so, add the item to libary. 
@@ -631,6 +642,7 @@ class Proposals extends Security_Controller {
             );
             $item_id = $this->Items_model->ci_save($library_item_data);
         }
+        try{$fiscalOverride=(new \App\Services\Fiscal\CommercialItemFiscalOverrideService())->validateInput((array)$this->request->getPost(),(int)$item_id);}catch(\InvalidArgumentException $e){echo json_encode(['success'=>false,'message'=>$e->getMessage()]);return;}
 
         $proposal_item_data = array(
             "proposal_id" => $proposal_id,
@@ -638,8 +650,10 @@ class Proposals extends Security_Controller {
             "description" => $this->request->getPost('proposal_item_description'),
             "quantity" => $quantity,
             "unit_type" => $this->request->getPost('proposal_unit_type'),
-            "rate" => unformat_currency($this->request->getPost('proposal_item_rate')),
-            "total" => $rate * $quantity,
+            "cost" => $cost,"profit_percentage" => $margin,
+            "rate" => $rate,
+            "total" => \App\Services\Fiscal\FiscalDecimal::multiply($rate,$quantity),
+            "fiscal_override_json" => $fiscalOverride,
         );
 
         if ($item_id) {
@@ -718,13 +732,15 @@ class Proposals extends Security_Controller {
             $item .= "<div $desc_style >" . custom_nl2br($data->description) . "</div>";
         }
         $type = $data->unit_type ? $data->unit_type : "";
+        $taxDisplay=(new \App\Services\Fiscal\CommercialItemTaxDisplayService())->document('proposal_items','proposals','proposal_id',(int)$data->id);
 
         return array(
             $data->sort,
             $item,
             to_decimal_format($data->quantity) . " " . $type,
-            to_currency($data->rate, $data->currency_symbol),
-            to_currency($data->total, $data->currency_symbol),
+            to_currency($taxDisplay['unit_base'], $data->currency_symbol),
+            $taxDisplay['taxes'],
+            to_currency($taxDisplay['ready']?$taxDisplay['total']:$data->total, $data->currency_symbol),
             modal_anchor(get_uri("proposals/item_modal_form"), "<i data-feather='edit' class='icon-16'></i>", array("class" => "edit", "title" => app_lang('edit_proposal'), "data-post-id" => $data->id, "data-post-proposal_id" => $data->proposal_id))
                 . js_anchor("<i data-feather='x' class='icon-16'></i>", array('title' => app_lang('delete'), "class" => "delete", "data-id" => $data->id, "data-action-url" => get_uri("proposals/delete_item"), "data-action" => "delete"))
         );
@@ -754,6 +770,8 @@ class Proposals extends Security_Controller {
         $item = $this->Invoice_items_model->get_item_info_suggestion(array("item_id" => $item_id));
         if ($item) {
             $item->rate = $item->rate ? to_decimal_format($item->rate) : "";
+            $item->cost = isset($item->cost) && $item->cost!==null ? to_decimal_format($item->cost) : "";
+            $master=(new \App\Services\Fiscal\ProductFiscalConfigurationResolver())->resolve((int)$item->id);$item->fiscal=['source'=>$master['source'],'ready'=>$master['ready'],'missing'=>$master['missing'],'setting'=>$master['setting'],'taxes'=>$master['taxes']];
             echo json_encode(array("success" => true, "item_info" => $item));
         } else {
             echo json_encode(array("success" => false));

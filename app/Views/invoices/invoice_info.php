@@ -13,7 +13,7 @@
                     <?php if (($invoice_info->commercial_status ?? 'open') === 'open') { ?>
                         <li><form method="post" action="<?php echo get_uri('invoices/close_sale/'.$invoice_info->id); ?>"><?php echo csrf_field(); ?><button class="dropdown-item" type="submit"><i data-feather="lock" class="icon-16"></i> Cerrar venta</button></form></li>
                     <?php } ?>
-                    <?php if ($can_edit_invoices && $invoice_info->type == "invoice") { ?>
+                    <?php if ($can_edit_invoices && $is_invoice_editable && $invoice_info->type == "invoice") { ?>
                         <?php
                         $edit_url = "invoices/modal_form";
                         if (get_setting("enable_invoice_lock_state") && !$is_invoice_editable) {

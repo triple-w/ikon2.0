@@ -32,6 +32,7 @@ final class FiscalDocumentFromDraftSnapshotService
             $now = get_current_utc_time();
             $sourceHash = hash('sha256', json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
             $firstSale = (int)$snapshot['allocations'][0]['sale_id'];
+            $currencyTotals=$this->currencyTotals($snapshot);
             $document = [
                 'invoice_id' => $firstSale, 'source_draft_id' => $draftId,
                 'environment'=>(string)($draft['environment']??config('Fiscal')->environment),
@@ -48,9 +49,9 @@ final class FiscalDocumentFromDraftSnapshotService
                 'payment_form_code' => (string)$draft['payment_form_code'],
                 'payment_method_code' => (string)$draft['payment_method_code'],
                 'cfdi_use_code' => (string)$draft['cfdi_use_code'], 'export_code' => '01',
-                'subtotal' => $snapshot['totals']['subtotal'], 'discount' => $snapshot['totals']['discount'],
-                'transferred_tax_total' => $snapshot['totals']['transferred'],
-                'withheld_tax_total' => $snapshot['totals']['withheld'], 'total' => $snapshot['totals']['total'],
+                'subtotal'=>$currencyTotals['subtotal'],'discount'=>$currencyTotals['discount'],
+                'transferred_tax_total'=>$currencyTotals['transferred'],
+                'withheld_tax_total'=>$currencyTotals['withheld'],'total'=>$currencyTotals['total'],
                 'administrative_total_reference' => $snapshot['totals']['total'],
                 'pricing_mode' => (string)($snapshot['issuer_snapshot']['tax_pricing_mode'] ?? 'snapshot'),
                 'source_snapshot_hash' => $sourceHash, 'created_by' => $userId,
@@ -127,7 +128,10 @@ final class FiscalDocumentFromDraftSnapshotService
                 'quantity' => $item['quantity'], 'unit_code' => $s['unit_code'],
                 'unit_name' => $s['commercial_unit'] ?? 'Pieza',
                 'description' => $s['fiscal_description'] ?? $s['description'] ?? $s['title'],
-                'unit_value' => $item['unit_price'], 'gross_amount' => $item['subtotal'],
+                // CFDI Importe must equal Cantidad × ValorUnitario. For tax-inclusive
+                // sales the commercial rate is gross; the fiscal snapshot subtotal is net.
+                'unit_value' => FiscalDecimal::divide((string)$item['subtotal'], (string)$item['quantity']),
+                'gross_amount' => $item['subtotal'],
                 'discount' => $item['discount'], 'tax_object_code' => $s['object_tax'] ?? $s['tax_object_code'],
                 'taxable_base' => $s['taxable_base'], 'transferred_tax_total' => $s['transferred_total'],
                 'withheld_tax_total' => $s['withheld_total'], 'line_total' => $item['total'], 'created_at' => $now,
@@ -158,8 +162,9 @@ final class FiscalDocumentFromDraftSnapshotService
                 $groups[$key]['tax_base'] = '0.000000';
                 $groups[$key]['tax_amount'] = '0.000000';
             }
-            $groups[$key]['tax_base'] = FiscalDecimal::add($groups[$key]['tax_base'], $tax['tax_base']);
-            $groups[$key]['tax_amount'] = FiscalDecimal::add($groups[$key]['tax_amount'], $tax['tax_amount']);
+            $money=new FiscalDecimalCalculator();
+            $groups[$key]['tax_base']=FiscalDecimal::add($groups[$key]['tax_base'],$money->money((string)$tax['tax_base']));
+            $groups[$key]['tax_amount']=FiscalDecimal::add($groups[$key]['tax_amount'],$money->money((string)$tax['tax_amount']));
         }
         foreach ($groups as $tax) {
             $this->db->table('fiscal_document_tax_totals')->insert([
@@ -179,6 +184,17 @@ final class FiscalDocumentFromDraftSnapshotService
             default => throw new RuntimeException('El snapshot contiene un tipo de impuesto no soportado.'),
         };
     }
+
+    public function reconcileLocalDocumentCurrencyTotals(int$documentId):void
+    {
+        if($this->db->table('fiscal_stamp_attempts')->where('fiscal_document_id',$documentId)->countAllResults())throw new RuntimeException('Un documento con intento PAC no puede reconciliarse localmente.');
+        $items=$this->db->table('fiscal_document_items')->where('fiscal_document_id',$documentId)->get()->getResultArray();if(!$items)throw new RuntimeException('El documento fiscal no contiene conceptos.');
+        $subtotal=$discount=$total='0.000000';foreach($items as$item){$subtotal=FiscalDecimal::add($subtotal,(string)$item['gross_amount']);$discount=FiscalDecimal::add($discount,(string)$item['discount']);$total=FiscalDecimal::add($total,(string)$item['line_total']);}
+        $taxes=$this->db->table('fiscal_document_item_taxes t')->select('t.tax_type,t.amount')->join('fiscal_document_items i','i.id=t.fiscal_document_item_id')->where('i.fiscal_document_id',$documentId)->get()->getResultArray();$transferred=$withheld='0.000000';foreach($taxes as$tax){if($tax['tax_type']==='withheld')$withheld=FiscalDecimal::add($withheld,(string)$tax['amount']);else$transferred=FiscalDecimal::add($transferred,(string)$tax['amount']);}
+        $this->db->transBegin();try{$this->db->table('fiscal_documents')->where('id',$documentId)->update(['subtotal'=>$subtotal,'discount'=>$discount,'transferred_tax_total'=>$transferred,'withheld_tax_total'=>$withheld,'total'=>$total,'updated_at'=>get_current_utc_time()]);$groups=$this->db->table('fiscal_document_item_taxes t')->select('t.tax_code,t.tax_type,t.factor_type,t.rate_or_quota,SUM(t.taxable_base) taxable_base,SUM(t.amount) amount')->join('fiscal_document_items i','i.id=t.fiscal_document_item_id')->where('i.fiscal_document_id',$documentId)->groupBy('t.tax_code,t.tax_type,t.factor_type,t.rate_or_quota')->get()->getResultArray();$this->db->table('fiscal_document_tax_totals')->where('fiscal_document_id',$documentId)->delete();foreach($groups as$tax)$this->db->table('fiscal_document_tax_totals')->insert(['fiscal_document_id'=>$documentId,'tax_code'=>$tax['tax_code'],'tax_type'=>$tax['tax_type'],'factor_type'=>$tax['factor_type'],'rate_or_quota'=>$tax['rate_or_quota'],'taxable_base'=>$tax['taxable_base'],'amount'=>$tax['amount'],'created_at'=>get_current_utc_time()]);if(!$this->db->transStatus())throw new RuntimeException('No fue posible reconciliar los totales locales.');$this->db->transCommit();}catch(Throwable$e){$this->db->transRollback();throw$e;}
+    }
+
+    private function currencyTotals(array$snapshot):array{$money=new FiscalDecimalCalculator();$subtotal=$discount=$transferred=$withheld=$total='0.000000';foreach($snapshot['items']as$item){$subtotal=FiscalDecimal::add($subtotal,$money->money((string)$item['subtotal']));$discount=FiscalDecimal::add($discount,$money->money((string)$item['discount']));$total=FiscalDecimal::add($total,$money->money((string)$item['total']));foreach($item['taxes']as$tax){$amount=$money->money((string)$tax['tax_amount']);if($tax['tax_type']==='withholding')$withheld=FiscalDecimal::add($withheld,$amount);else$transferred=FiscalDecimal::add($transferred,$amount);}}return compact('subtotal','discount','transferred','withheld','total');}
 
     private function audit(int $draftId, int $userId, string $event, array $summary): void
     {

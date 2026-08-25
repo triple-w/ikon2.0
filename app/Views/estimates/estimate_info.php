@@ -20,7 +20,7 @@
                 ?>
                     <li role="presentation"><?php echo ajax_anchor(get_uri("estimates/update_estimate_status/" . $estimate_info->id . "/accepted"), "<i data-feather='check-circle' class='icon-16'></i> " . app_lang('mark_as_accepted'), array("data-reload-on-success" => "1", "class" => "dropdown-item")); ?> </li>
                     <li role="presentation"><?php echo ajax_anchor(get_uri("estimates/update_estimate_status/" . $estimate_info->id . "/declined"), "<i data-feather='x-circle' class='icon-16'></i> " . app_lang('mark_as_declined'), array("data-reload-on-success" => "1", "class" => "dropdown-item")); ?> </li>
-                <?php } else if ($estimate_status == "accepted") {
+                <?php } else if ($estimate_status == "accepted" && empty($estimate_info->converted_sale_id)) {
                 ?>
                     <li role="presentation"><?php echo ajax_anchor(get_uri("estimates/update_estimate_status/" . $estimate_info->id . "/declined"), "<i data-feather='x-circle' class='icon-16'></i> " . app_lang('mark_as_declined'), array("data-reload-on-success" => "1", "class" => "dropdown-item")); ?> </li>
                 <?php
@@ -31,7 +31,7 @@
                 }
                 ?>
 
-                <?php if ($estimate_status == "accepted") { ?>
+                <?php if ($estimate_status == "accepted" && empty($estimate_info->converted_sale_id)) { ?>
                     <li role="presentation" class="dropdown-divider"></li>
                     <?php if ($can_create_projects && !$estimate_info->project_id) { ?>
                         <li role="presentation"><?php echo modal_anchor(get_uri("projects/modal_form"), "<i data-feather='command' class='icon-16'></i> " . app_lang('create_project'), array("data-post-context" => "estimate", "data-post-context_id" => $estimate_info->id, "title" => app_lang('create_project'), "data-post-client_id" => $estimate_info->client_id, "class" => "dropdown-item")); ?> </li>

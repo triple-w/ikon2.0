@@ -29,6 +29,8 @@ final class TimbradorXpressResponseParser
         return new PacResponse($code, $message, $data, $httpStatus, [
             'has_data' => $data !== null && $data !== '',
             'response_keys' => array_values(array_intersect(array_keys($decoded), ['code','message','data'])),
+            'parsing_phase' => 'outer_parsed',
+            'outer_type' => 'object',
         ]);
     }
 

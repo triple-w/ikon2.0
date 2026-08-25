@@ -1,4 +1,5 @@
 <?php echo form_open(get_uri("estimate/accept_estimate"), array("id" => "accept-estimate-form", "class" => "general-form", "role" => "form")); ?>
+<?php echo csrf_field(); ?>
 <div class="modal-body clearfix">
     <div class="container-fluid">
         <input type="hidden" name="id" value="<?php echo $model_info->id; ?>" />

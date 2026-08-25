@@ -7,4 +7,7 @@ interface FiscalCancellationAdapterInterface
 {
     /** @return array{status:string,code:?string,message:string,ack_base64:?string,request_sent:bool} */
     public function cancel(array $request): array;
+
+    /** @return array{status:string,code:?string,message:string,ack_base64:?string,request_sent:bool} */
+    public function query(array $request): array;
 }

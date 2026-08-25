@@ -71,7 +71,7 @@
 <script type="text/javascript">
     $(document).ready(function() {
         var optionVisibility = false;
-        if ("<?php echo $can_edit_invoices ?>") {
+        if ("<?php echo $can_edit_invoices && $is_invoice_editable ?>") {
             optionVisibility = true;
         }
         var delay;
@@ -101,12 +101,12 @@
                     sortable: false
                 },
                 {
-                    title: '<?php echo app_lang("rate") ?>',
+                    title: 'Precio sin impuestos',
                     "class": "text-right w15p",
                     sortable: false
                 },
                 {
-                    title: '<?php echo app_lang("taxable") ?>',
+                    title: 'Impuestos',
                     "class": "text-right w85",
                     sortable: false
                 },
@@ -146,7 +146,7 @@
 
             },
             onInitComplete: function() {
-                <?php if ($can_edit_invoices) { ?>
+                <?php if ($can_edit_invoices && $is_invoice_editable) { ?>
                     //apply sortable
                     $("#invoice-item-table").find("tbody").attr("id", "invoice-item-table-sortable");
                     var $selector = $("#invoice-item-table-sortable");

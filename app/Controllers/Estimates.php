@@ -150,8 +150,9 @@ class Estimates extends Security_Controller {
             "client_id" => $client_id,
             "estimate_date" => $this->request->getPost('estimate_date'),
             "valid_until" => $this->request->getPost('valid_until'),
-            "tax_id" => $this->request->getPost('tax_id') ? $this->request->getPost('tax_id') : 0,
-            "tax_id2" => $this->request->getPost('tax_id2') ? $this->request->getPost('tax_id2') : 0,
+            // Columnas legacy NOT NULL: 0 es neutral y no participa en el motor por partida.
+            "tax_id" => $id && !$is_clone ? (int) $this->Estimates_model->get_one($id)->tax_id : 0,
+            "tax_id2" => $id && !$is_clone ? (int) $this->Estimates_model->get_one($id)->tax_id2 : 0,
             "company_id" => $this->request->getPost('company_id') ? $this->request->getPost('company_id') : get_default_company_id(),
             "note" => $this->request->getPost('estimate_note')
         );
@@ -304,7 +305,7 @@ class Estimates extends Security_Controller {
                         (int) $this->login_user->id
                     );
                 } catch (\Throwable $e) {
-                    echo json_encode(array("success" => false, "message" => app_lang("estimate_acceptance_fulfillment_failed")));
+                    echo json_encode(array("success" => false, "message" => EstimateAcceptanceService::userMessage($e)));
                     return;
                 }
             } else {
@@ -315,16 +316,13 @@ class Estimates extends Security_Controller {
             if ($status == "accepted") {
                 log_notification("estimate_accepted", array("estimate_id" => $estimate_id));
 
-                if ($is_modal) {
-                    echo json_encode(array(
-                        "success" => true,
-                        "message" => app_lang($acceptance_service->resultMessageKey($result)),
-                        "invoice_action" => $result["invoice_action"],
-                        "invoice_id" => $result["invoice_id"],
-                    ));
-                } else {
-                    $this->session->setFlashdata("success_message", app_lang($acceptance_service->resultMessageKey($result)));
-                }
+                echo json_encode(array(
+                    "success" => true,
+                    "message" => app_lang($acceptance_service->resultMessageKey($result)),
+                    "invoice_action" => $result["invoice_action"],
+                    "invoice_id" => $result["invoice_id"],
+                    "invoice_url" => $result["invoice_url"],
+                ));
             } else if ($status == "declined") {
                 log_notification("estimate_rejected", array("estimate_id" => $estimate_id));
             }
@@ -349,9 +347,10 @@ class Estimates extends Security_Controller {
                         "message" => app_lang($acceptance_service->resultMessageKey($result)),
                         "invoice_action" => $result["invoice_action"],
                         "invoice_id" => $result["invoice_id"],
+                        "invoice_url" => $result["invoice_url"],
                     ));
                 } catch (\Throwable $e) {
-                    echo json_encode(array("success" => false, "message" => app_lang("estimate_acceptance_fulfillment_failed")));
+                    echo json_encode(array("success" => false, "message" => EstimateAcceptanceService::userMessage($e)));
                 }
             } else {
                 $estimate_id = $this->Estimates_model->ci_save($estimate_data, $estimate_id);
@@ -532,6 +531,7 @@ class Estimates extends Security_Controller {
                 $view_data["custom_field_headers_of_task"] = $this->Custom_fields_model->get_custom_field_headers_for_table("tasks", $this->login_user->is_admin, $this->login_user->user_type);
 
                 $view_data["estimate_total_summary"] = $this->Estimates_model->get_estimate_total_summary($estimate_id);
+                $view_data["canonical_tax_breakdown"] = (new \App\Services\Fiscal\CommercialTaxBreakdownService())->forEstimate((int)$estimate_id);
                 $estimate_total_section = $this->template->view('estimates/estimate_total_section', $view_data);
                 $view_type = $this->request->getPost('view_type');
 
@@ -622,6 +622,11 @@ class Estimates extends Security_Controller {
             $estimate_id = $view_data['model_info']->estimate_id;
         }
         $view_data['estimate_id'] = $estimate_id;
+        $permissions=is_array($this->login_user->permissions)?$this->login_user->permissions:(@unserialize((string)$this->login_user->permissions)?:[]);
+        $view_data['fiscal_configuration']=$view_data['model_info']->id?(new \App\Services\Fiscal\CommercialItemFiscalOverrideService())->effective('estimate_items',(int)$view_data['model_info']->id):[];
+        $view_data['sat_tax_codes']=db_connect()->table('sat_tax_codes')->where('is_active',1)->orderBy('code')->get()->getResult();
+        $view_data['sat_tax_objects']=db_connect()->table('sat_tax_object_codes')->where('is_active',1)->orderBy('code')->get()->getResult();
+        $view_data['can_update_master_fiscal']=false;
         return $this->template->view('estimates/item_modal_form', $view_data);
     }
 
@@ -646,14 +651,20 @@ class Estimates extends Security_Controller {
             $rate = $pricing->requiredNonNegativeDecimal($this->request->getPost('estimate_item_rate'), app_lang('sale_price'));
             $quantity = $pricing->positiveDecimal($this->request->getPost('estimate_item_quantity'), app_lang('quantity'));
             $cost = $pricing->optionalNonNegativeDecimal($this->request->getPost('estimate_item_cost'), app_lang('cost'));
-            $profit_percentage = $pricing->optionalNonNegativeDecimal($this->request->getPost('estimate_item_profit_percentage'), app_lang('profit_over_cost_percentage'));
+            $postedMargin = $pricing->optionalNonNegativeDecimal($this->request->getPost('estimate_item_profit_percentage'), 'Margen de utilidad (%)');
+            if($postedMargin!==null&&\App\Services\Fiscal\FiscalDecimal::micros($postedMargin)>=100000000)throw new \InvalidArgumentException('El margen debe ser menor que 100%.');
+            $profit_percentage = $cost!==null&&$postedMargin!==null?$pricing->marginFromRate($cost,$rate):null;
         } catch (\InvalidArgumentException $e) {
             echo json_encode(array("success" => false, "message" => $e->getMessage()));
             return;
         }
         $estimate_item_title = $this->request->getPost('estimate_item_title');
-        $item_id = $this->request->getPost('item_id');
-
+        $item_id = (int) $this->request->getPost('item_id');
+        if ($id && !$item_id) {
+            // Editing does not always repost the autocomplete selection.
+            $stored_item = $this->Estimate_items_model->get_one($id);
+            $item_id = (int) ($stored_item->item_id ?? 0);
+        }
         //check if the add_new_item flag is on, if so, add the item to libary. 
         $add_new_item_to_library = $this->request->getPost('add_new_item_to_library');
         if ($add_new_item_to_library) {
@@ -665,6 +676,7 @@ class Estimates extends Security_Controller {
             );
             $item_id = $this->Items_model->ci_save($library_item_data);
         }
+        try{$fiscalOverride=(new \App\Services\Fiscal\CommercialItemFiscalOverrideService())->validateInput((array)$this->request->getPost(),$item_id);}catch(\InvalidArgumentException$e){echo json_encode(['success'=>false,'message'=>$e->getMessage()]);return;}
 
         $estimate_item_data = array(
             "estimate_id" => $estimate_id,
@@ -675,8 +687,9 @@ class Estimates extends Security_Controller {
             "cost" => $cost,
             "profit_percentage" => $profit_percentage,
             "rate" => $rate,
-            "total" => (float) $rate * (float) $quantity,
-            "item_id" => $item_id
+            "total" => \App\Services\Fiscal\FiscalDecimal::multiply($rate,$quantity),
+            "item_id" => $item_id,
+            "fiscal_override_json" => $fiscalOverride
         );
 
         $estimate_item_id = $this->Estimate_items_model->ci_save($estimate_item_data, $id);
@@ -752,13 +765,15 @@ class Estimates extends Security_Controller {
             $item .= "<div class='text-wrap' $desc_style>" . custom_nl2br($data->description) . "</div>";
         }
         $type = $data->unit_type ? $data->unit_type : "";
+        $taxDisplay=(new \App\Services\Fiscal\CommercialItemTaxDisplayService())->document('estimate_items','estimates','estimate_id',(int)$data->id);
 
         return array(
             $data->sort,
             $item,
             to_decimal_format($data->quantity) . " " . $type,
-            to_currency($data->rate, $data->currency_symbol),
-            to_currency($data->total, $data->currency_symbol),
+            to_currency($taxDisplay['unit_base'], $data->currency_symbol),
+            $taxDisplay['taxes'],
+            to_currency($taxDisplay['ready']?$taxDisplay['total']:$data->total, $data->currency_symbol),
             modal_anchor(get_uri("estimates/item_modal_form"), "<i data-feather='edit' class='icon-16'></i>", array("class" => "edit", "title" => app_lang('edit_estimate'), "data-post-id" => $data->id, "data-post-estimate_id" => $data->estimate_id))
                 . js_anchor("<i data-feather='x' class='icon-16'></i>", array('title' => app_lang('delete'), "class" => "delete", "data-id" => $data->id, "data-action-url" => get_uri("estimates/delete_item"), "data-action" => "delete"))
         );
@@ -785,6 +800,8 @@ class Estimates extends Security_Controller {
         $item = $this->Invoice_items_model->get_item_info_suggestion(array("item_id" => $this->request->getPost("item_id")));
         if ($item) {
             $item->rate = $item->rate ? to_decimal_format($item->rate) : "";
+            $item->cost = isset($item->cost) && $item->cost!==null ? to_decimal_format($item->cost) : "";
+            $master=(new \App\Services\Fiscal\ProductFiscalConfigurationResolver())->resolve((int)$item->id);$item->fiscal=['source'=>$master['source'],'ready'=>$master['ready'],'missing'=>$master['missing'],'setting'=>$master['setting'],'taxes'=>$master['taxes']];
             echo json_encode(array("success" => true, "item_info" => $item));
         } else {
             echo json_encode(array("success" => false));

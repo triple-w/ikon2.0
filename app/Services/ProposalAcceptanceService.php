@@ -42,10 +42,7 @@ final class ProposalAcceptanceService
             if ($linked) {
                 throw new RuntimeException('Existe una venta vinculada sin backlink consistente; se requiere revisión manual.');
             }
-            if ($proposal->status === 'accepted') {
-                throw new RuntimeException('La propuesta fue aceptada antes de este flujo y requiere auditoría legacy.');
-            }
-            if (! in_array($proposal->status, ['draft', 'sent'], true)) {
+            if (! in_array($proposal->status, ['draft', 'sent', 'accepted'], true)) {
                 throw new RuntimeException('El estado actual de la propuesta no permite aceptarla.');
             }
 

@@ -31,7 +31,7 @@ final class FiscalDraftStampingPreflightService
             if($fiscal->runtimeMode!=='integration'||!$fiscal->allowRealPac||$fiscal->pacAdapter!=='timbradorxpress'||$fiscal->environment!=='development')$errors[]='El modo de integración PAC no está configurado correctamente.';
             if($pac->environment!=='sandbox'||$pac->baseUrl!==$pac::SANDBOX_URL||!$pac->isConfigured())$errors[]='El PAC de desarrollo no está configurado.';
             if(($draft['environment']??'')!=='development')$errors[]='El borrador no pertenece al ambiente development.';
-            if(strtoupper((string)($snapshot['series_snapshot']['series']??''))!=='TEST'||($snapshot['series_snapshot']['environment']??'')!=='development')$errors[]='Selecciona la serie exclusiva TEST.';
+            if(($snapshot['series_snapshot']['environment']??'')!=='development'||(int)($snapshot['series_snapshot']['issuer_profile_id']??0)!==(int)($draft['issuer_id']??0)||empty($snapshot['series_snapshot']['is_active']))$errors[]='Selecciona una serie development activa del emisor.';
             if(!class_exists(\SoapClient::class))$errors[]='La extensión SOAP no está disponible.';
             if($pdf->provider!=='timbradorxpress-tools'||!$pdf->enabled||$pdf->username===''||$pdf->password===''||$pdf->wsdl==='')$errors[]='El servicio PDF WSTools33 no está configurado.';
             try{$template=(new FiscalPdfTemplateResolver($this->db))->resolve((int)$draft['issuer_id'],'timbradorxpress-tools','I');if($template->templateCode!=='1')$errors[]='La plantilla PDF de ingreso debe ser 1.';}catch(Throwable){$errors[]='La plantilla PDF de ingreso debe ser 1.';}
@@ -42,7 +42,8 @@ final class FiscalDraftStampingPreflightService
                 if(strtoupper((string)$certificate->certificate_rfc)!==strtoupper((string)$snapshot['issuer_snapshot']['rfc']))throw new RuntimeException('rfc');
             }catch(Throwable){$errors[]='El CSD activo, su contraseña o el RFC del emisor no son válidos.';}
         }
-        if (($draft['status'] ?? '') !== 'ready') $errors[] = 'El borrador no está listo para facturarse.';
+        $allowedDraftStatuses = $allowPreparedDocument ? ['ready', 'stamping'] : ['ready'];
+        if (!in_array((string)($draft['status'] ?? ''), $allowedDraftStatuses, true)) $errors[] = 'El borrador no está listo para facturarse.';
         if ((int)($draft['snapshot_version'] ?? 0) < 2
             || (int)($draft['requires_snapshot_refresh'] ?? 1) !== 0
             || empty($draft['snapshot_completed_at'])) {
@@ -105,7 +106,7 @@ final class FiscalDraftStampingPreflightService
                 $document = $this->db->table('fiscal_documents')->select('status')
                     ->where(['id'=>$preparedDocumentId,'source_draft_id'=>$draftId,'deleted'=>0])->get(1)->getRow();
                 $active = $this->db->table('fiscal_stamp_attempts')->where('fiscal_document_id',$preparedDocumentId)
-                    ->whereIn('status',['pending','sending','unknown','timeout_unknown','transport_unknown','reconciliation_required'])
+                    ->groupStart()->whereIn('status',['pending','sending','unknown','timeout_unknown','transport_unknown','reconciliation_required'])->orWhere('requires_reconciliation',1)->groupEnd()
                     ->countAllResults();
                 if (!$document || !in_array($document->status,['locked','ready_to_stamp','stamping_error'],true) || $active) {
                     $errors[] = 'El documento fiscal preparado requiere revisión antes de continuar.';

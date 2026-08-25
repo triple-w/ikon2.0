@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Proposal_items_model;
+use App\Services\Fiscal\FiscalDecimal;
+use App\Services\Fiscal\FiscalItemOverrideContract;
 use CodeIgniter\Database\BaseConnection;
 use RuntimeException;
 
@@ -28,29 +30,35 @@ final class ProposalToInvoiceService
 
         $rows = [];
         foreach ($items as $position => $item) {
+            $productId = (int) ($item->item_id ?? 0);
+            if ($productId > 0 && ! $this->db->table('items')->where(['id' => $productId, 'deleted' => 0])->countAllResults()) {
+                throw new RuntimeException('Una partida de la propuesta referencia un producto inexistente o eliminado.');
+            }
             $quantityText = trim((string) $item->quantity);
             $rateText = trim((string) $item->rate);
             if (! preg_match('/^(?:0|[1-9]\d*)(?:\.\d+)?$/', $quantityText)
                 || ! preg_match('/^(?:0|[1-9]\d*)(?:\.\d+)?$/', $rateText)) {
                 throw new RuntimeException('Las cantidades y precios deben ser decimales finitos no negativos.');
             }
-            $quantity = (float) $item->quantity;
-            $rate = (float) $item->rate;
-            if (! is_finite($quantity) || $quantity <= 0) {
+            if (FiscalDecimal::micros($quantityText) <= 0) {
                 throw new RuntimeException('Todas las cantidades de la propuesta deben ser mayores que cero.');
             }
-            if (! is_finite($rate) || $rate < 0) {
+            if (FiscalDecimal::micros($rateText) < 0) {
                 throw new RuntimeException('Todos los precios de la propuesta deben ser valores no negativos válidos.');
             }
+            $stored=json_decode((string)($item->fiscal_override_json??''),true);$contract=new FiscalItemOverrideContract();$normalized=$contract->normalizeStored(is_array($stored)?$stored:null,$productId);$overrideJson=$normalized?$contract->encode($normalized):null;
             $rows[] = [
-                'item_id' => (int) $item->item_id,
+                'item_id' => $productId,
                 'title' => (string) $item->title,
                 'description' => (string) ($item->description ?? ''),
                 'quantity' => $item->quantity,
                 'unit_type' => (string) $item->unit_type,
+                'cost' => $item->cost ?? null,
+                'profit_percentage' => $item->profit_percentage ?? null,
                 'rate' => $item->rate,
-                'total' => $quantity * $rate,
-                'taxable' => 1,
+                'total' => FiscalDecimal::multiply($quantityText,$rateText),
+                'taxable' => 0,
+                'fiscal_override_json' => $overrideJson,
                 'sort' => (int) ($item->sort ?? $position),
             ];
         }
@@ -65,8 +73,8 @@ final class ProposalToInvoiceService
             'due_date' => $dueDate,
             'status' => 'not_paid',
             'commercial_status' => 'open',
-            'tax_id' => (int) $proposal->tax_id,
-            'tax_id2' => (int) $proposal->tax_id2,
+            'tax_id' => 0,
+            'tax_id2' => 0,
             'tax_id3' => 0,
             'company_id' => (int) $proposal->company_id,
             'note' => $proposal->note,

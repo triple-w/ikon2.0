@@ -84,10 +84,11 @@
                     sortable: false
                 },
                 {
-                    title: "<?php echo app_lang("rate") ?>",
+                    title: "Precio sin impuestos",
                     "class": "text-right w15p",
                     sortable: false
                 },
+                {title: "Impuestos", "class": "text-right w15p", sortable: false},
                 {
                     title: "<?php echo app_lang("total") ?>",
                     "class": "text-right w15p all",

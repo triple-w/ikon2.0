@@ -257,9 +257,10 @@ class Invoices extends Security_Controller {
             "project_id" => $this->request->getPost('invoice_project_id') ? $this->request->getPost('invoice_project_id') : 0,
             "bill_date" => $invoice_bill_date,
             "due_date" => $invoice_due_date,
-            "tax_id" => $this->request->getPost('tax_id') ? $this->request->getPost('tax_id') : 0,
-            "tax_id2" => $this->request->getPost('tax_id2') ? $this->request->getPost('tax_id2') : 0,
-            "tax_id3" => $this->request->getPost('tax_id3') ? $this->request->getPost('tax_id3') : 0,
+            // Columnas legacy NOT NULL: 0 es neutral y no participa en el motor por partida.
+            "tax_id" => $id && !$is_clone ? (int) $this->Invoices_model->get_one($id)->tax_id : 0,
+            "tax_id2" => $id && !$is_clone ? (int) $this->Invoices_model->get_one($id)->tax_id2 : 0,
+            "tax_id3" => $id && !$is_clone ? (int) $this->Invoices_model->get_one($id)->tax_id3 : 0,
             "company_id" => $this->request->getPost('company_id') ? $this->request->getPost('company_id') : get_default_company_id(),
             "note" => $this->request->getPost('invoice_note'),
             "labels" => $this->request->getPost('labels'),
@@ -712,7 +713,11 @@ class Invoices extends Security_Controller {
 
         $status = "-";
         if ($data->type == "invoice") {
-            $status = $this->_get_invoice_status_label($data);
+            $payment_status = $this->_get_invoice_status_label($data);
+            $commercial_status = (string) ($data->commercial_status ?? (($data->status ?? '') === 'draft' ? 'draft' : 'open'));
+            $labels = ['draft' => 'Borrador', 'open' => 'Abierta', 'closed' => 'Cerrada', 'cancelled' => 'Cancelada'];
+            $classes = ['draft' => 'bg-secondary', 'open' => 'bg-info', 'closed' => 'bg-success', 'cancelled' => 'bg-danger'];
+            $status = "<span class='badge " . ($classes[$commercial_status] ?? 'bg-secondary') . "'>" . ($labels[$commercial_status] ?? esc($commercial_status)) . "</span><br><small class='text-muted'>Pago: " . $payment_status . "</small>";
         }
 
         $invoice_labels = " " . make_labels_view_data($data->labels_list, true);
@@ -797,7 +802,7 @@ class Invoices extends Security_Controller {
         $fiscal_review = '';
         $permissions = $this->login_user->permissions ?? array();
         if (!is_array($permissions)) $permissions = @unserialize((string) $permissions) ?: array();
-        if ($this->login_user->is_admin || get_array_value($permissions, 'fiscal.sales.invoice')) {
+        if ($this->login_user->is_admin || get_array_value($permissions, 'fiscal.sales.invoice') || get_array_value($permissions, 'fiscal.drafts.create')) {
             $allocationService = new \App\Services\Fiscal\FiscalSaleAllocationService();
             $summary = $allocationService->getSaleFiscalSummary((int) $data->id);
             if ($data->status !== 'cancelled' && !$allocationService->hasBlockingOperation((int) $data->id)) {
@@ -805,7 +810,7 @@ class Invoices extends Security_Controller {
                     $fiscal_review .= '<li role="presentation">' . modal_anchor(
                         get_uri('fiscal/drafts/create/' . $data->id),
                         "<i data-feather='file-plus' class='icon-16'></i> Facturar",
-                        array('class' => 'dropdown-item','title'=>'Revisión fiscal','data-modal-lg'=>'1')
+                        array('class' => 'dropdown-item','title'=>'Revisión fiscal','data-modal-lg'=>'1','data-action-method'=>'GET')
                     ) . '</li>';
                 } elseif ($summary['active_drafts']) {
                     $firstDraft = (int) $summary['active_drafts'][0]['fiscal_draft_id'];
@@ -818,7 +823,9 @@ class Invoices extends Security_Controller {
         if ($this->login_user->is_admin || get_array_value($permissions, 'fiscal.advanced.view')) {
             $latest = db_connect()->table('sale_fiscal_pricing_preparations')->where('invoice_id', $data->id)->orderBy('id', 'DESC')->get(1)->getRow();
             $badge = $latest ? '<span class="badge bg-warning ml5">' . app_lang('fiscal_pricing_status_' . $latest->status) . '</span>' : '';
-            $fiscal_review .= '<li role="presentation">' . modal_anchor(get_uri('fiscal/invoices/review/' . $data->id), "<i data-feather='shield' class='icon-16'></i> " . app_lang('fiscal_review') . $badge, array('title' => app_lang('fiscal_review'), 'class' => 'dropdown-item')) . '</li>';
+            // The historical fiscal/invoices/review endpoint remains registered for compatibility;
+            // all visible sale actions use the single snapshot-v2 Drafts review below.
+            $fiscal_review .= '<li role="presentation">' . modal_anchor(get_uri('fiscal/drafts/create/' . $data->id), "<i data-feather='shield' class='icon-16'></i> " . app_lang('fiscal_review') . $badge, array('title' => app_lang('fiscal_review'), 'class' => 'dropdown-item', 'data-modal-lg' => '1', 'data-action-method' => 'GET')) . '</li>';
         }
 
         return '
@@ -938,6 +945,7 @@ class Invoices extends Security_Controller {
                 $view_data["custom_field_headers_of_task"] = $this->Custom_fields_model->get_custom_field_headers_for_table("tasks", $this->login_user->is_admin, $this->login_user->user_type);
 
                 $view_data["invoice_total_summary"] = $this->Invoices_model->get_invoice_total_summary($invoice_id);
+                $view_data["canonical_tax_breakdown"] = (new \App\Services\Fiscal\CommercialTaxBreakdownService())->forSale((int)$invoice_id);
                 $view_data["invoice_id"] = $invoice_id;
                 $rolePermissions = is_array($this->login_user->permissions)
                     ? $this->login_user->permissions
@@ -947,12 +955,15 @@ class Invoices extends Security_Controller {
                 if (db_connect()->tableExists('fiscal_document_sales')) {
                     $view_data['fiscal_sale_summary'] =
                         (new \App\Services\Fiscal\FiscalSaleAllocationService())->getSaleFiscalSummary((int) $invoice_id);
+                    $view_data['fiscal_sale_review_status'] = null;
+                    if($view_data['fiscal_sale_summary']['active_drafts']){try{$draftId=(int)$view_data['fiscal_sale_summary']['active_drafts'][0]['fiscal_draft_id'];$workflowData=(new \App\Services\Fiscal\FiscalDraftWorkflowService())->formData($draftId,[]);$view_data['fiscal_sale_review_status']=(new \App\Services\Fiscal\FiscalReviewPresenter())->present($workflowData,false)['status'];}catch(\Throwable){$view_data['fiscal_sale_review_status']='review_needed';}}
                     $view_data['fiscal_sale_permissions'] = [
                         'create_draft' => $hasFiscalPermission('fiscal.sales.invoice')
                             || $hasFiscalPermission('fiscal.drafts.create'),
                         'view_draft' => $hasFiscalPermission('fiscal.drafts.view'),
                         'view_invoice' => $hasFiscalPermission('fiscal.invoices.view')
                             || $hasFiscalPermission('fiscal_invoices_view'),
+                        'advanced' => $hasFiscalPermission('fiscal.advanced.view'),
                     ];
                 }
 
@@ -979,15 +990,16 @@ class Invoices extends Security_Controller {
 
     function item_modal_form() {
         $invoice_id = $this->request->getPost('invoice_id');
+        $fiscal_only=(bool)$this->request->getPost('fiscal_only');$permissions=is_array($this->login_user->permissions)?$this->login_user->permissions:(@unserialize((string)$this->login_user->permissions)?:[]);$canFiscalOverride=(bool)$this->login_user->is_admin||(bool)get_array_value($permissions,'fiscal.drafts.edit')||(bool)get_array_value($permissions,'fiscal.sales.invoice');if($fiscal_only&&!$canFiscalOverride)app_redirect('forbidden');
 
         if (!$this->can_edit_invoices($invoice_id)) {
             app_redirect("forbidden");
         }
 
-        if (!$this->is_invoice_editable($invoice_id)) {
+        if (!$fiscal_only&&!$this->is_invoice_editable($invoice_id)) {
             app_redirect("forbidden");
         }
-        if (!(new \App\Services\Sales\SaleLifecycleService())->canEdit((int)$invoice_id, (int)$this->login_user->id, true)['allowed']) {
+        if (!$fiscal_only&&!(new \App\Services\Sales\SaleLifecycleService())->canEdit((int)$invoice_id, (int)$this->login_user->id, true)['allowed']) {
             echo json_encode(["success"=>false,"message"=>"La venta está cerrada para cambios de partidas."]); return;
         }
 
@@ -1000,6 +1012,10 @@ class Invoices extends Security_Controller {
             $invoice_id = $view_data['model_info']->invoice_id;
         }
         $view_data['invoice_id'] = $invoice_id;
+        $view_data['fiscal_only']=$fiscal_only;
+        $view_data['fiscal_configuration']=$view_data['model_info']->id?(new \App\Services\Fiscal\InvoiceItemFiscalOverrideService())->effective((int)$view_data['model_info']->id):[];
+        $view_data['fiscal_tax_options']=db_connect()->table('taxes t')->select('t.id,t.title,t.fiscal_tax_type,t.xml_rate,t.xml_quota,c.code tax_code,f.name factor_type')->join('sat_tax_codes c','c.id=t.sat_tax_code_id','left')->join('sat_tax_factor_types f','f.id=t.factor_type_id','left')->where(['t.deleted'=>0,'t.use_for_fiscal'=>1,'t.is_fiscal_ready'=>1])->orderBy('t.title')->get()->getResult();
+        $view_data['sat_tax_codes']=db_connect()->table('sat_tax_codes')->where('is_active',1)->orderBy('code')->get()->getResult();$view_data['sat_tax_factors']=db_connect()->table('sat_tax_factor_types')->where('is_active',1)->orderBy('code')->get()->getResult();$view_data['sat_tax_objects']=db_connect()->table('sat_tax_object_codes')->where('is_active',1)->orderBy('code')->get()->getResult();$view_data['can_update_master_fiscal']=false;
         return $this->template->view('invoices/item_modal_form', $view_data);
     }
 
@@ -1012,23 +1028,24 @@ class Invoices extends Security_Controller {
         ));
 
         $invoice_id = $this->request->getPost('invoice_id');
+        $fiscal_only=(bool)$this->request->getPost('fiscal_only');$permissions=is_array($this->login_user->permissions)?$this->login_user->permissions:(@unserialize((string)$this->login_user->permissions)?:[]);$canFiscalOverride=(bool)$this->login_user->is_admin||(bool)get_array_value($permissions,'fiscal.drafts.edit')||(bool)get_array_value($permissions,'fiscal.sales.invoice');if($fiscal_only&&!$canFiscalOverride)app_redirect('forbidden');
 
         if (!$this->can_edit_invoices($invoice_id)) {
             app_redirect("forbidden");
         }
 
-        if (!$this->is_invoice_editable($invoice_id)) {
+        if (!$fiscal_only&&!$this->is_invoice_editable($invoice_id)) {
             app_redirect("forbidden");
         }
-        if (!(new \App\Services\Sales\SaleLifecycleService())->canEdit((int)$invoice_id, (int)$this->login_user->id, true)['allowed']) {
+        if (!$fiscal_only&&!(new \App\Services\Sales\SaleLifecycleService())->canEdit((int)$invoice_id, (int)$this->login_user->id, true)['allowed']) {
             echo json_encode(["success"=>false,"message"=>"La venta está cerrada para cambios de partidas."]); return;
         }
 
         $id = $this->request->getPost('id');
-        $rate = unformat_currency($this->request->getPost('invoice_item_rate'));
-        $quantity = unformat_currency($this->request->getPost('invoice_item_quantity'));
+        if($fiscal_only){$stored=$this->Invoice_items_model->get_one($id);if(!$stored->id||(int)$stored->invoice_id!==(int)$invoice_id){echo json_encode(['success'=>false,'message'=>'La partida no corresponde a la venta.']);return;}$db=db_connect();try{$json=(new \App\Services\Fiscal\InvoiceItemFiscalOverrideService($db))->fromValidatedInput((array)$this->request->getPost(),(int)$stored->item_id);if(!$json)throw new \InvalidArgumentException('Activa la configuración específica de esta venta.');$db->transBegin();$saved=$this->Invoice_items_model->ci_save(['fiscal_override_json'=>$json],$id);if(!$saved||!$db->transStatus())throw new \RuntimeException(app_lang('error_occurred'));$db->transCommit();echo json_encode(['success'=>true,'id'=>(int)$id,'invoice_id'=>(int)$invoice_id,'message'=>'Configuración fiscal guardada.']);}catch(\Throwable$e){if(isset($db)){$db->transRollback();$db->resetTransStatus();}echo json_encode(['success'=>false,'message'=>$e->getMessage()]);}return;}
+        $pricing=new \App\Services\CommercialMarginService();try{$rate=$pricing->normalize($this->request->getPost('invoice_item_rate'),'Precio de venta',true);$quantity=$pricing->normalize($this->request->getPost('invoice_item_quantity'),'Cantidad',true);$cost=$pricing->normalize($this->request->getPost('invoice_item_cost'),'Costo');$postedMargin=$pricing->normalize($this->request->getPost('invoice_item_profit_percentage'),'Margen');if($postedMargin!==null&&\App\Services\Fiscal\FiscalDecimal::micros($postedMargin)>=100000000)throw new \InvalidArgumentException('El margen debe ser menor que 100%.');$margin=$cost!==null&&$postedMargin!==null?$pricing->marginFromPrice($cost,$rate):null;}catch(\InvalidArgumentException $e){echo json_encode(['success'=>false,'message'=>$e->getMessage()]);return;}
         $invoice_item_title = $this->request->getPost('invoice_item_title');
-        $item_id = $this->request->getPost('item_id');
+        $item_id = (int)$this->request->getPost('item_id');if($id&&!$item_id){$stored=$this->Invoice_items_model->get_one($id);$item_id=(int)($stored->item_id??0);}
 
         //check if the add_new_item flag is on, if so, add the item to libary. 
         $add_new_item_to_library = $this->request->getPost('add_new_item_to_library');
@@ -1042,6 +1059,7 @@ class Invoices extends Security_Controller {
             );
             $item_id = $this->Items_model->ci_save($library_item_data);
         }
+        try{$fiscalJson=(new \App\Services\Fiscal\InvoiceItemFiscalOverrideService())->fromValidatedInput((array)$this->request->getPost(),$item_id);}catch(\InvalidArgumentException$e){echo json_encode(['success'=>false,'message'=>$e->getMessage()]);return;}
 
         $invoice_item_data = array(
             "invoice_id" => $invoice_id,
@@ -1049,13 +1067,15 @@ class Invoices extends Security_Controller {
             "description" => $this->request->getPost('invoice_item_description'),
             "quantity" => $quantity,
             "unit_type" => $this->request->getPost('invoice_unit_type'),
-            "rate" => unformat_currency($this->request->getPost('invoice_item_rate')),
-            "total" => $rate * $quantity,
+            "cost"=>$cost,"profit_percentage"=>$margin,
+            "rate" => $rate,
+            "total" => \App\Services\Fiscal\FiscalDecimal::multiply($rate,$quantity),
             "taxable" => $this->request->getPost('taxable') ? $this->request->getPost('taxable') : "",
-            "item_id" => $item_id
+            "item_id" => $item_id,
+            "fiscal_override_json"=>$fiscalJson
         );
 
-        $invoice_item_id = $this->Invoice_items_model->save_item_and_update_invoice($invoice_item_data, $id, $invoice_id);
+        $db=db_connect();$db->transBegin();try{$invoice_item_id = $this->Invoice_items_model->save_item_and_update_invoice($invoice_item_data, $id, $invoice_id);if(!$invoice_item_id||!$db->transStatus())throw new \RuntimeException(app_lang('error_occurred'));$db->transCommit();}catch(\Throwable$e){$db->transRollback();$db->resetTransStatus();echo json_encode(['success'=>false,'message'=>$e->getMessage()]);return;}
         if ($invoice_item_id) {
             $options = array("id" => $invoice_item_id);
             $item_info = $this->Invoice_items_model->get_details($options)->getRow();
@@ -1142,20 +1162,17 @@ class Invoices extends Security_Controller {
         }
         $type = $data->unit_type ? $data->unit_type : "";
 
-        $taxable = app_lang("no");
-        if ($data->taxable) {
-            $taxable = app_lang("yes");
-        }
+        $taxDisplay=(new \App\Services\Fiscal\CommercialItemTaxDisplayService())->invoice((int)$data->id);
 
         return array(
             $data->sort,
             $item,
             to_decimal_format($data->quantity) . " " . $type,
-            to_currency($data->rate, $data->currency_symbol),
-            $taxable,
-            to_currency($data->total, $data->currency_symbol),
-            modal_anchor(get_uri("invoices/item_modal_form"), "<i data-feather='edit' class='icon-16'></i>", array("class" => "edit", "title" => app_lang('edit_invoice'), "data-post-id" => $data->id, "data-post-invoice_id" => $data->invoice_id))
-                . js_anchor("<i data-feather='x' class='icon-16'></i>", array('title' => app_lang('delete'), "class" => "delete", "data-id" => $data->id, "data-action-url" => get_uri("invoices/delete_item"), "data-action" => "delete"))
+            to_currency($taxDisplay['unit_base'], $data->currency_symbol),
+            $taxDisplay['taxes'],
+            to_currency($taxDisplay['ready']?$taxDisplay['total']:$data->total, $data->currency_symbol),
+            $is_ediable ? modal_anchor(get_uri("invoices/item_modal_form"), "<i data-feather='edit' class='icon-16'></i>", array("class" => "edit", "title" => app_lang('edit_invoice'), "data-post-id" => $data->id, "data-post-invoice_id" => $data->invoice_id))
+                . js_anchor("<i data-feather='x' class='icon-16'></i>", array('title' => app_lang('delete'), "class" => "delete", "data-id" => $data->id, "data-action-url" => get_uri("invoices/delete_item"), "data-action" => "delete")) : ''
         );
     }
 
@@ -1209,6 +1226,8 @@ class Invoices extends Security_Controller {
         $item = $this->Invoice_items_model->get_item_info_suggestion(array("item_id" => $this->request->getPost("item_id")));
         if ($item) {
             $item->rate = $item->rate ? to_decimal_format($item->rate) : "";
+            $item->cost = isset($item->cost)&&$item->cost!==null?to_decimal_format($item->cost):"";
+            $master=(new \App\Services\Fiscal\ProductFiscalConfigurationResolver())->resolve((int)$item->id);$item->fiscal=['source'=>$master['source'],'ready'=>$master['ready'],'missing'=>$master['missing'],'setting'=>$master['setting'],'taxes'=>$master['taxes']];
             echo json_encode(array("success" => true, "item_info" => $item));
         } else {
             echo json_encode(array("success" => false));

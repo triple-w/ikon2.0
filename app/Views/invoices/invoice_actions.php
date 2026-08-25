@@ -21,10 +21,14 @@
     </div>
 </div>
 
-<?php if ($login_user->is_admin || get_array_value($login_user->permissions, "fiscal_sales_review") || get_array_value($login_user->permissions, "fiscal_sales_pricing_review")) { ?>
+<?php
+$fiscalPermissions = is_array($login_user->permissions)
+    ? $login_user->permissions
+    : (@unserialize((string) $login_user->permissions) ?: []);
+if ($login_user->is_admin || get_array_value($fiscalPermissions, "fiscal.sales.invoice") || get_array_value($fiscalPermissions, "fiscal.drafts.create")) { ?>
     <div class="card">
         <div class="card-body text-center">
-            <?php echo modal_anchor(get_uri("fiscal/invoices/review/" . $invoice_info->id), "<i data-feather='shield' class='icon-16'></i> " . app_lang("fiscal_review"), array("title" => app_lang("fiscal_review"))); ?>
+            <?php echo modal_anchor(get_uri("fiscal/drafts/create/" . $invoice_info->id), "<i data-feather='shield' class='icon-16'></i> " . app_lang("fiscal_review"), array("title" => app_lang("fiscal_review"), "data-modal-lg" => "1", "data-action-method" => "GET")); ?>
         </div>
     </div>
 <?php } ?>

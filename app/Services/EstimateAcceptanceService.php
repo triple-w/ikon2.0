@@ -8,18 +8,27 @@ use App\Models\Estimates_model;
 use App\Models\Invoice_items_model;
 use App\Models\Invoices_model;
 use RuntimeException;
+use CodeIgniter\Database\BaseConnection;
 
 class EstimateAcceptanceService
 {
     private const AUTOMATIC_SALE_SETTING = 'create_new_invoices_automatically_when_estimates_gets_accepted';
 
-    public function __construct(private ?EstimateToInvoiceService $converter = null)
+    public function __construct(private ?EstimateToInvoiceService $converter = null, private ?BaseConnection $db = null)
     {
-        $this->converter ??= new EstimateToInvoiceService();
+        $this->db ??= db_connect('default');
+        $this->converter ??= new EstimateToInvoiceService(null, $this->db);
+    }
+
+    public static function acceptsStatus(string $status): bool
+    {
+        return EstimateAcceptanceCoordinator::acceptsStatus($status);
     }
 
     public function acceptAndFulfill(int $estimateId, array $acceptanceData, bool $createInvoice, int $userId): array
     {
+        return (new EstimateAcceptanceCoordinator($this->converter, $this->db))->accept($estimateId, $acceptanceData, $createInvoice, $userId);
+        /* Legacy implementation retained below temporarily for source compatibility; unreachable. */
         $db = db_connect('default');
         $db->transBegin();
 
@@ -57,6 +66,8 @@ class EstimateAcceptanceService
 
     public function fulfill(int $estimateId, bool $createInvoice, int $userId): array
     {
+        return (new EstimateAcceptanceCoordinator($this->converter, $this->db))->accept($estimateId, [], $createInvoice, $userId);
+        /* Legacy implementation retained below temporarily for source compatibility; unreachable. */
         if (! $createInvoice) {
             return $this->disabledResult();
         }
@@ -87,8 +98,7 @@ class EstimateAcceptanceService
 
     public function shouldCreateInvoiceOnAcceptance(): bool
     {
-        $value = get_setting(self::AUTOMATIC_SALE_SETTING);
-        return $value === '1' || $value === 1 || $value === true;
+        return true;
     }
 
     public function resultMessageKey(array $result): string
@@ -99,6 +109,13 @@ class EstimateAcceptanceService
             'disabled' => 'estimate_accepted_invoice_disabled',
             default => 'estimate_accepted',
         };
+    }
+
+    public static function userMessage(\Throwable $error): string
+    {
+        return $error instanceof RuntimeException
+            ? $error->getMessage()
+            : 'No fue posible aceptar la cotización y crear la venta. Inténtalo nuevamente o contacta a soporte.';
     }
 
     private function fulfillInsideTransaction(int $estimateId, int $userId): array

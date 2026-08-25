@@ -61,8 +61,10 @@ class Estimate extends Security_Controller {
         if ($status === "accepted" && ($estimate_info->status === "converted" || $estimate_info->converted_sale_id)) {
             echo json_encode(array(
                 "success" => true,
-                "status" => "converted",
+                "status" => "accepted",
                 "message" => app_lang("estimate_already_accepted_and_processed"),
+                "invoice_action" => "existing",
+                "invoice_id" => (int) $estimate_info->converted_sale_id,
                 "public_url" => $public_url
             ));
             return;
@@ -82,7 +84,7 @@ class Estimate extends Security_Controller {
                         $actor
                     );
                 } catch (\Throwable $e) {
-                    echo json_encode(array("success" => false, "message" => app_lang("estimate_acceptance_fulfillment_failed")));
+                    echo json_encode(array("success" => false, "message" => EstimateAcceptanceService::userMessage($e)));
                     return;
                 }
             } else {
@@ -127,7 +129,7 @@ class Estimate extends Security_Controller {
         }
 
         $estimate_info = $this->Estimates_model->get_one($estimate_id);
-        if (!$estimate_info->id || $estimate_info->deleted || $estimate_info->status !== "sent") {
+        if (!$estimate_info->id || $estimate_info->deleted || !EstimateAcceptanceService::acceptsStatus((string) $estimate_info->status)) {
             show_404();
         }
 
@@ -179,14 +181,16 @@ class Estimate extends Security_Controller {
         if ($estimate_info->status === "converted" || $estimate_info->converted_sale_id) {
             echo json_encode(array(
                 "success" => true,
-                "status" => "converted",
+                "status" => "accepted",
                 "message" => app_lang("estimate_already_accepted_and_processed"),
+                "invoice_action" => "existing",
+                "invoice_id" => (int) $estimate_info->converted_sale_id,
                 "public_url" => get_uri("estimate/preview/{$estimate_id}/{$public_key}")
             ));
             return;
         }
 
-        if ($estimate_info->status !== "sent") {
+        if (!EstimateAcceptanceService::acceptsStatus((string) $estimate_info->status)) {
             echo json_encode(array("success" => false, "message" => app_lang("estimate_status_cannot_be_changed")));
             return;
         }
@@ -240,7 +244,7 @@ class Estimate extends Security_Controller {
                 $actor
             );
         } catch (\Throwable $e) {
-            echo json_encode(array("success" => false, "message" => app_lang("estimate_acceptance_fulfillment_failed")));
+            echo json_encode(array("success" => false, "message" => EstimateAcceptanceService::userMessage($e)));
             return;
         }
         if ($result["accepted"] ?? false) {
@@ -251,6 +255,7 @@ class Estimate extends Security_Controller {
                 "status" => $fresh_estimate->status,
                 "message" => app_lang($acceptance_service->resultMessageKey($result)),
                 "invoice_action" => $result["invoice_action"],
+                "invoice_id" => $result["invoice_id"],
                 "public_url" => get_uri("estimate/preview/{$estimate_id}/{$public_key}")
             ));
         } else {

@@ -9,6 +9,10 @@ final class PacContingencyStorageService
     public function __construct(private readonly PacSecretVault $vault,?string $root=null){$this->root=rtrim($root?:WRITEPATH.'fiscal/pac-contingency','/\\');}
     public function store(int $attemptId,string $xml):array
     {
+        return $this->storePayload($attemptId,$xml);
+    }
+    public function storePayload(int $attemptId,string $xml):array
+    {
         if(!is_dir($this->root)&&!mkdir($this->root,0700,true)&&!is_dir($this->root))throw new RuntimeException('No fue posible crear contingencia PAC.');
         @chmod($this->root,0700);$name=bin2hex(random_bytes(24)).'.enc';$target=$this->root.DIRECTORY_SEPARATOR.$name;$tmp=$target.'.tmp';
         $encrypted=$this->vault->encrypt($xml);

@@ -129,6 +129,7 @@ final class FiscalStampingService
         }
         unset($keyPem);
         $duration = (int) round((microtime(true) - $started) * 1000);
+        $this->persistResponseForensics((int)$attempt->id,$response);
 
         if ($response->transportError) {
             if (($response->metadata['request_sent'] ?? null) === false && !$response->timeout) {
@@ -157,6 +158,14 @@ final class FiscalStampingService
             );
         }
 
+        if (($response->metadata['parsing_phase'] ?? null) === 'outer_response_invalid') {
+            $this->finishInvalidResponse((int)$attempt->id,$documentId,'outer_response_invalid',$response,$duration,
+                (string)($response->metadata['response_error_class']??'RuntimeException'),
+                (string)($response->metadata['response_error_message']??'Respuesta exterior inválida.'));
+            return new FiscalStampingResult(false,'unknown',$documentId,(int)$attempt->id,'outer_response_invalid',null,
+                'La respuesta exterior del PAC requiere conciliación.',$response->httpStatus,null,false,true,'Conciliar sin reenviar.');
+        }
+
         $mapper = new TimbradorXpressErrorMapper();
         if ($mapper->isDuplicate($response->code)) {
             $this->finishUnknown(
@@ -181,37 +190,12 @@ final class FiscalStampingService
             return $this->reject($documentId, $userId, $attempt, $response, $duration, $mapper);
         }
 
-        try {
-            $data = (new TimbradorXpressStampDataParser())->parse($response);
-            $stampedXml = (string) $data['XML'];
-            $validated = (new StampedXmlValidator())->validate($stampedXml, $transportXml);
-            $warnings = $this->compareAuxiliary($data, $validated);
-        } catch (Throwable $e) {
-            $this->db->transStart();
-            $this->db->table('fiscal_stamp_attempts')->where('id', $attempt->id)->update([
-                'status' => 'response_invalid',
-                'responded_at' => get_current_utc_time(),
-                'http_status' => $response->httpStatus,
-                'provider_code' => $response->code,
-                'provider_message' => 'Respuesta PAC inválida.',
-                'error_category' => 'response_invalid',
-                'retryable' => 0,
-                'requires_reconciliation' => 1,
-                'duration_ms' => $duration,
-                'response_hash' => $response->data ? hash('sha256', $response->data) : null,
-                'updated_at' => get_current_utc_time(),
-            ]);
-            $this->db->table('fiscal_documents')->where('id', $documentId)->update([
-                'status' => 'stamp_status_unknown',
-                'stamp_updated_at' => get_current_utc_time(),
-            ]);
-            $this->audit($documentId, $userId, 'stamp_response_invalid', [
-                'attempt_id' => $attempt->id,
-                'error_type' => get_class($e),
-            ]);
-            $this->db->transComplete();
-            throw new RuntimeException('La respuesta fiscal requiere conciliación.');
-        }
+        try {$data=(new TimbradorXpressStampDataParser())->parse($response);}
+        catch(Throwable $e){$this->finishInvalidResponse((int)$attempt->id,$documentId,'stamp_data_invalid',$response,$duration,get_class($e),$e->getMessage());throw new RuntimeException('Los datos de timbrado requieren conciliación.');}
+        $stampedXml=(string)$data['XML'];
+        try {$validated=(new StampedXmlValidator())->validate($stampedXml,$transportXml);}
+        catch(Throwable $e){$phase=$this->isWellFormedXml($stampedXml)?'stamped_xml_semantic_invalid':'stamped_xml_invalid';$this->finishInvalidResponse((int)$attempt->id,$documentId,$phase,$response,$duration,get_class($e),$e->getMessage());throw new RuntimeException('El XML timbrado requiere conciliación.');}
+        $warnings=$this->compareAuxiliary($data,$validated);
 
         $contingency = (new PacContingencyStorageService(
             $this->vault ?? new PacSecretVault(),
@@ -625,6 +609,7 @@ final class FiscalStampingService
             'provider_code' => $response->code,
             'provider_message' => $response->message,
             'error_category' => $error->category,
+            'parsing_phase' => 'provider_rejected',
             'recommended_action' => $error->recommendedAction,
             'requires_reconciliation' => $error->requiresReconciliation ? 1 : 0,
             'retryable' => $error->retryable ? 1 : 0,
@@ -704,6 +689,44 @@ final class FiscalStampingService
             'stamp_updated_at' => get_current_utc_time(),
         ]);
         $this->db->transComplete();
+    }
+
+    private function persistResponseForensics(int $attemptId, object $response): void
+    {
+        $metadata=$response->metadata??[];
+        $row=[
+            'response_content_type'=>$metadata['response_content_type']??null,
+            'response_body_length'=>$metadata['response_body_length']??null,
+            'response_body_sha256'=>$metadata['response_body_sha256']??null,
+            'parsing_phase'=>$metadata['parsing_phase']??'transport_completed',
+            'response_error_class'=>$metadata['response_error_class']??null,
+            'response_error_message'=>$metadata['response_error_message']??null,
+            'response_structure'=>isset($metadata['response_structure'])?json_encode($metadata['response_structure'],JSON_UNESCAPED_SLASHES):json_encode(['keys'=>$metadata['response_keys']??[],'has_data'=>$metadata['has_data']??false],JSON_UNESCAPED_SLASHES),
+        ];
+        if(!empty($metadata['forensic_path']))$row['contingency_path']=$metadata['forensic_path'];
+        $this->db->table('fiscal_stamp_attempts')->where('id',$attemptId)->update($row);
+    }
+
+    private function finishInvalidResponse(int $attemptId,int $documentId,string $phase,object $response,int $duration,string $errorClass,string $errorMessage):void
+    {
+        $safe=mb_substr(trim(strip_tags((string)preg_replace('/[\x00-\x1F\x7F]+/u',' ',$errorMessage))),0,500);
+        $this->db->transStart();
+        $this->db->table('fiscal_stamp_attempts')->where('id',$attemptId)->update([
+            'status'=>$phase,'responded_at'=>get_current_utc_time(),'http_status'=>$response->httpStatus?:null,
+            'provider_code'=>$response->code,'provider_message'=>'Respuesta PAC no interpretable.',
+            'error_category'=>$phase,'retryable'=>0,'requires_reconciliation'=>1,'duration_ms'=>$duration,
+            'response_hash'=>$response->data?hash('sha256',$response->data):($response->metadata['response_body_sha256']??null),
+            'parsing_phase'=>$phase,'response_error_class'=>mb_substr($errorClass,0,160),'response_error_message'=>$safe,'updated_at'=>get_current_utc_time(),
+        ]);
+        $this->db->table('fiscal_documents')->where('id',$documentId)->update(['status'=>'stamp_status_unknown','stamp_updated_at'=>get_current_utc_time()]);
+        $this->db->transComplete();
+    }
+
+    private function isWellFormedXml(string $xml):bool
+    {
+        if($xml===''||stripos($xml,'<!DOCTYPE')!==false||stripos($xml,'<!ENTITY')!==false)return false;
+        $dom=new \DOMDocument();$previous=libxml_use_internal_errors(true);
+        try{return @$dom->loadXML($xml,LIBXML_NONET)!==false;}finally{libxml_clear_errors();libxml_use_internal_errors($previous);}
     }
 
     private function compareAuxiliary(array $data, array $xml): array

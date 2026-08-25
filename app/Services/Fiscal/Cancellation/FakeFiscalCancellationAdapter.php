@@ -26,4 +26,9 @@ final class FakeFiscalCancellationAdapter implements FiscalCancellationAdapterIn
             default => throw new RuntimeException('Escenario fake de cancelación no soportado.'),
         };
     }
+
+    public function query(array $request): array
+    {
+        return $this->cancel($request);
+    }
 }

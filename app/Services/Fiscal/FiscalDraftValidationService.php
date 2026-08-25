@@ -41,7 +41,6 @@ final class FiscalDraftValidationService
             foreach ([
                 'rfc'=>'RFC del receptor','legal_name'=>'razón social del receptor',
                 'tax_regime_id'=>'régimen fiscal del receptor','fiscal_postal_code'=>'código postal fiscal',
-                'default_cfdi_use_id'=>'uso CFDI',
             ] as $field=>$label) {
                 if (trim((string) ($receiver->{$field} ?? '')) === '' || (str_ends_with($field, '_id') && (int)$receiver->{$field} <= 0)) {
                     $add($errors,$field,'RECEIVER_FIELD_REQUIRED',"Falta {$label}.",'receiver');
@@ -50,6 +49,11 @@ final class FiscalDraftValidationService
         }
         foreach (['payment_form_code'=>'forma de pago','payment_method_code'=>'método de pago','currency_code'=>'moneda'] as $field=>$label) {
             if (trim((string) ($draft[$field] ?? '')) === '') $add($errors,$field,'COMPROBANTE_FIELD_REQUIRED',"Falta {$label}.",'document');
+        }
+        if(trim((string)($draft['cfdi_use_code']??''))==='')$add($errors,'cfdi_use_code','CFDI_USE_REQUIRED','Falta Uso CFDI.','document');
+        if(trim((string)($draft['payment_form_code']??''))!==''&&trim((string)($draft['payment_method_code']??''))!==''){
+            try{(new CfdiPaymentRuleService($this->db))->validate((string)$draft['payment_method_code'],(string)$draft['payment_form_code']);}
+            catch(Throwable$e){$add($errors,'payment','CFDI_PAYMENT_COMBINATION_INVALID',$e->getMessage(),'document');}
         }
         if (($draft['currency_code'] ?? 'MXN') !== 'MXN') {
             try {
@@ -62,6 +66,7 @@ final class FiscalDraftValidationService
             $this->dates->validate((string) ($draft['issue_date'] ?? ''));
         } catch (Throwable $e) {
             $message = match ($e->getMessage()) {
+                'FISCAL_ISSUE_DATE_REQUIRED' => 'La fecha de expediciÃ³n es obligatoria.',
                 'FISCAL_ISSUE_DATE_FUTURE' => 'La fecha de expedición no puede estar en el futuro.',
                 'FISCAL_ISSUE_DATE_TOO_OLD' => 'La fecha de expedición excede la antigüedad permitida.',
                 default => 'La fecha de expedición no tiene un formato válido.',
@@ -78,6 +83,7 @@ final class FiscalDraftValidationService
                 $add($errors,'concepts','CONCEPT_INVALID','Las cantidades e importes de los conceptos deben ser mayores que cero.','concepts');
             }
             $snapshot = $concept['snapshot'] ?? [];
+            if(trim((string)($snapshot['fiscal_description']??''))==='')$add($errors,'fiscal_description','CONCEPT_FISCAL_DESCRIPTION_REQUIRED','Falta descripción fiscal en un concepto.','concepts');
             foreach (['product_service_code','unit_code','tax_object_code'] as $field) {
                 if (trim((string) ($snapshot[$field] ?? '')) === '') {
                     $add($errors,$field,'CONCEPT_FISCAL_DATA_REQUIRED','Un concepto no tiene configuración fiscal completa.','concepts');

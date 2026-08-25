@@ -75,9 +75,11 @@
                 </div>
             </div>
         </div>
+        <?php echo view('items/_commercial_margin_fields',['field_prefix'=>'proposal','model_info'=>$model_info]); ?>
+        <?php echo view('items/_fiscal_item_fields',['fiscal_configuration'=>$fiscal_configuration??[],'sat_tax_codes'=>$sat_tax_codes??[],'sat_tax_objects'=>$sat_tax_objects??[],'can_update_master_fiscal'=>$can_update_master_fiscal??false]); ?>
         <div class="form-group">
             <div class="row">
-                <label for="proposal_item_rate" class=" col-md-3"><?php echo app_lang('rate'); ?></label>
+                <label for="proposal_item_rate" class=" col-md-3">Precio de venta</label>
                 <div class="col-md-9">
                     <?php
                     echo form_input(array(
@@ -165,8 +167,9 @@
                             $("#proposal_item_description").val(response.item_info.description);
 
                             $("#proposal_unit_type").val(response.item_info.unit_type);
-
+                            $("#proposal_item_cost").val(response.item_info.cost || "").trigger('change');
                             $("#proposal_item_rate").val(response.item_info.rate);
+                            $("#proposal-item-form").trigger('fiscal:item:load',[response.item_info.fiscal||{},response.item_info]);
                         }
                     }
                 });

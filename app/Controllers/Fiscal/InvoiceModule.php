@@ -5,6 +5,7 @@ namespace App\Controllers\Fiscal;
 
 use App\Controllers\Security_Controller;
 use App\Services\Fiscal\FiscalInvoiceCenterQueryService;
+use App\Services\Fiscal\FiscalIssuerResolver;
 use App\Services\Fiscal\Pdf\FiscalPdfTemplateResolver;
 use CodeIgniter\Exceptions\PageNotFoundException;
 use Throwable;
@@ -15,7 +16,9 @@ final class InvoiceModule extends Security_Controller
     public function index()
     {
         $this->guardAny(['fiscal.invoices.view','fiscal_invoices_view']);
-        $db=db_connect();$issuer=$db->table('fiscal_profiles')->where(['profile_type'=>'issuer','is_default'=>1,'is_active'=>1])->get(1)->getRow();
+        $db=db_connect();
+        $companyId=function_exists('get_default_company_id')?(int)get_default_company_id():null;
+        $issuer=(new FiscalIssuerResolver($db))->resolve($companyId?:null);
         $stampBalance=$issuer?(new FiscalStampAccountService($db))->getBalance((int)$issuer->id):['available'=>0,'reserved'=>0];
         return $this->template->rander('fiscal/invoices/module_index', [
             'advanced_view' => $this->allowed('fiscal.advanced.view'),
@@ -42,6 +45,8 @@ final class InvoiceModule extends Security_Controller
                 'pdf_view' => $this->allowed('fiscal_pdf_view'),
                 'pdf_download' => $this->allowed('fiscal_pdf_download'),
                 'receipt_view' => $this->allowed('fiscal_cancellation_receipt_view'),
+                'cancel' => $this->allowed('fiscal_cancel_request'),
+                'status_query' => $this->allowed('fiscal_status_query'),
                 'advanced_view' => $this->allowed('fiscal.advanced.view'),
             ],
         ]);
@@ -95,7 +100,9 @@ final class InvoiceModule extends Security_Controller
         if (!$advanced) {
             if ($row->pdf_available && $this->allowed('fiscal_pdf_download')) $items[] = anchor(get_uri('fiscal/documents/'.$row->id.'/pdf/download'), 'Descargar PDF');
             $items[] = '<span class="text-muted" title="Disponible en un incremento posterior">Enviar</span>';
-            if ($this->allowed('fiscal_cancel_request')) $items[] = '<span class="text-muted" title="La cancelación fiscal se integrará posteriormente">Cancelar</span>';
+            if ($this->allowed('fiscal_cancel_request')&&$this->canCancel($row)) $items[] = modal_anchor(get_uri('fiscal/invoices/cancel/form'),'Cancelar',['data-post-document_id'=>$row->id]);
+            if ($this->allowed('fiscal_status_query')&&$row->cancellation_request_id&&$row->cancellation_status!=='cancelled') $items[] = modal_anchor(get_uri('fiscal/invoices/cancellation/status/form'),'Consultar estatus',['data-post-document_id'=>$row->id]);
+            if ($row->cancellation_ack_available&&$this->allowed('fiscal_cancellation_receipt_view')) $items[] = anchor(get_uri('fiscal/invoices/cancellation/ack/'.$row->cancellation_request_id),'Ver acuse');
             if ($row->related_sales) $items[] = anchor(get_uri('fiscal/invoices/'.$row->id), 'Ver venta o ventas relacionadas');
             return '<div class="dropdown"><button class="btn btn-default btn-sm dropdown-toggle" data-bs-toggle="dropdown">Acciones</button><div class="dropdown-menu dropdown-menu-end">'
                 .implode('', array_map(static fn($item) => '<div class="dropdown-item">'.$item.'</div>', $items)).'</div></div>';
@@ -122,9 +129,9 @@ final class InvoiceModule extends Security_Controller
         }
         if ($row->pdf_available && $this->allowed('fiscal_pdf_view')) $items[] = anchor(get_uri('fiscal/documents/'.$row->id.'/pdf/preview'), 'Ver PDF', ['target'=>'_blank']);
         if ($row->pdf_available && $this->allowed('fiscal_pdf_download')) $items[] = anchor(get_uri('fiscal/documents/'.$row->id.'/pdf/download'), 'Descargar PDF');
-        if ($this->allowed('fiscal_cancel_request')) $items[] = '<span class="text-muted" title="Disponible en el incremento de cancelación fiscal">Cancelar</span>';
-        if ($row->cancellation_request_id && $this->allowed('fiscal_cancellation_receipt_view')) $items[] = anchor(get_uri('fiscal/invoices/cancellation/ack/'.$row->cancellation_request_id), 'Ver acuse');
-        if ($this->allowed('fiscal_status_query')) $items[] = '<span class="text-muted" title="Disponible en un incremento posterior">Consultar estatus</span>';
+        if ($this->allowed('fiscal_cancel_request')&&$this->canCancel($row)) $items[] = modal_anchor(get_uri('fiscal/invoices/cancel/form'),'Cancelar',['data-post-document_id'=>$row->id]);
+        if ($row->cancellation_ack_available && $this->allowed('fiscal_cancellation_receipt_view')) $items[] = anchor(get_uri('fiscal/invoices/cancellation/ack/'.$row->cancellation_request_id), 'Ver acuse');
+        if ($this->allowed('fiscal_status_query')&&$row->cancellation_request_id&&$row->cancellation_status!=='cancelled') $items[] = modal_anchor(get_uri('fiscal/invoices/cancellation/status/form'),'Consultar estatus',['data-post-document_id'=>$row->id]);
         return '<div class="dropdown"><button class="btn btn-default btn-sm dropdown-toggle" data-bs-toggle="dropdown">Acciones</button><div class="dropdown-menu dropdown-menu-end">'
             .implode('', array_map(static fn($item) => '<div class="dropdown-item">'.$item.'</div>', $items)).'</div></div>';
     }
@@ -134,7 +141,7 @@ final class InvoiceModule extends Security_Controller
         $maps = [
             'fiscal'=>['draft'=>['Borrador','secondary'],'signed'=>['Listo para timbrar','info'],'processing'=>['Enviando','warning'],'stamped'=>['Timbrado','success'],'stamped_pdf_pending'=>['Timbrado','success'],'stamped_pdf_error'=>['Timbrado','success'],'stamped_pdf_processing'=>['Timbrado','success'],'stamped_pdf_unknown'=>['Timbrado','success'],'correctable_error'=>['Error','danger'],'unknown'=>['Resultado desconocido','dark'],'cancelled'=>['Cancelado','secondary']],
             'pdf'=>['pending'=>['Pendiente','secondary'],'processing'=>['Procesando','warning'],'valid'=>['Disponible','success'],'error'=>['Error','danger'],'unknown'=>['Desconocido','dark']],
-            'cancellation'=>['none'=>['No solicitada','secondary'],'requested'=>['Solicitada','info'],'pending'=>['Pendiente','warning'],'accepted'=>['Aceptada','success'],'rejected'=>['Rechazada','danger'],'cancelled'=>['Cancelada','secondary'],'unknown'=>['Desconocida','dark']],
+            'cancellation'=>['none'=>['No solicitada','secondary'],'requested'=>['Pendiente','warning'],'pending'=>['Pendiente','warning'],'accepted'=>['Cancelada','secondary'],'rejected'=>['Rechazada','danger'],'cancelled'=>['Cancelada','secondary'],'unknown'=>['Verificando','info']],
         ];
         [$label,$color] = $maps[$group][$status] ?? [ucfirst(str_replace('_',' ',$status)),'secondary'];
         return '<span class="badge bg-'.$color.'">'.esc($label).'</span>';
@@ -157,4 +164,5 @@ final class InvoiceModule extends Security_Controller
                 : (str_contains($status,'error') ? ['Error fiscal','danger'] : ['Vigente','success']));
         return '<span class="badge bg-'.$color.'">'.esc($label).'</span>';
     }
+    private function canCancel(object$row):bool{return !empty($row->uuid)&&in_array($row->visible_status,['stamped','stamped_pdf_pending','stamped_pdf_error'],true)&&in_array($row->cancellation_status,['none','rejected'],true);}
 }

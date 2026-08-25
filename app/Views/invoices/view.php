@@ -14,6 +14,7 @@
                         'summary' => $fiscal_sale_summary,
                         'permissions' => $fiscal_sale_permissions,
                         'invoice_id' => $invoice_id,
+                        'review_status' => $fiscal_sale_review_status ?? null,
                     ]);
                 } ?>
 

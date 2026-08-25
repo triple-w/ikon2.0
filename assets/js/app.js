@@ -36,6 +36,7 @@ $(document).ready(function () {
 
         var data = { ajaxModal: 1 },
             url = $(this).attr('data-action-url'),
+            requestMethod = ($(this).attr('data-action-method') || 'POST').toUpperCase(),
             isLargeModal = $(this).attr('data-modal-lg'),
             isFullscreenModal = $(this).attr('data-modal-fullscreen'),
             isCustomBgModal = $(this).attr('data-modal-custom-bg'),
@@ -86,7 +87,7 @@ $(document).ready(function () {
             url: url,
             data: data,
             cache: false,
-            type: 'POST',
+            type: requestMethod,
             success: function (response) {
                 $("#ajaxModal").find(".modal-dialog").removeClass("mini-modal");
                 if (isLargeModal === "1") {
@@ -108,6 +109,12 @@ $(document).ready(function () {
                 }
 
                 $("#ajaxModalContent").html(response);
+                if (typeof window.initializeFiscalItemEditors === "function") {
+                    window.initializeFiscalItemEditors($("#ajaxModalContent"));
+                }
+                if (typeof window.initializeCommercialMarginFields === "function") {
+                    window.initializeCommercialMarginFields($("#ajaxModalContent"));
+                }
 
                 initAllNotEmptyWYSIWYGEditors(true, $("#ajaxModalContent"));
                 setModalScrollbar();

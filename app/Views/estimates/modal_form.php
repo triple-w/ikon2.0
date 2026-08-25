@@ -92,26 +92,7 @@
             </div>
         <?php } ?>
 
-        <div class="form-group">
-            <div class="row">
-                <label for="tax_id" class=" col-md-3"><?php echo app_lang('tax'); ?></label>
-                <div class="col-md-9">
-                    <?php
-                    echo form_dropdown("tax_id", $taxes_dropdown, array($model_info->tax_id), "class='select2 tax-select2'");
-                    ?>
-                </div>
-            </div>
-        </div>
-        <div class="form-group">
-            <div class="row">
-                <label for="tax_id" class=" col-md-3"><?php echo app_lang('second_tax'); ?></label>
-                <div class="col-md-9">
-                    <?php
-                    echo form_dropdown("tax_id2", $taxes_dropdown, array($model_info->tax_id2), "class='select2 tax-select2'");
-                    ?>
-                </div>
-            </div>
-        </div>
+        <!-- Los impuestos del encabezado son legacy. El flujo normal los resuelve por partida. -->
         <div class="form-group">
             <div class="row">
                 <label for="estimate_note" class=" col-md-3"><?php echo app_lang('note'); ?></label>

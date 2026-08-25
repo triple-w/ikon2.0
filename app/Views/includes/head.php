@@ -77,7 +77,8 @@
     load_css($css_files);
 
     load_js(array(
-        "assets/js/app.all.js"
+        "assets/js/app.all.js",
+        "assets/js/fiscal_item_editor.js"
     ));
 
     if (get_setting("pusher_app_id")) {

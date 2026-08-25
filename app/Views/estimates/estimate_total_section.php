@@ -1,7 +1,8 @@
+<?php $canonical_tax_breakdown=$canonical_tax_breakdown??[]; ?>
 <table id="estimate-item-table" class="table display dataTable text-right strong table-responsive no-body-top-bottom-border">     
     <tr>
         <td><?php echo app_lang("sub_total"); ?></td>
-        <td style="width: 120px;"><?php echo to_currency($estimate_total_summary->estimate_subtotal, $estimate_total_summary->currency_symbol); ?></td>
+        <td style="width: 120px;"><?php echo to_currency(!empty($canonical_tax_breakdown['ready'])?$canonical_tax_breakdown['subtotal']:$estimate_total_summary->estimate_subtotal, $estimate_total_summary->currency_symbol); ?></td>
         <?php if ($is_estimate_editable) { ?>
             <td style="width: 100px;"> </td>
         <?php } ?>
@@ -59,9 +60,10 @@
     }
     ?>
 
+    <?php if (!empty($canonical_tax_breakdown['ready']) && \App\Services\Fiscal\FiscalDecimal::micros($canonical_tax_breakdown['transferred']) > 0) { ?><tr><td>Impuestos trasladados</td><td><?php echo to_currency($canonical_tax_breakdown['transferred'],$estimate_total_summary->currency_symbol); ?></td><?php echo $table_data; ?></tr><?php } ?>
     <tr>
         <td><?php echo app_lang("total"); ?></td>
-        <td><?php echo to_currency($estimate_total_summary->estimate_total, $estimate_total_summary->currency_symbol); ?></td>
+        <td><?php echo to_currency(!empty($canonical_tax_breakdown['ready'])?$canonical_tax_breakdown['total']:$estimate_total_summary->estimate_total, $estimate_total_summary->currency_symbol); ?></td>
         <?php $table_data; ?>
     </tr>
 </table>
