@@ -16,6 +16,7 @@ class Invoice_payments_model extends Crud_model {
         $invoices_table = $this->db->prefixTable('invoices');
         $payment_methods_table = $this->db->prefixTable('payment_methods');
         $clients_table = $this->db->prefixTable('clients');
+        $payment_allocations_table = $this->db->prefixTable('payment_allocations');
 
         $where = "";
 
@@ -26,22 +27,23 @@ class Invoice_payments_model extends Crud_model {
 
         $invoice_id = $this->_get_clean_value($options, "invoice_id");
         if ($invoice_id) {
-            $where .= " AND $invoice_payments_table.invoice_id=$invoice_id";
+            $payment_allocations_table = $this->db->prefixTable('payment_allocations');
+            $where .= " AND $invoice_payments_table.id IN(SELECT pa.invoice_payment_id FROM $payment_allocations_table pa WHERE pa.deleted=0 AND pa.status='active' AND pa.invoice_id=$invoice_id)";
         }
 
         $order_id = $this->_get_clean_value($options, "order_id");
         if ($order_id) {
-            $where .= " AND $invoice_payments_table.invoice_id IN(SELECT $invoices_table.id FROM $invoices_table WHERE $invoices_table.deleted=0 AND $invoices_table.order_id=$order_id)";
+            $where .= " AND EXISTS(SELECT 1 FROM $payment_allocations_table pa JOIN $invoices_table ai ON ai.id=pa.invoice_id WHERE pa.invoice_payment_id=$invoice_payments_table.id AND pa.deleted=0 AND pa.status='active' AND ai.deleted=0 AND ai.order_id=$order_id)";
         }
 
         $client_id = $this->_get_clean_value($options, "client_id");
         if ($client_id) {
-            $where .= " AND $invoices_table.client_id=$client_id";
+            $where .= " AND $invoice_payments_table.client_id=$client_id";
         }
 
         $project_id = $this->_get_clean_value($options, "project_id");
         if ($project_id) {
-            $where .= " AND $invoices_table.project_id=$project_id";
+            $where .= " AND EXISTS(SELECT 1 FROM $payment_allocations_table pa JOIN $invoices_table ai ON ai.id=pa.invoice_id WHERE pa.invoice_payment_id=$invoice_payments_table.id AND pa.deleted=0 AND pa.status='active' AND ai.project_id=$project_id)";
         }
 
         $payment_method_id = $this->_get_clean_value($options, "payment_method_id");
@@ -57,7 +59,7 @@ class Invoice_payments_model extends Crud_model {
 
         $currency = $this->_get_clean_value($options, "currency");
         if ($currency) {
-            $where .= $this->_get_clients_of_currency_query($currency, $invoices_table, $clients_table);
+            $default_currency=get_setting('default_currency');$where .= $currency===$default_currency?" AND ($clients_table.currency='$currency' OR $clients_table.currency='' OR $clients_table.currency IS NULL)":" AND $clients_table.currency='$currency'";
         }
 
         $show_own_client_invoice_user_id = $this->_get_clean_value($options, "show_own_client_invoice_user_id");
@@ -67,15 +69,15 @@ class Invoice_payments_model extends Crud_model {
 
         $show_own_invoices_only_user_id = $this->_get_clean_value($options, "show_own_invoices_only_user_id");
         if ($show_own_invoices_only_user_id) {
-            $where .= " AND $invoices_table.created_by = $show_own_invoices_only_user_id";
+            $where .= " AND EXISTS(SELECT 1 FROM $payment_allocations_table pa JOIN $invoices_table ai ON ai.id=pa.invoice_id WHERE pa.invoice_payment_id=$invoice_payments_table.id AND pa.deleted=0 AND pa.status='active' AND ai.created_by=$show_own_invoices_only_user_id)";
         }
 
-        $sql = "SELECT $invoice_payments_table.*, $invoices_table.client_id, $invoices_table.display_id, (SELECT $clients_table.currency_symbol FROM $clients_table WHERE $clients_table.id=$invoices_table.client_id limit 1) AS currency_symbol, $payment_methods_table.title AS payment_method_title
+        $sql = "SELECT $invoice_payments_table.*, $invoice_payments_table.client_id, $invoices_table.display_id, $clients_table.currency_symbol, $payment_methods_table.title AS payment_method_title
         FROM $invoice_payments_table
-        LEFT JOIN $invoices_table ON $invoices_table.id=$invoice_payments_table.invoice_id
-        LEFT JOIN $clients_table ON $clients_table.id = $invoices_table.client_id
+        LEFT JOIN $invoices_table ON $invoices_table.id=$invoice_payments_table.invoice_id /* referencia legacy, sólo presentación */
+        LEFT JOIN $clients_table ON $clients_table.id = $invoice_payments_table.client_id
         LEFT JOIN $payment_methods_table ON $payment_methods_table.id = $invoice_payments_table.payment_method_id
-        WHERE $invoice_payments_table.deleted=0 AND $invoices_table.deleted=0 $where";
+        WHERE $invoice_payments_table.deleted=0 AND $clients_table.deleted=0 $where";
         return $this->db->query($sql);
     }
 
@@ -83,6 +85,7 @@ class Invoice_payments_model extends Crud_model {
         $payments_table = $this->db->prefixTable('invoice_payments');
         $invoices_table = $this->db->prefixTable('invoices');
         $clients_table = $this->db->prefixTable('clients');
+        $payment_allocations_table = $this->db->prefixTable('payment_allocations');
 
         $year = $this->_get_clean_value($options, "year");
         $project_id = $this->_get_clean_value($options, "project_id");
@@ -90,31 +93,27 @@ class Invoice_payments_model extends Crud_model {
         $where = "";
         $currency = $this->_get_clean_value($options, "currency");
         if ($currency) {
-            $where = $this->_get_clients_of_currency_query($currency, $invoices_table, $clients_table);
+            $default_currency=get_setting('default_currency');$where = $currency===$default_currency?" AND ($clients_table.currency='$currency' OR $clients_table.currency='' OR $clients_table.currency IS NULL)":" AND $clients_table.currency='$currency'";
         }
 
         if ($project_id) {
-            $where .= " AND $payments_table.invoice_id IN(SELECT $invoices_table.id FROM $invoices_table WHERE $invoices_table.deleted=0 AND $invoices_table.project_id=$project_id)";
+            $where .= " AND EXISTS(SELECT 1 FROM $payment_allocations_table pa JOIN $invoices_table ai ON ai.id=pa.invoice_id WHERE pa.invoice_payment_id=$payments_table.id AND pa.deleted=0 AND pa.status='active' AND ai.project_id=$project_id)";
         }
 
         $show_own_client_invoice_user_id = get_array_value($options, "show_own_client_invoice_user_id");
         if ($show_own_client_invoice_user_id) {
-            $where .= " AND $payments_table.invoice_id IN(SELECT $invoices_table.id FROM $invoices_table WHERE $invoices_table.client_id IN(SELECT $clients_table.id FROM $clients_table WHERE $clients_table.owner_id = $show_own_client_invoice_user_id))";
+            $where .= " AND $clients_table.owner_id=$show_own_client_invoice_user_id";
         }
 
         $show_own_invoices_only_user_id = get_array_value($options, "show_own_invoices_only_user_id");
         if ($show_own_invoices_only_user_id) {
-            $where .= " AND $payments_table.invoice_id IN(SELECT $invoices_table.id FROM $invoices_table WHERE $invoices_table.created_by = $show_own_invoices_only_user_id)";
+            $where .= " AND EXISTS(SELECT 1 FROM $payment_allocations_table pa JOIN $invoices_table ai ON ai.id=pa.invoice_id WHERE pa.invoice_payment_id=$payments_table.id AND pa.deleted=0 AND pa.status='active' AND ai.created_by=$show_own_invoices_only_user_id)";
         }
 
-        $payments = "SELECT SUM($payments_table.amount) AS total, MONTH($payments_table.payment_date) AS month,
-            (SELECT $clients_table.currency FROM $clients_table WHERE $clients_table.id=(
-                SELECT $invoices_table.client_id FROM $invoices_table WHERE $invoices_table.id=$payments_table.invoice_id
-                )
-            ) AS currency
+        $payments = "SELECT SUM($payments_table.amount) AS total, MONTH($payments_table.payment_date) AS month,$clients_table.currency AS currency
             FROM $payments_table
-            LEFT JOIN $invoices_table ON $invoices_table.id=$payments_table.invoice_id
-            WHERE $payments_table.deleted=0 AND YEAR($payments_table.payment_date)= $year AND $invoices_table.deleted=0 $where
+            JOIN $clients_table ON $clients_table.id=$payments_table.client_id
+            WHERE $payments_table.deleted=0 AND $payments_table.status='active' AND YEAR($payments_table.payment_date)= $year AND $clients_table.deleted=0 $where
             GROUP BY MONTH($payments_table.payment_date), currency";
 
         return $this->db->query($payments)->getResult();
@@ -136,8 +135,9 @@ class Invoice_payments_model extends Crud_model {
         $invoices_table = $this->db->prefixTable('invoices');
         $projects_table = $this->db->prefixTable('projects');
         $expenses_table = $this->db->prefixTable('expenses');
+        $payment_allocations_table = $this->db->prefixTable('payment_allocations');
 
-        $payments_where = "SELECT $invoices_table.project_id FROM $invoices_table WHERE $invoices_table.deleted=0 AND $invoices_table.project_id!=0 AND $invoices_table.id IN(SELECT $payments_table.invoice_id FROM $payments_table WHERE $payments_table.deleted=0 GROUP BY $payments_table.invoice_id) GROUP BY $invoices_table.project_id";
+        $payments_where = "SELECT i.project_id FROM $payment_allocations_table pa JOIN $invoices_table i ON i.id=pa.invoice_id JOIN $payments_table p ON p.id=pa.invoice_payment_id WHERE pa.deleted=0 AND pa.status='active' AND p.deleted=0 AND p.status='active' AND i.deleted=0 AND i.project_id!=0 GROUP BY i.project_id";
         $expenses_where = "SELECT $expenses_table.project_id FROM $expenses_table WHERE $expenses_table.deleted=0 AND $expenses_table.project_id!=0 GROUP BY $expenses_table.project_id";
 
         $where = "";
@@ -185,9 +185,8 @@ class Invoice_payments_model extends Crud_model {
 
         $sql = "SELECT COUNT($payments_table.id) AS payment_count, SUM($payments_table.amount) AS amount, MONTH($payments_table.payment_date) AS month, $clients_table.currency, $clients_table.currency_symbol
         FROM $payments_table
-        LEFT JOIN $invoices_table ON $invoices_table.id=$payments_table.invoice_id
-        LEFT JOIN $clients_table ON $clients_table.id=(SELECT $invoices_table.client_id FROM $invoices_table WHERE $invoices_table.id=$payments_table.invoice_id LIMIT 1)
-        WHERE $payments_table.deleted=0 $where
+        JOIN $clients_table ON $clients_table.id=$payments_table.client_id
+        WHERE $payments_table.deleted=0 AND $payments_table.status='active' AND $clients_table.deleted=0 $where
         GROUP BY MONTH($payments_table.payment_date)";
 
         return $this->db->query($sql);
@@ -218,12 +217,11 @@ class Invoice_payments_model extends Crud_model {
 
         $where .= ($currency == $default_currency) ? " AND ($clients_table.currency='$default_currency' OR $clients_table.currency='' OR $clients_table.currency IS NULL)" : " AND $clients_table.currency='$currency'";
 
-        $sql = "SELECT COUNT($payments_table.id) AS payment_count, SUM($payments_table.amount) AS amount, $invoices_table.client_id, $clients_table.company_name AS client_name, $clients_table.currency, $clients_table.currency_symbol
+        $sql = "SELECT COUNT($payments_table.id) AS payment_count, SUM($payments_table.amount) AS amount, $payments_table.client_id, $clients_table.company_name AS client_name, $clients_table.currency, $clients_table.currency_symbol
         FROM $payments_table
-        LEFT JOIN $invoices_table ON $invoices_table.id=$payments_table.invoice_id
-        LEFT JOIN $clients_table ON $clients_table.id=(SELECT $invoices_table.client_id FROM $invoices_table WHERE $invoices_table.id=$payments_table.invoice_id LIMIT 1)
-        WHERE $payments_table.deleted=0 AND $invoices_table.deleted=0 AND $clients_table.deleted=0 $where
-        GROUP BY $invoices_table.client_id";
+        JOIN $clients_table ON $clients_table.id=$payments_table.client_id
+        WHERE $payments_table.deleted=0 AND $payments_table.status='active' AND $clients_table.deleted=0 $where
+        GROUP BY $payments_table.client_id";
 
         return $this->db->query($sql);
     }
@@ -235,7 +233,6 @@ class Invoice_payments_model extends Crud_model {
         $client_wallet_table = $this->db->prefixTable('client_wallet');
 
         $invoices_where = "";
-        $invoices_where_for_payments = "";
         $payments_where = "";
         $client_wallet_where = "";
 
@@ -256,7 +253,7 @@ class Invoice_payments_model extends Crud_model {
         $client_id = $this->_get_clean_value($options, "client_id");
         if ($client_id) {
             $invoices_where .= " AND $invoices_table.client_id=$client_id";
-            $invoices_where_for_payments .= " AND $invoices_table.client_id=$client_id";
+            $payments_where .= " AND $payments_table.client_id=$client_id";
             $client_wallet_where .= " AND $client_wallet_table.client_id=$client_id";
         }
 
@@ -267,8 +264,7 @@ class Invoice_payments_model extends Crud_model {
         (SELECT $payments_table.payment_date AS date, $payment_methods_table.title AS description, 0 AS invoice_total, $payments_table.amount AS payment, 'payment' AS type
         FROM $payments_table
         LEFT JOIN $payment_methods_table ON $payment_methods_table.id=$payments_table.payment_method_id
-        LEFT JOIN $invoices_table ON $invoices_table.id=$payments_table.invoice_id
-        WHERE $payments_table.deleted=0 AND $invoices_table.deleted=0 AND $invoices_table.status!='draft' AND $invoices_table.status!='cancelled' $invoices_where_for_payments
+        WHERE $payments_table.deleted=0 AND $payments_table.status='active'
             AND $payments_table.payment_method_id!=(
                 SELECT $payment_methods_table.id FROM $payment_methods_table WHERE $payment_methods_table.type='client_wallet'
             ) $payments_where)
@@ -322,8 +318,8 @@ class Invoice_payments_model extends Crud_model {
         WHERE $invoice_payments_table.deleted=0 
             AND $invoice_payments_table.payment_method_id!=(
                 SELECT $payment_methods_table.id FROM $payment_methods_table WHERE deleted=0 AND type='client_wallet') 
-            AND $invoice_payments_table.invoice_id IN(
-                SELECT $invoices_table.id FROM $invoices_table WHERE $invoices_table.deleted=0 $invoices_where) $where";
+            AND $invoice_payments_table.status='active'
+            AND $invoice_payments_table.client_id=$client_id $where";
 
         $payment_received = $this->db->query($sql)->getRow()->payment_received;
 

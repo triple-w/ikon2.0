@@ -82,10 +82,27 @@ final class CfdiSigningService
             );
         }
 
-        $mapped = (new CfdiDraftMapper())->map($documentId);
-        $semantic = (new CfdiSemanticValidator())->validate($mapped);
-        if (!$semantic['is_valid']) {
-            throw new RuntimeException('El documento no supera la validación semántica previa al sellado.');
+        $fiscalMetadata=$this->db->table('fiscal_document_metadata')->where('fiscal_document_id',$documentId)->get(1)->getRow();
+        $fiscalMetadataPayload=$fiscalMetadata?json_decode((string)$fiscalMetadata->metadata_json,true):[];
+        if ((string)$document->document_type === 'payment') {
+            $metadata=$this->db->table('fiscal_document_metadata')->where('fiscal_document_id',$documentId)->get(1)->getRow();
+            $meta=$metadata?json_decode((string)$metadata->metadata_json,true):[];
+            $complementId=(int)($meta['payment_complement_id']??0);
+            if(!$complementId)throw new RuntimeException('El documento Pago no conserva el vínculo con su Complemento.');
+            $paymentPreflight=(new \App\FiscalServices\PaymentComplementPreflightService($this->db))->requireReady($complementId);
+            if(!hash_equals((string)$document->source_snapshot_hash,(string)$paymentPreflight['snapshot']['sha256']))throw new RuntimeException('El borrador cambió después de materializar el documento Pago.');
+            $semantic=['is_valid'=>true,'validation_level'=>'payment_complement_preflight','errors'=>[],'warnings'=>$paymentPreflight['warnings']];
+        } elseif ((string)$document->document_type === 'expense' && !empty($fiscalMetadataPayload['credit_note_id'])) {
+            $creditNoteId=(int)$fiscalMetadataPayload['credit_note_id'];$credit=new \App\Services\Fiscal\CreditNoteService($this->db);$review=$credit->review($creditNoteId);
+            if(!$review['ready'])throw new RuntimeException('La Nota de Crédito no supera la revisión fiscal.');
+            if(!hash_equals((string)$document->source_snapshot_hash,hash('sha256',$credit->buildXml($creditNoteId,(string)$document->series,(int)$document->folio))))throw new RuntimeException('La Nota de Crédito cambió después de materializar su CFDI E.');
+            $semantic=['is_valid'=>true,'validation_level'=>'credit_note_preflight','errors'=>[],'warnings'=>[]];
+        } else {
+            $mapped = (new CfdiDraftMapper())->map($documentId);
+            $semantic = (new CfdiSemanticValidator())->validate($mapped);
+            if (!$semantic['is_valid']) {
+                throw new RuntimeException('El documento no supera la validación semántica previa al sellado.');
+            }
         }
         $preXmlResult = (new CfdiPreXmlArtifactService($this->db, $this->preXmlRoot))->read($preXmlArtifactId, true);
         $preXml = $preXmlResult['xml'];

@@ -69,8 +69,8 @@ class Client_wallet_model extends Crud_model {
         WHERE $invoice_payments_table.deleted=0 
             AND $invoice_payments_table.payment_method_id=(
                 SELECT $payment_methods_table.id FROM $payment_methods_table WHERE deleted=0 AND type='client_wallet') 
-            AND $invoice_payments_table.invoice_id IN(
-                SELECT $invoices_table.id FROM $invoices_table WHERE $invoices_table.deleted=0 AND $invoices_table.client_id=$client_id)";
+            AND $invoice_payments_table.status='active'
+            AND $invoice_payments_table.client_id=$client_id";
 
         $invoice_payments = $this->db->query($invoice_payments_sql)->getRow();
         $result->total_distributed_amount = is_null($invoice_payments->total_distributed_amount) ? 0 : $invoice_payments->total_distributed_amount;

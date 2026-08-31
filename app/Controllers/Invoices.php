@@ -945,6 +945,8 @@ class Invoices extends Security_Controller {
                 $view_data["custom_field_headers_of_task"] = $this->Custom_fields_model->get_custom_field_headers_for_table("tasks", $this->login_user->is_admin, $this->login_user->user_type);
 
                 $view_data["invoice_total_summary"] = $this->Invoices_model->get_invoice_total_summary($invoice_id);
+                $allocationService = new \App\Services\PaymentAllocationService(db_connect());
+                $view_data['administrative_payment_summary'] = ['paid' => $allocationService->salePaid((int)$invoice_id), 'outstanding' => $allocationService->saleOutstanding((int)$invoice_id), 'payments' => $allocationService->paymentsForSale((int)$invoice_id)];
                 $view_data["canonical_tax_breakdown"] = (new \App\Services\Fiscal\CommercialTaxBreakdownService())->forSale((int)$invoice_id);
                 $view_data["invoice_id"] = $invoice_id;
                 $rolePermissions = is_array($this->login_user->permissions)
@@ -1692,7 +1694,9 @@ class Invoices extends Security_Controller {
 
         $invoice_payment_data = clean_data($invoice_payment_data);
 
-        $invoice_payment_id = $this->Invoice_payments_model->ci_save($invoice_payment_data);
+        $payment_service = new \App\Services\AdministrativePaymentService(db_connect());
+        $invoice_payment_data['destination_financial_account_id'] = $payment_service->defaultAccountForMethod((int) $invoice_payment_data['payment_method_id']);
+        $invoice_payment_id = $payment_service->save($invoice_payment_data);
         if ($invoice_payment_id) {
 
             //As receiving payment for the invoice, we'll remove the 'draft' status from the invoice 

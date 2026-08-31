@@ -7,11 +7,12 @@ try{
  $adapter=file_get_contents(APPPATH.'Services/Fiscal/Cancellation/TimbradorXpressCancellationAdapter.php');
  $fake=file_get_contents(APPPATH.'Services/Fiscal/Cancellation/FakeFiscalCancellationAdapter.php');
  $view=file_get_contents(APPPATH.'Views/fiscal/invoices/cancel_form.php');
+ $reasonCatalog=file_get_contents(APPPATH.'Services/Fiscal/Cancellation/FiscalCancellationReasonCatalog.php');
  $module=file_get_contents(APPPATH.'Controllers/Fiscal/InvoiceModule.php');
  $routes=file_get_contents(APPPATH.'Config/FiscalRoutes.php');
  $a(str_contains($module,'canCancel($row)'),'Cancel action is gated by fiscal state.');
  $a(str_contains($module,"['none','rejected']"),'Drafts, cancelled and active requests cannot show Cancel.');
- foreach(['01','02','03','04']as$reason)$a(str_contains($view,"'{$reason}'"),"Reason {$reason} is present.");
+ foreach(['01','02','03','04']as$reason)$a(str_contains($reasonCatalog,"'{$reason}'"),"Reason {$reason} is present in the shared catalog.");
  $a(str_contains($service,"\$reason==='01'")&&str_contains($service,'UUID sustituto'),'Reason 01 requires replacement UUID.');
  $a(str_contains($service,"\$reason!=='01')\$replacementUuid=null"),'Reasons 02-04 discard replacement UUID.');
  $a(str_contains($service,'[0-9A-F]{8}')&&str_contains($service,'[0-9A-F]{12}'),'UUID is validated locally.');

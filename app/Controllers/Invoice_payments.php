@@ -61,11 +61,21 @@ class Invoice_payments extends Security_Controller {
         $view_data['model_info'] = $this->Invoice_payments_model->get_one($this->request->getPost('id'));
 
         $invoice_id = $this->request->getPost('invoice_id') ? $this->request->getPost('invoice_id') : $view_data['model_info']->invoice_id;
+        $client_id = (int)($this->request->getPost('client_id') ?: ($view_data['model_info']->client_id ?? 0));
+        if ($invoice_id) {
+            $invoice_for_client = $this->Invoices_model->get_one($invoice_id);
+            $client_id = (int)$invoice_for_client->client_id;
+        }
+        $clients_dropdown = array('' => '- Seleccione cliente -');
+        foreach (db_connect()->table('clients')->select('id,company_name')->where(['deleted'=>0,'is_lead'=>0])->orderBy('company_name')->get()->getResult() as $client) {
+            $clients_dropdown[$client->id] = $client->company_name;
+        }
+        $view_data['clients_dropdown'] = $clients_dropdown;
+        $view_data['client_id'] = $client_id;
 
         if (!$invoice_id) {
             //prepare invoices dropdown
-            $client_id = $this->request->getPost('client_id');
-            $invoices = $this->Invoices_model->get_invoices_dropdown_list($client_id)->getResult();
+            $invoices = $client_id ? $this->Invoices_model->get_invoices_dropdown_list($client_id)->getResult() : [];
             $invoices_dropdown = array();
 
             // calculate max length
@@ -104,7 +114,13 @@ class Invoice_payments extends Security_Controller {
         helper('cookie');
         $selected_payment_method = get_cookie("user_" . $this->login_user->id . "_payment_method");
         $view_data['payment_methods_dropdown'] = $this->Payment_methods_model->get_payment_methods_dropdown(true, $selected_payment_method);
+        $view_data['financial_accounts'] = model('App\\Models\\Financial_accounts_model')->get_active();
         $view_data['invoice_id'] = $invoice_id;
+        $allocationService = new \App\Services\PaymentAllocationService(db_connect());
+        $view_data['allocations'] = $view_data['model_info']->id ? $allocationService->allocationsForPayment((int)$view_data['model_info']->id) : [];
+        $view_data['payment_applied'] = $view_data['model_info']->id ? $allocationService->paymentApplied((int)$view_data['model_info']->id) : '0.000000';
+        $view_data['payment_available'] = $view_data['model_info']->id ? $allocationService->paymentAvailable((int)$view_data['model_info']->id) : $amount;
+        $view_data['allocation_sales'] = $view_data['model_info']->id ? $allocationService->salesForPayment((int)$view_data['model_info']->id) : [];
 
         return $this->template->view('invoices/payment_modal_form', $view_data);
     }
@@ -116,20 +132,28 @@ class Invoice_payments extends Security_Controller {
 
         $this->validate_submitted_data(array(
             "id" => "numeric",
-            "invoice_id" => "required|numeric",
+            "client_id" => "required|numeric",
+            "invoice_id" => "permit_empty|numeric",
             "invoice_payment_method_id" => "required|numeric",
             "invoice_payment_date" => "required",
-            "invoice_payment_amount" => "required"
+            "invoice_payment_amount" => "required",
+            "destination_financial_account_id" => "required|numeric"
         ));
 
         $id = $this->request->getPost('id');
-        $invoice_id = $this->request->getPost('invoice_id');
-        $saleLifecycle = db_connect()->table('invoices')->select('commercial_status')
-            ->where(['id'=>$invoice_id,'deleted'=>0])->get(1)->getRow();
-        if (!$saleLifecycle || !in_array($saleLifecycle->commercial_status, ['open','closed'], true)) {
-            echo json_encode(["success"=>false,"message"=>"La venta no admite pagos en su estado comercial actual."]); return;
+        $invoice_id = (int)$this->request->getPost('invoice_id');
+        $client_id = (int)$this->request->getPost('client_id');
+        if ($invoice_id) {
+            $saleLifecycle = db_connect()->table('invoices')->select('commercial_status')->where(['id'=>$invoice_id,'deleted'=>0])->get(1)->getRow();
+            if (!$saleLifecycle || !in_array($saleLifecycle->commercial_status, ['open','closed'], true)) { echo json_encode(["success"=>false,"message"=>"La venta no admite pagos en su estado comercial actual."]); return; }
         }
         $amount = unformat_currency($this->request->getPost('invoice_payment_amount'));
+        if ($id) {
+            $allocated = (new \App\Services\PaymentAllocationService(db_connect()))->paymentApplied((int)$id);
+            if (bccomp(\App\Services\FinancialMoney::normalize($amount), $allocated, 6) < 0) {
+                echo json_encode(["success"=>false,"message"=>"No puede reducir el pago por debajo del monto ya aplicado."]); return;
+            }
+        }
         $payment_method_id = $this->request->getPost('invoice_payment_method_id');
 
         // check if the payment method is client wallet
@@ -137,7 +161,7 @@ class Invoice_payments extends Security_Controller {
         $payment_method_info = $this->Payment_methods_model->get_one($payment_method_id);
         if ($payment_method_info->type == "client_wallet") {
 
-            $invoice_info = $this->Invoices_model->get_one($invoice_id);
+            $invoice_info = $invoice_id ? $this->Invoices_model->get_one($invoice_id) : (object)['client_id'=>$client_id];
             $Client_wallet_model = model("App\Models\Client_wallet_model");
             $client_wallet_summary = $Client_wallet_model->get_client_wallet_summary($invoice_info->client_id);
 
@@ -148,10 +172,13 @@ class Invoice_payments extends Security_Controller {
         }
 
         $invoice_payment_data = array(
-            "invoice_id" => $invoice_id,
+            "invoice_id" => $invoice_id ?: null,
+            "client_id" => $client_id,
             "payment_date" => $this->request->getPost('invoice_payment_date'),
             "payment_method_id" => $payment_method_id,
+            "destination_financial_account_id" => (int)$this->request->getPost('destination_financial_account_id'),
             "note" => $this->request->getPost('invoice_payment_note'),
+            "reference" => $this->request->getPost('invoice_payment_reference'),
             "amount" => $amount,
             "created_at" => get_current_utc_time(),
             "created_by" => $this->login_user->id,
@@ -159,11 +186,11 @@ class Invoice_payments extends Security_Controller {
 
         $invoice_payment_data = clean_data($invoice_payment_data);
 
-        $invoice_payment_id = $this->Invoice_payments_model->ci_save($invoice_payment_data, $id);
-        if ($invoice_payment_id) {
+        try {
+            $invoice_payment_id = (new \App\Services\AdministrativePaymentService(db_connect()))->save($invoice_payment_data, (int)$id);
 
             //As receiving payment for the invoice, we'll remove the 'draft' status from the invoice 
-            $this->Invoices_model->update_invoice_status($invoice_id);
+            if ($invoice_id) $this->Invoices_model->update_invoice_status($invoice_id);
 
             if (!$id) {
                 //show payment confirmation and payment received notification for new payments only
@@ -172,9 +199,7 @@ class Invoice_payments extends Security_Controller {
             }
 
             echo json_encode(array("success" => true, "id" => $invoice_payment_id, 'message' => app_lang('record_saved')));
-        } else {
-            echo json_encode(array("success" => false, 'message' => app_lang('error_occurred')));
-        }
+        } catch (\Throwable $e) { echo json_encode(array("success" => false, 'message' => $e->getMessage())); }
     }
 
     /* delete or undo a payment */
@@ -187,22 +212,52 @@ class Invoice_payments extends Security_Controller {
         ));
 
         $id = $this->request->getPost('id');
-        if ($this->request->getPost('undo')) {
-            if ($this->Invoice_payments_model->delete($id, true)) {
-                $options = array("id" => $id);
-                $item_info = $this->Invoice_payments_model->get_details($options)->getRow();
-                echo json_encode(array("success" => true, "invoice_id" => $item_info->invoice_id, "data" => $this->_make_payment_row($item_info),  "message" => app_lang('record_undone')));
-            } else {
-                echo json_encode(array("success" => false, app_lang('error_occurred')));
-            }
-        } else {
-            if ($this->Invoice_payments_model->delete($id)) {
-                $item_info = $this->Invoice_payments_model->get_one($id);
-                echo json_encode(array("success" => true, 'message' => app_lang('record_deleted')));
-            } else {
-                echo json_encode(array("success" => false, 'message' => app_lang('record_cannot_be_deleted')));
-            }
-        }
+        if ($this->request->getPost('undo')) { echo json_encode(['success'=>false,'message'=>'Una cancelación financiera no puede deshacerse eliminando la reversa.']); return; }
+        try { (new \App\Services\AdministrativePaymentService(db_connect()))->cancel((int)$id,(int)$this->login_user->id,(string)($this->request->getPost('reason')?:'Cancelación administrativa solicitada por el usuario')); echo json_encode(['success'=>true,'message'=>'Pago cancelado y reversado.']); }
+        catch(\Throwable $e){ echo json_encode(['success'=>false,'message'=>$e->getMessage()]); }
+    }
+
+    public function allocate_payment()
+    {
+        $this->access_only_allowed_members();
+        $this->validate_submitted_data(['payment_id'=>'required|numeric','invoice_id'=>'required|numeric','amount_applied'=>'required']);
+        try { $id=(new \App\Services\PaymentAllocationService(db_connect()))->create((int)$this->request->getPost('payment_id'),(int)$this->request->getPost('invoice_id'),unformat_currency($this->request->getPost('amount_applied')),$this->login_user->id); echo json_encode(['success'=>true,'id'=>$id]); }
+        catch(\Throwable $e){ echo json_encode(['success'=>false,'message'=>$e->getMessage()]); }
+    }
+
+    public function apply_multiple()
+    {
+        $this->access_only_allowed_members();$this->validate_submitted_data(['payment_id'=>'required|numeric']);
+        $sales=(array)$this->request->getPost('sale_id');$amounts=(array)$this->request->getPost('amount_applied');$apps=[];
+        foreach($sales as$i=>$saleId)$apps[]=['invoice_id'=>(int)$saleId,'amount_applied'=>$amounts[$i]??'0'];
+        try{(new \App\Services\PaymentAllocationService(db_connect()))->applyMany((int)$this->request->getPost('payment_id'),$apps,(int)$this->login_user->id);echo json_encode(['success'=>true,'message'=>'Aplicaciones guardadas.']);}catch(\Throwable$e){echo json_encode(['success'=>false,'message'=>$e->getMessage()]);}
+    }
+
+    public function client_invoices()
+    {
+        $this->access_only_allowed_members();$this->validate_submitted_data(['client_id'=>'required|numeric']);$clientId=(int)$this->request->getPost('client_id');$rows=$this->Invoices_model->get_invoices_dropdown_list($clientId)->getResult();$results=[];
+        foreach($rows as$row)$results[]=['id'=>(int)$row->id,'text'=>'Venta #'.$row->id.' — Saldo '.to_currency($row->invoice_due,$row->currency_symbol?:get_setting('currency_symbol'))];
+        echo json_encode(['success'=>true,'results'=>$results]);
+    }
+
+    public function delete_allocation()
+    {
+        $this->access_only_allowed_members();
+        $this->validate_submitted_data(['id'=>'required|numeric']);
+        try{(new \App\Services\PaymentAllocationService(db_connect()))->deactivate((int)$this->request->getPost('id'),(int)$this->login_user->id,(string)($this->request->getPost('reason')?:'Retirada administrativa'));echo json_encode(['success'=>true]);}catch(\Throwable$e){echo json_encode(['success'=>false,'message'=>$e->getMessage()]);}
+    }
+
+    public function view($id)
+    {
+        $this->access_only_allowed_members();$service=new \App\Services\PaymentAllocationService(db_connect());$payment=$service->payment((int)$id);if(!$payment)throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        return $this->template->rander('invoices/payments/detail',['payment'=>$payment,'applied'=>$service->paymentApplied((int)$id),'available'=>$service->paymentAvailable((int)$id),'allocations'=>$service->allocationsForPayment((int)$id),'sales'=>$service->salesForPayment((int)$id)]);
+    }
+
+    public function canonical_list_data()
+    {
+        $this->access_only_allowed_members();$db=db_connect();$rows=$db->table('invoice_payments p')->select("p.*,c.company_name client_name,pm.title payment_method_title,fa.name financial_account_name,COALESCE(SUM(a.amount_applied),0) applied,CASE WHEN p.status='active' THEN (p.amount-COALESCE(SUM(a.amount_applied),0)) ELSE 0 END available",false)->join('clients c','c.id=p.client_id')->join('payment_methods pm','pm.id=p.payment_method_id','left')->join('financial_accounts fa','fa.id=p.destination_financial_account_id','left')->join('payment_allocations a',"a.invoice_payment_id=p.id AND a.deleted=0 AND a.status='active'",'left')->groupBy('p.id')->orderBy('p.payment_date','DESC')->orderBy('p.id','DESC')->get()->getResult();$data=[];
+        foreach($rows as$p){$actions=anchor(get_uri('invoice_payments/view/'.$p->id),'<i data-feather="eye" class="icon-16"></i> Ver',['class'=>'btn btn-xs btn-default']);if($p->status==='active')$actions.=' '.anchor(get_uri('invoice_payments/view/'.$p->id).'#apply','Aplicar',['class'=>'btn btn-xs btn-primary']).' '.js_anchor('Cancelar',['class'=>'btn btn-xs btn-danger delete','data-id'=>$p->id,'data-action-url'=>get_uri('invoice_payments/delete_payment'),'data-action'=>'delete-confirmation']);$data[]=[format_to_date($p->payment_date,false),esc($p->client_name),esc($p->payment_method_title),esc($p->financial_account_name),to_currency($p->amount),to_currency($p->applied),to_currency($p->available),$p->status==='active'?'Activo':'Cancelado',$actions];}
+        echo json_encode(['data'=>$data]);
     }
 
     /* list of invoice payments, prepared for datatable  */
@@ -291,11 +346,13 @@ class Invoice_payments extends Security_Controller {
 
     private function _make_payment_row($data, $is_mobile = 0) {
         $invoice_url = "";
-        if (!$this->can_view_invoices($data->invoice_id, $data->client_id)) {
+        if (!$this->can_view_invoices((int)$data->invoice_id, $data->client_id)) {
             app_redirect("forbidden");
         }
 
-        if ($this->login_user->user_type == "staff") {
+        if (!$data->invoice_id) {
+            $invoice_url = anchor(get_uri('invoice_payments/view/'.$data->id), 'Pago #'.$data->id);
+        } else if ($this->login_user->user_type == "staff") {
             $invoice_url = anchor(get_uri("invoices/view/" . $data->invoice_id), $data->display_id);
         } else {
             $invoice_url = anchor(get_uri("invoices/preview/" . $data->invoice_id), $data->display_id);

@@ -32,7 +32,7 @@ final class FiscalIssueDateService
         $date = DateTimeImmutable::createFromFormat(
             '!' . self::SNAPSHOT_FORMAT,
             trim($snapshotDate),
-            new DateTimeZone(self::TIMEZONE)
+            (new FiscalIssueDateNormalizer())->timezone()
         );
         $errors = DateTimeImmutable::getLastErrors();
         if (!$date || (is_array($errors) && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
@@ -46,12 +46,12 @@ final class FiscalIssueDateService
     {
         $value = $this->clock
             ? ($this->clock)()
-            : new DateTimeImmutable('now', new DateTimeZone(self::TIMEZONE));
+            : new DateTimeImmutable('now', (new FiscalIssueDateNormalizer())->timezone());
         if (!$value instanceof DateTimeInterface) {
             throw new RuntimeException('El reloj fiscal devolvió un valor inválido.');
         }
 
         return DateTimeImmutable::createFromInterface($value)
-            ->setTimezone(new DateTimeZone(self::TIMEZONE));
+            ->setTimezone((new FiscalIssueDateNormalizer())->timezone());
     }
 }

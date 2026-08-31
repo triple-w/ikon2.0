@@ -66,6 +66,8 @@ class Roles extends Security_Controller {
             $view_data['contract'] = get_array_value($permissions, "contract");
             $view_data['proposal'] = get_array_value($permissions, "proposal");
             $view_data['proposal_accept_and_convert'] = get_array_value($permissions, "proposal.accept_and_convert");
+            foreach(['suppliers_view','suppliers_manage','supplier_costs_view','supplier_costs_edit'] as $p) $view_data[$p]=get_array_value($permissions,$p);
+            foreach(['warehouse_view','warehouse_manage','warehouse_products_view','warehouse_products_manage','warehouse_movements_view','warehouse_movements_create','warehouse_adjustments','warehouse_transfers_view','warehouse_transfers_create','warehouse_transfers_dispatch','warehouse_transfers_receive','warehouse_transfers_manage_logistics'] as $p) $view_data[$p]=get_array_value($permissions,$p);
             $view_data['expense'] = get_array_value($permissions, "expense");
             $view_data['order'] = get_array_value($permissions, "order");
             $view_data['client'] = get_array_value($permissions, "client");
@@ -198,6 +200,8 @@ class Roles extends Security_Controller {
         $contract = $this->request->getPost('contract_permission');
         $proposal = $this->request->getPost('proposal_permission');
         $proposal_accept_and_convert = $this->request->getPost('proposal_accept_and_convert');
+        $suppliers_view=$this->request->getPost('suppliers_view');$suppliers_manage=$this->request->getPost('suppliers_manage');$supplier_costs_view=$this->request->getPost('supplier_costs_view');$supplier_costs_edit=$this->request->getPost('supplier_costs_edit');
+        foreach(['warehouse_view','warehouse_manage','warehouse_products_view','warehouse_products_manage','warehouse_movements_view','warehouse_movements_create','warehouse_adjustments','warehouse_transfers_view','warehouse_transfers_create','warehouse_transfers_dispatch','warehouse_transfers_receive','warehouse_transfers_manage_logistics'] as $warehousePermission) ${$warehousePermission}=$this->request->getPost($warehousePermission);
         $expense = $this->request->getPost('expense_permission');
         $order = $this->request->getPost('order_permission');
         $client = $this->request->getPost('client_permission');
@@ -350,6 +354,8 @@ class Roles extends Security_Controller {
             "contract" => $contract,
             "proposal" => $proposal,
             "proposal.accept_and_convert" => $proposal_accept_and_convert,
+            'suppliers_view'=>$suppliers_view,'suppliers_manage'=>$suppliers_manage,'supplier_costs_view'=>$supplier_costs_view,'supplier_costs_edit'=>$supplier_costs_edit,
+            'warehouse_view'=>$warehouse_view,'warehouse_manage'=>$warehouse_manage,'warehouse_products_view'=>$warehouse_products_view,'warehouse_products_manage'=>$warehouse_products_manage,'warehouse_movements_view'=>$warehouse_movements_view,'warehouse_movements_create'=>$warehouse_movements_create,'warehouse_adjustments'=>$warehouse_adjustments,'warehouse_transfers_view'=>$warehouse_transfers_view,'warehouse_transfers_create'=>$warehouse_transfers_create,'warehouse_transfers_dispatch'=>$warehouse_transfers_dispatch,'warehouse_transfers_receive'=>$warehouse_transfers_receive,'warehouse_transfers_manage_logistics'=>$warehouse_transfers_manage_logistics,
             "expense" => $expense,
             "order" => $order,
             "client" => $client,

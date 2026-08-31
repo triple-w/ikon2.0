@@ -242,6 +242,9 @@ class Items extends Security_Controller {
         $view_data['model_info'] = $model_info;
         $view_data["client_info"] = $this->Clients_model->get_one($this->login_user->client_id);
         $view_data['custom_fields_list'] = $this->Custom_fields_model->get_combined_details("items", $model_info->id, $this->login_user->is_admin, $this->login_user->user_type)->getResult();
+        $permissions=is_array($this->login_user->permissions)?$this->login_user->permissions:(@unserialize((string)$this->login_user->permissions)?:[]);
+        $view_data['can_view_supplier_costs']=$this->login_user->is_admin||(bool)get_array_value($permissions,'supplier_costs_view')||(bool)get_array_value($permissions,'supplier_costs_edit');
+        if($view_data['can_view_supplier_costs']){$history=new \App\Services\SupplierCostHistoryService();$view_data['supplier_cost_summary']=$history->productSummary((int)$model_info->id);$view_data['supplier_cost_history']=$history->productHistory((int)$model_info->id);$view_data['supplier_cost_indicators']=$history->productIndicators((int)$model_info->id);}
 
         return $this->template->view('items/view', $view_data);
     }

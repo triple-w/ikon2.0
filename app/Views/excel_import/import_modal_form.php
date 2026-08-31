@@ -12,6 +12,10 @@
             ));
             ?>
         </div>
+        <?php if ($controller_slag === 'expenses'):
+            $expense_accounts = db_connect()->table('financial_accounts')->where(['deleted'=>0,'is_active'=>1,'currency'=>'MXN'])->orderBy('name')->get()->getResult(); ?>
+            <div class="form-group mt10"><label for="import_source_financial_account_id">Cuenta origen obligatoria para todos los egresos importados</label><select id="import_source_financial_account_id" name="source_financial_account_id" class="form-control" required><option value="">Seleccione una cuenta MXN</option><?php foreach($expense_accounts as $account): ?><option value="<?php echo (int)$account->id; ?>"><?php echo esc($account->name); ?></option><?php endforeach; ?></select></div>
+        <?php endif; ?>
         <input type="hidden" name="file_name" id="import_file_name" value="" />
         <div id="preview-area"></div>
     </div>

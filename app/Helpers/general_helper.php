@@ -978,7 +978,23 @@ if (!function_exists('get_proposal_making_data')) {
         if ($proposal_info) {
             $data['proposal_info'] = $proposal_info;
             $data['client_info'] = $ci->Clients_model->get_one($data['proposal_info']->client_id);
-            $data['proposal_items'] = $ci->Proposal_items_model->get_details(array("proposal_id" => $proposal_id))->getResult();
+            $proposal_items = $ci->Proposal_items_model->get_details(array("proposal_id" => $proposal_id))->getResult();
+            $item_image_cache = array();
+            foreach ($proposal_items as $proposal_item) {
+                $item_id = (int) ($proposal_item->item_id ?? 0);
+
+                if ($item_id && !array_key_exists($item_id, $item_image_cache)) {
+                    $product_info = $ci->Items_model->get_one($item_id);
+                    $item_image_cache[$item_id] = $product_info
+                        ? get_store_item_image($product_info->files)
+                        : get_store_item_image("");
+                }
+
+                $proposal_item->product_image = $item_id
+                    ? $item_image_cache[$item_id]
+                    : get_store_item_image("");
+            }
+            $data['proposal_items'] = $proposal_items;
             $data["proposal_total_summary"] = $ci->Proposals_model->get_proposal_total_summary($proposal_id);
 
             $data['total_read_count'] = $ci->Event_tracker_model->total_read_count(array("context" => "proposal", "context_id" => $proposal_id));

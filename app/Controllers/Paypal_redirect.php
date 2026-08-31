@@ -63,7 +63,9 @@ class Paypal_redirect extends App_Controller {
             show_404();
         }
 
-        $invoice_payment_id = $this->Invoice_payments_model->ci_save($invoice_payment_data);
+        $payment_service = new \App\Services\AdministrativePaymentService(db_connect());
+        $invoice_payment_data['destination_financial_account_id'] = $payment_service->defaultAccountForMethod((int) $invoice_payment_data['payment_method_id']);
+        $invoice_payment_id = $payment_service->save($invoice_payment_data);
         if (!$invoice_payment_id) {
             show_404();
         }

@@ -6,6 +6,7 @@ namespace App\Controllers\Fiscal;
 use App\Controllers\Security_Controller;
 use App\Services\Fiscal\Cancellation\FiscalCancellationService;
 use App\Services\Fiscal\Cancellation\CancellationBusinessDayPolicy;
+use App\Services\Fiscal\Cancellation\FiscalCancellationReasonCatalog;
 use App\Services\Fiscal\Stamps\FiscalStampAccountService;
 use App\Services\Fiscal\FiscalDecimalCalculator;
 use App\Services\Fiscal\FiscalInvoiceCenterQueryService;
@@ -26,6 +27,7 @@ final class Invoices extends Security_Controller
             if($r->xml_available)$actions.=' '.anchor(get_uri('fiscal/stamping/xml/download/'.$r->id),'<i data-feather="file-text" class="icon-16"></i>',['title'=>app_lang('download_stamped_xml')]);
             if($r->pdf_available){$actions.=' '.anchor(get_uri('fiscal/documents/'.$r->id.'/pdf/preview'),'<i data-feather="eye" class="icon-16"></i>',['title'=>app_lang('view_pdf'),'target'=>'_blank']);$actions.=' '.anchor(get_uri('fiscal/documents/'.$r->id.'/pdf/download'),'<i data-feather="download" class="icon-16"></i>',['title'=>app_lang('download_pdf')]);}
             if($this->allowed('fiscal_pdf_generate')&&$r->uuid&&$r->xml_available&&!$r->pdf_available&&in_array($r->visible_status,['stamped_pdf_pending','stamped_pdf_error'],true)){try{$template=(new FiscalPdfTemplateResolver())->resolve((int)$r->issuer_profile_id,(string)config('FiscalPdfProvider')->provider,$this->documentTypeCode((string)$r->document_type))->templateCode;}catch(Throwable){$template='-';}$actions.=' '.js_anchor('Generar PDF del PAC',['class'=>'fiscal-generate-pdf text-warning','data-document-id'=>$r->id,'data-series'=>$r->series,'data-folio'=>$r->folio,'data-uuid'=>$r->uuid,'data-template'=>$template,'title'=>'Generar PDF del PAC']);}
+            if($this->allowed('fiscal.drafts.create')&&strtolower((string)$r->document_type)==='income'&&$r->visible_status==='stamped'&&bccomp((new \App\Services\Fiscal\CreditNoteBalanceService())->available((int)$r->id),'0',6)>0)$actions.=' '.modal_anchor(get_uri('credit_notes/create/form'),'<i data-feather="file-minus" class="icon-16"></i>',['title'=>'Crear Nota de Crédito','data-post-source_document_id'=>$r->id]);
             if($this->allowed('fiscal_invoices_cancel')&&$r->visible_status==='stamped')$actions.=' '.modal_anchor(get_uri('fiscal/invoices/cancel/form'),'<i data-feather="x-circle" class="icon-16"></i>',['data-post-document_id'=>$r->id,'title'=>app_lang('cancel_fiscal_invoice')]);
             if($this->allowed('fiscal_invoices_view_cancellation')&&$r->cancellation_request_id&&$r->visible_status==='cancelled')$actions.=' '.anchor(get_uri('fiscal/invoices/cancellation/ack/'.$r->cancellation_request_id),'<i data-feather="file-text" class="icon-16"></i>',['title'=>app_lang('fiscal_cancellation_ack')]);
             $tax=(new FiscalDecimalCalculator())->sub((string)$r->transferred_tax_total,(string)$r->withheld_tax_total,6);
@@ -34,7 +36,7 @@ final class Invoices extends Security_Controller
     }
     public function cancelForm()
     {
-        $this->guard('fiscal_invoices_cancel');$id=(int)$this->request->getPost('document_id');$db=db_connect();$doc=$db->table('fiscal_documents')->where('id',$id)->get(1)->getRow();$stamp=$db->table('fiscal_document_stamps')->where('fiscal_document_id',$id)->get(1)->getRow();$receiver=$db->table('fiscal_document_receivers')->where('fiscal_document_id',$id)->get(1)->getRow();if(!$doc||!$stamp||!$this->can_view_invoices((int)$doc->invoice_id))throw PageNotFoundException::forPageNotFound();$balance=(new FiscalStampAccountService($db))->getBalance((int)$doc->issuer_profile_id,'development');return$this->template->view('fiscal/invoices/cancel_form',['document'=>$doc,'stamp'=>$stamp,'receiver'=>$receiver,'balance'=>$balance]);
+        $this->guard('fiscal_invoices_cancel');$id=(int)$this->request->getPost('document_id');$db=db_connect();$doc=$db->table('fiscal_documents')->where('id',$id)->get(1)->getRow();$stamp=$db->table('fiscal_document_stamps')->where('fiscal_document_id',$id)->get(1)->getRow();$receiver=$db->table('fiscal_document_receivers')->where('fiscal_document_id',$id)->get(1)->getRow();if(!$doc||!$stamp||!$this->can_view_invoices((int)$doc->invoice_id))throw PageNotFoundException::forPageNotFound();$balance=(new FiscalStampAccountService($db))->getBalance((int)$doc->issuer_profile_id,'development');return$this->template->view('fiscal/invoices/cancel_form',['document'=>$doc,'stamp'=>$stamp,'receiver'=>$receiver,'balance'=>$balance,'reasons'=>(new FiscalCancellationReasonCatalog())->options()]);
     }
     public function cancel():void
     {

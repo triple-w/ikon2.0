@@ -6,6 +6,8 @@ $artifactLabel = static function(object $artifact): string {
     if (($artifact->artifact_type ?? '') !== 'pac_pdf') return (string) ($artifact->artifact_type ?? '');
     return ($artifact->provider ?? '') === 'timbradorxpress-tools' ? 'PDF del PAC' : 'PDF de prueba';
 };
+$pdfTemplate='-';
+if(!empty($permissions['pdf_regenerate'])){try{$pdfTemplate=(new \App\Services\Fiscal\Pdf\FiscalPdfTemplateResolver())->resolve((int)$document->issuer_profile_id,(string)config('FiscalPdfProvider')->provider,match(strtolower((string)$document->document_type)){'income','i'=>'I','expense','e'=>'E','payment','p'=>'P',default=>strtoupper(substr((string)$document->document_type,0,1))})->templateCode;}catch(\Throwable){}}
 ?>
 <?php if(($document->environment??'')==='development'){ ?><div class="alert alert-warning"><strong>CFDI de prueba</strong> — Ambiente PAC de desarrollo.</div><?php } ?>
 <div class="card">
@@ -28,6 +30,7 @@ $artifactLabel = static function(object $artifact): string {
             <?php if($document->xml_available&&$permissions['xml_download']){?><a class="btn btn-default" href="<?php echo get_uri('fiscal/stamping/xml/download/'.$document->id); ?>">Descargar XML</a><?php }?>
             <?php if($document->pdf_available&&$permissions['pdf_view']){?><a class="btn btn-default" target="_blank" href="<?php echo get_uri('fiscal/documents/'.$document->id.'/pdf/preview'); ?>">Ver PDF</a><?php }?>
             <?php if($document->pdf_available&&$permissions['pdf_download']){?><a class="btn btn-default" href="<?php echo get_uri('fiscal/documents/'.$document->id.'/pdf/download'); ?>">Descargar PDF</a><?php }?>
+            <?php if($document->xml_available&&!empty($document->uuid)&&!empty($permissions['pdf_regenerate'])){echo js_anchor('Regenerar PDF',['class'=>'btn btn-warning fiscal-regenerate-pdf','data-document-id'=>$document->id,'data-document-label'=>trim($document->series.' '.$document->folio),'data-uuid'=>$document->uuid,'data-template'=>$pdfTemplate]);} ?>
             <?php if($permissions['cancel']&&!empty($document->uuid)&&in_array($document->visible_status,['stamped','stamped_pdf_pending','stamped_pdf_error'],true)&&in_array($document->cancellation_status,['none','rejected'],true)){echo modal_anchor(get_uri('fiscal/invoices/cancel/form'),'Cancelar',['class'=>'btn btn-danger','data-post-document_id'=>$document->id]);} ?>
             <?php if($permissions['status_query']&&$document->cancellation_request_id&&$document->cancellation_status!=='cancelled'){echo modal_anchor(get_uri('fiscal/invoices/cancellation/status/form'),'Consultar estatus',['class'=>'btn btn-default','data-post-document_id'=>$document->id]);} ?>
             <?php if($permissions['receipt_view']&&$document->cancellation_ack_available){?><a class="btn btn-default" href="<?php echo get_uri('fiscal/invoices/cancellation/ack/'.$document->cancellation_request_id); ?>">Ver acuse</a><?php } ?>
@@ -47,3 +50,5 @@ $artifactLabel = static function(object $artifact): string {
         <details><summary>XML timbrado</summary><p class="text-muted mt10">El XML completo no se carga en esta vista. Use la descarga protegida si cuenta con permiso.</p></details>
     </div>
 </div>
+
+<?php if(!empty($permissions['pdf_regenerate'])){ echo view('fiscal/pdf_regeneration_modal',['configure_pdf_allowed'=>(bool)($permissions['pdf_templates_manage']??false)]); } ?>

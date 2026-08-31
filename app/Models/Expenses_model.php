@@ -108,13 +108,10 @@ class Expenses_model extends Crud_model {
             $where_expenses .= " AND $expenses_table.created_by=$show_own_expenses_only_user_id";
         }
 
-        $income_sql = "SELECT SUM($invoice_payments_table.amount) as total_income, 
-            (SELECT $clients_table.currency FROM $clients_table WHERE $clients_table.id=(
-                SELECT $invoices_table.client_id FROM $invoices_table WHERE $invoices_table.id=$invoice_payments_table.invoice_id
-                )
-            ) AS currency
+        $income_sql = "SELECT SUM($invoice_payments_table.amount) as total_income,$clients_table.currency AS currency
         FROM $invoice_payments_table
-        WHERE $invoice_payments_table.deleted=0 AND $invoice_payments_table.invoice_id IN(SELECT $invoices_table.id FROM $invoices_table WHERE $invoices_table.deleted=0) $where_income
+        JOIN $clients_table ON $clients_table.id=$invoice_payments_table.client_id
+        WHERE $invoice_payments_table.deleted=0 AND $invoice_payments_table.status='active' AND $clients_table.deleted=0 $where_income
         GROUP BY currency";
         $income_result = $this->db->query($income_sql)->getResult();
 

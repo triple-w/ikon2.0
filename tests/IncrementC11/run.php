@@ -87,6 +87,8 @@ try {
     $provider->provider = 'fake';
     $provider->allowExternalPdf = false;
     $provider->defaultTemplateIncome = 'DEFAULT-I';
+    $provider->defaultTemplateExpense = 'DEFAULT-E';
+    $provider->defaultTemplatePayment = 'DEFAULT-P';
     $resolver = new App\Services\Fiscal\Pdf\FiscalPdfTemplateResolver($db, $provider);
     [, , , $issuerId] = $fixture();
     $fallback = $resolver->resolve($issuerId, 'fake', 'I');

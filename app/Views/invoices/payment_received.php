@@ -29,7 +29,7 @@
 <script type="text/javascript">
     $(document).ready(function () {
         $("#invoice-payment-table").appTable({
-            source: '<?php echo_uri("invoice_payments/payment_list_data/") ?>',
+            source: '<?php echo_uri("invoice_payments/canonical_list_data") ?>',
             order: [[0, "asc"]],
             smartFilterIdentity: "invoice_payments", //a to z and _ only. should be unique to avoid conflicts
             rangeRadioButtons: [{name: "range_radio_button", selectedOption: 'monthly', options: ['monthly', 'yearly', 'custom', 'dynamic'], dynamicRanges:['this_month', 'last_month', 'next_month', 'this_year', 'last_year']}],
@@ -43,16 +43,10 @@
 <?php } ?>
     ],
             columns: [
-                {title: '<?php echo app_lang("invoice_id") ?> ', "class": "w10p all"},
-                {visible: false, searchable: false},
-                {title: '<?php echo app_lang("payment_date") ?> ', "class": "w15p", "iDataSort": 1},
-                {title: '<?php echo app_lang("payment_method") ?>', "class": "w15p"},
-                {title: '<?php echo app_lang("note") ?>'},
-                {title: '<?php echo app_lang("amount") ?>', "class": "text-right w15p all"}
+                {title:'Fecha'},{title:'Cliente'},{title:'Forma de pago'},{title:'Cuenta de destino'},{title:'Monto',class:'text-right'},{title:'Aplicado',class:'text-right'},{title:'Disponible',class:'text-right'},{title:'Estado'},{title:'Acciones'}
                 ],
-                summation: [{column: 5, dataType: 'currency', currencySymbol: AppHelper.settings.currencySymbol, conversionRate: <?php echo $conversion_rate; ?>}],
-                printColumns: [0, 2, 3, 4, 5],
-                xlsColumns: [0, 2, 3, 4, 5]
+                summation: [{column:4,dataType:'currency',currencySymbol:AppHelper.settings.currencySymbol,conversionRate:<?php echo $conversion_rate; ?>}],
+                printColumns:[0,1,2,3,4,5,6,7],xlsColumns:[0,1,2,3,4,5,6,7]
         });
     });
 </script>

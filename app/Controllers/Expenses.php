@@ -87,6 +87,7 @@ class Expenses extends Security_Controller {
         $model_info->user_id = $model_info->user_id ? $model_info->user_id : $this->request->getPost('user_id');
 
         $view_data['categories_dropdown'] = $this->Expense_categories_model->get_dropdown_list(array("title"));
+        $view_data['financial_accounts'] = model('App\\Models\\Financial_accounts_model')->get_active();
 
         $members_where = array("user_type" => "staff");
         if (get_array_value($this->login_user->permissions, "hide_team_members_list_from_dropdowns") == "1") {
@@ -168,7 +169,8 @@ class Expenses extends Security_Controller {
             "id" => "numeric",
             "expense_date" => "required",
             "category_id" => "required",
-            "amount" => "required"
+            "amount" => "required",
+            "source_financial_account_id" => "required|numeric"
         ));
 
         $id = $this->request->getPost('id');
@@ -184,12 +186,19 @@ class Expenses extends Security_Controller {
         $repeat_type = $this->request->getPost('repeat_type');
         $no_of_cycles = $this->request->getPost('no_of_cycles');
 
+        try {
+            $financial_amount = \App\Services\FinancialMoney::positive(unformat_currency($this->request->getPost('amount')));
+            $financial_total = (new \App\Services\ExpenseFinancialTotalService(db_connect()))->total($financial_amount,(int)$this->request->getPost('tax_id'),(int)$this->request->getPost('tax_id2'));
+        } catch (\Throwable $e) { echo json_encode(['success'=>false,'message'=>$e->getMessage()]); return; }
         $data = array(
             "expense_date" => $expense_date,
             "title" => $this->request->getPost('title'),
             "description" => $this->request->getPost('description'),
             "category_id" => $this->request->getPost('category_id'),
-            "amount" => unformat_currency($this->request->getPost('amount')),
+            "amount" => $financial_amount,
+            "financial_total" => $financial_total,
+            "source_financial_account_id" => (int)$this->request->getPost('source_financial_account_id'),
+            "status" => "active",
             "client_id" => $this->request->getPost('expense_client_id') ? $this->request->getPost('expense_client_id') : 0,
             "project_id" => $this->request->getPost('expense_project_id'),
             "user_id" => $this->request->getPost('expense_user_id'),
@@ -249,13 +258,25 @@ class Expenses extends Security_Controller {
 
         $data["files"] = serialize($new_files);
 
-        $save_id = $this->Expenses_model->ci_save($data, $id);
-        if ($save_id) {
+        $db = db_connect();
+        $db->transBegin();
+        try {
+            $save_id = $this->Expenses_model->ci_save($data, $id);
+            if (!$save_id) {
+                throw new \RuntimeException(app_lang('error_occurred'));
+            }
+
+            (new \App\Services\FinancialAccountMovementService($db))->sync('expense', (int)$save_id, (int)$data['source_financial_account_id'], 'out', $data['financial_total'], $data['expense_date'], $this->login_user->id, $data['title']);
+            if ($db->transStatus() === false) {
+                throw new \RuntimeException(app_lang('error_occurred'));
+            }
+            $db->transCommit();
             save_custom_fields("expenses", $save_id, $this->login_user->is_admin, $this->login_user->user_type);
 
             echo json_encode(array("success" => true, "data" => $this->_row_data($save_id), 'id' => $save_id, 'message' => app_lang('record_saved')));
-        } else {
-            echo json_encode(array("success" => false, 'message' => app_lang('error_occurred')));
+        } catch (\Throwable $e) {
+            $db->transRollback();
+            echo json_encode(array("success" => false, 'message' => $e->getMessage()));
         }
     }
 
@@ -269,21 +290,16 @@ class Expenses extends Security_Controller {
         $this->validate_expense_access($id);
         $expense_info = $this->Expenses_model->get_one($id);
 
-        if ($this->Expenses_model->delete($id)) {
-            //delete the files
-            $file_path = get_setting("timeline_file_path");
-            if ($expense_info->files) {
-                $files = unserialize($expense_info->files);
-
-                foreach ($files as $file) {
-                    delete_app_files($file_path, array($file));
-                }
-            }
+        $db=db_connect();$db->transBegin();
+        try {
+            if (!$expense_info || ($expense_info->status??'active')!=='active' || (int)$expense_info->deleted) throw new \RuntimeException('El egreso no existe o ya está cancelado.');
+            $reason=(string)($this->request->getPost('reason')?:'Cancelación administrativa solicitada por el usuario');
+            (new \App\Services\FinancialAccountMovementService($db))->reverseSource('expense',(int)$id,(int)$this->login_user->id,$reason);
+            $db->table('expenses')->where('id',$id)->update(['status'=>'cancelled','deleted'=>1,'cancelled_at'=>get_current_utc_time(),'cancelled_by'=>$this->login_user->id,'cancellation_reason'=>$reason]);
+            if(!$db->transStatus())throw new \RuntimeException('No fue posible cancelar el egreso.');$db->transCommit();
 
             echo json_encode(array("success" => true, 'message' => app_lang('record_deleted')));
-        } else {
-            echo json_encode(array("success" => false, 'message' => app_lang('record_cannot_be_deleted')));
-        }
+        } catch(\Throwable $e){$db->transRollback();echo json_encode(['success'=>false,'message'=>$e->getMessage()]);}
     }
 
     //get the expnese list data
@@ -785,9 +801,25 @@ class Expenses extends Security_Controller {
             return false;
         }
 
-        //save expense data
-        $saved_id = $this->Expenses_model->ci_save($expense_data);
-        if (!$saved_id) {
+        $account_id = (int) $this->request->getPost('source_financial_account_id');
+        $db = db_connect();
+        if (!$db->table('financial_accounts')->where(['id'=>$account_id,'deleted'=>0,'is_active'=>1,'currency'=>'MXN'])->countAllResults()) return false;
+        try {
+            $expense_data['amount'] = \App\Services\FinancialMoney::positive($expense_data['amount'] ?? '0');
+            $expense_data['financial_total'] = (new \App\Services\ExpenseFinancialTotalService($db))->total($expense_data['amount'],(int)($expense_data['tax_id']??0),(int)($expense_data['tax_id2']??0));
+            $expense_data['source_financial_account_id'] = $account_id;
+            $expense_data['status'] = 'active';
+            $expense_data['created_by'] = $this->login_user->id;
+            $expense_data['files'] = serialize([]);
+            $db->transBegin();
+            $saved_id = $this->Expenses_model->ci_save($expense_data);
+            if (!$saved_id) throw new \RuntimeException('No fue posible importar el egreso.');
+            (new \App\Services\FinancialAccountMovementService($db))->sync('expense',(int)$saved_id,$account_id,'out',$expense_data['financial_total'],$expense_data['expense_date'],(int)$this->login_user->id,$expense_data['title']??'Egreso importado');
+            if (!$db->transStatus()) throw new \RuntimeException('No fue posible crear el movimiento del egreso importado.');
+            $db->transCommit();
+        } catch (\Throwable $e) {
+            $db->transRollback();
+            log_message('error','Expense import financial transaction failed: '.$e->getMessage());
             return false;
         }
 

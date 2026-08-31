@@ -37,6 +37,10 @@ class Payment_methods extends Security_Controller {
             $mapping = $db->table("fiscal_payment_method_mappings")->where("payment_method_id", $view_data['model_info']->id)->get(1)->getRow();
             $view_data['sat_payment_form_code'] = $mapping->sat_payment_form_code ?? "";
         }
+        $view_data['financial_accounts'] = array('' => '-');
+        foreach ($db->table('financial_accounts')->where(array('deleted' => 0, 'is_active' => 1, 'currency' => 'MXN'))->orderBy('name')->get()->getResult() as $account) {
+            $view_data['financial_accounts'][$account->id] = $account->name;
+        }
 
         return $this->template->view('payment_methods/modal_form', $view_data);
     }
@@ -60,7 +64,8 @@ class Payment_methods extends Security_Controller {
             "title" => $this->request->getPost('title'),
             "description" => $this->request->getPost('description'),
             "available_on_invoice" => $available_on_invoice,
-            "minimum_payment_amount" => unformat_currency($this->request->getPost('minimum_payment_amount'))
+            "minimum_payment_amount" => unformat_currency($this->request->getPost('minimum_payment_amount')),
+            "default_financial_account_id" => $this->request->getPost('default_financial_account_id') ?: null
         );
 
         //get seetings associtated with this payment type

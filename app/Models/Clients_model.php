@@ -17,6 +17,7 @@ class Clients_model extends Crud_model {
         $users_table = $this->db->prefixTable('users');
         $invoices_table = $this->db->prefixTable('invoices');
         $invoice_payments_table = $this->db->prefixTable('invoice_payments');
+        $payment_allocations_table = $this->db->prefixTable('payment_allocations');
         $client_groups_table = $this->db->prefixTable('client_groups');
         $lead_status_table = $this->db->prefixTable('lead_status');
         $estimates_table = $this->db->prefixTable('estimates');
@@ -174,7 +175,7 @@ class Clients_model extends Crud_model {
         LEFT JOIN (SELECT client_id, COUNT(id) AS total_projects FROM $projects_table WHERE deleted=0 AND project_type='client_project' GROUP BY client_id) AS project_table ON project_table.client_id= $clients_table.id
         
         LEFT JOIN (SELECT client_id, SUM(payments_table.payment_received) as payment_received, SUM($invoices_table.invoice_total) AS invoice_value FROM $invoices_table
-                   LEFT JOIN (SELECT invoice_id, SUM(amount) AS payment_received FROM $invoice_payments_table WHERE deleted=0 GROUP BY invoice_id) AS payments_table ON payments_table.invoice_id=$invoices_table.id AND $invoices_table.deleted=0 AND $invoices_table.status='not_paid'
+                   LEFT JOIN (SELECT pa.invoice_id,SUM(pa.amount_applied) payment_received FROM $payment_allocations_table pa JOIN $invoice_payments_table p ON p.id=pa.invoice_payment_id WHERE pa.deleted=0 AND pa.status='active' AND p.deleted=0 AND p.status='active' GROUP BY pa.invoice_id) AS payments_table ON payments_table.invoice_id=$invoices_table.id AND $invoices_table.deleted=0 AND $invoices_table.status='not_paid'
                    WHERE $invoices_table.deleted=0 AND $invoices_table.status='not_paid'
                    GROUP BY $invoices_table.client_id    
                    ) AS invoice_details ON invoice_details.client_id= $clients_table.id 
@@ -203,6 +204,7 @@ class Clients_model extends Crud_model {
 
     private function make_quick_filter_query($filter, $clients_table, $projects_table, $invoices_table, $invoice_payments_table, $estimates_table, $estimate_requests_table, $tickets_table, $orders_table, $proposals_table) {
         $query = "";
+        $payment_allocations_table=$this->db->prefixTable('payment_allocations');
         $tolarance = get_paid_status_tolarance();
         if ($filter == "has_open_projects" || $filter == "has_completed_projects" || $filter == "has_any_hold_projects" || $filter == "has_canceled_projects") {
             $status_id = 1;
@@ -227,7 +229,7 @@ class Clients_model extends Crud_model {
 
             $query = " AND $clients_table.id IN(
                             SELECT $invoices_table.client_id FROM $invoices_table 
-                               LEFT JOIN (SELECT invoice_id, SUM(amount) AS payment_received FROM $invoice_payments_table WHERE deleted=0 GROUP BY invoice_id) AS payments_table ON payments_table.invoice_id = $invoices_table.id  
+                               LEFT JOIN (SELECT pa.invoice_id,SUM(pa.amount_applied) payment_received FROM $payment_allocations_table pa JOIN $invoice_payments_table p ON p.id=pa.invoice_payment_id WHERE pa.deleted=0 AND pa.status='active' AND p.deleted=0 AND p.status='active' GROUP BY pa.invoice_id) AS payments_table ON payments_table.invoice_id = $invoices_table.id
                             WHERE $invoices_table.deleted=0 $invoice_where
                     ) ";
         } else if ($filter == "has_open_estimates" || $filter == "has_accepted_estimates") {

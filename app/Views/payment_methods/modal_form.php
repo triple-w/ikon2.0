@@ -23,6 +23,15 @@
         </div>
         <div class="form-group">
             <div class="row">
+                <label for="default_financial_account_id" class="col-md-4">Cuenta financiera predeterminada</label>
+                <div class="col-md-8">
+                    <?php echo form_dropdown('default_financial_account_id', $financial_accounts, $model_info->default_financial_account_id ?? '', "id='default_financial_account_id' class='select2 form-control'"); ?>
+                    <small>Cuenta MXN donde se registran los pagos automáticos de esta forma administrativa.</small>
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="row">
                 <label for="sat_payment_form_code" class="col-md-4"><?php echo app_lang('sat_payment_form_mapping'); ?></label>
                 <div class="col-md-8">
                     <?php echo form_dropdown("sat_payment_form_code", $sat_payment_forms, $sat_payment_form_code, "id='sat_payment_form_code' class='select2 form-control'"); ?>

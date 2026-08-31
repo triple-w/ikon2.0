@@ -24,6 +24,8 @@ final class InvoiceModule extends Security_Controller
             'advanced_view' => $this->allowed('fiscal.advanced.view'),
             'stamp_balance' => $stampBalance,
             'can_view_stamp_balance' => $this->allowed('fiscal.stamps.view_balance'),
+            'can_regenerate_pdf' => $this->allowed('fiscal_pdf_generate') && $this->allowed('fiscal.advanced.regenerate_pdf'),
+            'configure_pdf_allowed' => $this->allowed('fiscal_pdf_templates_manage'),
         ]);
     }
 
@@ -44,6 +46,8 @@ final class InvoiceModule extends Security_Controller
                 'pdf_generate' => $this->allowed('fiscal_pdf_generate'),
                 'pdf_view' => $this->allowed('fiscal_pdf_view'),
                 'pdf_download' => $this->allowed('fiscal_pdf_download'),
+                'pdf_regenerate' => $this->allowed('fiscal_pdf_generate') && $this->allowed('fiscal.advanced.regenerate_pdf'),
+                'pdf_templates_manage' => $this->allowed('fiscal_pdf_templates_manage'),
                 'receipt_view' => $this->allowed('fiscal_cancellation_receipt_view'),
                 'cancel' => $this->allowed('fiscal_cancel_request'),
                 'status_query' => $this->allowed('fiscal_status_query'),
@@ -99,6 +103,10 @@ final class InvoiceModule extends Security_Controller
         if ($row->xml_available && $this->allowed('fiscal_xml_download')) $items[] = anchor(get_uri('fiscal/stamping/xml/download/'.$row->id), 'Descargar XML');
         if (!$advanced) {
             if ($row->pdf_available && $this->allowed('fiscal_pdf_download')) $items[] = anchor(get_uri('fiscal/documents/'.$row->id.'/pdf/download'), 'Descargar PDF');
+            if ($row->xml_available && !empty($row->uuid) && $this->allowed('fiscal_pdf_generate') && $this->allowed('fiscal.advanced.regenerate_pdf')) {
+                try { $template = (new FiscalPdfTemplateResolver())->resolve((int)$row->issuer_profile_id, (string)config('FiscalPdfProvider')->provider, $this->typeCode((string)$row->document_type))->templateCode; } catch (Throwable) { $template = '-'; }
+                $items[] = js_anchor('Regenerar PDF', ['class'=>'fiscal-regenerate-pdf','data-document-id'=>$row->id,'data-document-label'=>trim($row->series.' '.$row->folio),'data-uuid'=>$row->uuid,'data-template'=>$template]);
+            }
             $items[] = '<span class="text-muted" title="Disponible en un incremento posterior">Enviar</span>';
             if ($this->allowed('fiscal_cancel_request')&&$this->canCancel($row)) $items[] = modal_anchor(get_uri('fiscal/invoices/cancel/form'),'Cancelar',['data-post-document_id'=>$row->id]);
             if ($this->allowed('fiscal_status_query')&&$row->cancellation_request_id&&$row->cancellation_status!=='cancelled') $items[] = modal_anchor(get_uri('fiscal/invoices/cancellation/status/form'),'Consultar estatus',['data-post-document_id'=>$row->id]);

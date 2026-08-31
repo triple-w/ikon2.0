@@ -69,6 +69,7 @@ class Offer extends Security_Controller {
         if ($status == "accepted" || $status == "declined") {
             $proposal_data = array("status" => $status);
             $proposal_id = $this->Proposals_model->ci_save($proposal_data, $proposal_id);
+            (new \App\Services\SupplierCostHistoryService())->snapshotProposal((int) $proposal_id, (string) $status, isset($this->login_user->id) ? (int) $this->login_user->id : 0);
 
             //create notification
             if ($status == "accepted") {
@@ -198,6 +199,7 @@ class Offer extends Security_Controller {
         $proposal_data["status"] = "accepted";
 
         if ($this->Proposals_model->ci_save($proposal_data, $proposal_id)) {
+            (new \App\Services\SupplierCostHistoryService())->snapshotProposal((int) $proposal_id, 'accepted', (!$name && isset($this->login_user->id)) ? (int) $this->login_user->id : 0);
             log_notification("proposal_accepted", array("proposal_id" => $proposal_id), ($name ? "999999996" : $this->login_user->id));
             echo json_encode(array("success" => true, "message" => app_lang("proposal_accepted")));
         } else {

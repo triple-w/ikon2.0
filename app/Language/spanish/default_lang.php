@@ -1,4 +1,5 @@
 <?php
+$lang["credit_notes"] = "Notas de Crédito";
 
 /* NOTE: DO NOT CHANGE THIS FILE. IF YOU WANT TO UPDATE THE LANGUAGE THEN COPY THIS FILE TO custom_lang.php AND UPDATE THERE */
 
@@ -540,8 +541,8 @@ $lang["invoice_statistics"] = "Estadísticas de factura";
 $lang["payment"] = "Pago";
 
 /* email templates */
-$lang["email_templates"] = "Plantillas de email";
-$lang["select_a_template"] = "Seleccione una plantilla para editar";
+$lang["email_templates"] = "s de email";
+$lang["select_a_template"] = "Seleccione una  para editar";
 $lang["avilable_variables"] = "Variables disponibles";
 $lang["restore_to_default"] = "Regresar a la configuración inicial";
 $lang["template_restored"] = "La plantilla ha sido regresada a la configuración original.";
@@ -3539,4 +3540,22 @@ $lang["cancelled"] = "Cancelada";
 $lang["open"] = "Abierta";
 $lang["closed"] = "Cerrada";
 $lang["draft"] = "Borrador";
+$lang["financial_accounts"] = "Cuentas financieras";
+$lang["payment_complements"] = "Complementos de Pago";
+$lang['suppliers']='Proveedores';
+$lang['suppliers_view']='Ver proveedores';
+$lang['suppliers_manage']='Crear y editar proveedores';
+$lang['supplier_costs_view']='Ver costos e historial';
+$lang['supplier_costs_edit']='Editar costos de proveedor';
+$lang['warehouses']='Almacenes';
+$lang['warehouse_summary']='Resumen';
+$lang['warehouses_catalog']='Almacenes';
+$lang['warehouse_products']='Productos de almacén';
+$lang['warehouse_entries']='Entradas';
+$lang['warehouse_exits']='Salidas';
+$lang['warehouse_adjustments']='Ajustes';
+$lang['warehouse_history']='Historial';
+$lang['warehouse_transfers'] = 'Traspasos';
+$lang['warehouse_in_transit'] = 'En tránsito';
+$lang['warehouse_receipts'] = 'Recepciones';
 return $lang;

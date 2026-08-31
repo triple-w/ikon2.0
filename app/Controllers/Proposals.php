@@ -233,6 +233,7 @@ class Proposals extends Security_Controller {
                         $proposal_data["accepted_by"] = $this->login_user->id;
                     }
                     $proposal_id = $this->Proposals_model->ci_save($proposal_data, $proposal_id);
+                    (new \App\Services\SupplierCostHistoryService())->snapshotProposal((int)$proposal_id,(string)$status,(int)$this->login_user->id);
 
                     //create notification
                     if ($status == "accepted") {
@@ -264,6 +265,7 @@ class Proposals extends Security_Controller {
                 if (($status == "declined" || $status == "sent") && $this->_is_proposal_editable($proposal_info)) {
                     $proposal_data = array("status" => $status);
                     $proposal_id = $this->Proposals_model->ci_save($proposal_data, $proposal_id);
+                    (new \App\Services\SupplierCostHistoryService())->snapshotProposal((int)$proposal_id,(string)$status,(int)$this->login_user->id);
                 }
             }
         }
@@ -599,8 +601,42 @@ class Proposals extends Security_Controller {
         $view_data['sat_tax_codes']=db_connect()->table('sat_tax_codes')->where('is_active',1)->orderBy('code')->get()->getResult();
         $view_data['sat_tax_objects']=db_connect()->table('sat_tax_object_codes')->where('is_active',1)->orderBy('code')->get()->getResult();
         $view_data['can_update_master_fiscal']=false;
+        $view_data['can_edit_supplier_costs']=$this->login_user->is_admin||(bool)get_array_value($permissions,'supplier_costs_edit');
+        $view_data['can_view_supplier_costs']=$this->login_user->is_admin||(bool)get_array_value($permissions,'supplier_costs_view')||$view_data['can_edit_supplier_costs'];
+        $view_data['can_manage_suppliers']=$this->login_user->is_admin||(bool)get_array_value($permissions,'suppliers_manage');
+        $view_data['suppliers_dropdown']=(new \App\Models\Suppliers_model())->activeDropdown((int)($view_data['model_info']->supplier_id ?? 0));
+        $view_data['cost_indicators']=$view_data['model_info']->item_id&&$view_data['can_view_supplier_costs']?(new \App\Services\SupplierCostHistoryService())->productIndicators((int)$view_data['model_info']->item_id):[];
+        $view_data['selected_supplier_history']=$view_data['model_info']->item_id&&$view_data['model_info']->supplier_id&&$view_data['can_view_supplier_costs']?(new \App\Services\SupplierComparisonService())->supplierForProduct((int)$view_data['model_info']->item_id,(int)$view_data['model_info']->supplier_id):null;
         return $this->template->view('proposals/item_modal_form', $view_data);
     }
+
+    function supplier_comparison($product_id) {
+        validate_numeric_value($product_id);
+        $permissions=is_array($this->login_user->permissions)?$this->login_user->permissions:(@unserialize((string)$this->login_user->permissions)?:[]);
+        $canEdit=$this->login_user->is_admin||(bool)get_array_value($permissions,'supplier_costs_edit');
+        $canView=$this->login_user->is_admin||(bool)get_array_value($permissions,'supplier_costs_view')||$canEdit;
+        if(!$canView){app_redirect('forbidden');}
+        $product=$this->Items_model->get_one((int)$product_id);
+        if(!$product->id||$product->deleted){show_404();}
+        $itemId=(int)$this->request->getPost('proposal_item_id');$item=null;$offers=[];
+        if($itemId){$item=$this->Proposal_items_model->get_one($itemId);if(!$item->id||(int)$item->item_id!==(int)$product_id)show_404();$this->validate_proposal_access($item->proposal_id);$offers=(new \App\Services\ProposalItemSupplierQuoteService())->forItem($itemId);}
+        $comparison=(new \App\Services\SupplierComparisonService())->compare((int)$product_id);
+        return $this->template->view('proposals/supplier_comparison',['product'=>$product,'comparison'=>$comparison,'proposal_item'=>$item,'offers'=>$offers,'suppliers_dropdown'=>(new \App\Models\Suppliers_model())->activeDropdown(),'can_edit_supplier_costs'=>$canEdit&&$item&&$this->_is_proposal_editable($item->proposal_id),'can_manage_suppliers'=>$this->login_user->is_admin||(bool)get_array_value($permissions,'suppliers_manage')]);
+    }
+
+    function supplier_cost_reference($product_id, $supplier_id) {
+        validate_numeric_value($product_id);validate_numeric_value($supplier_id);
+        $permissions=is_array($this->login_user->permissions)?$this->login_user->permissions:(@unserialize((string)$this->login_user->permissions)?:[]);
+        $canView=$this->login_user->is_admin||(bool)get_array_value($permissions,'supplier_costs_view')||(bool)get_array_value($permissions,'supplier_costs_edit');
+        if(!$canView){return $this->response->setStatusCode(403)->setJSON(['success'=>false,'message'=>'No tiene permiso para consultar costos.']);}
+        $reference=(new \App\Services\SupplierComparisonService())->supplierForProduct((int)$product_id,(int)$supplier_id);
+        return $this->response->setJSON(['success'=>true,'found'=>(bool)$reference,'reference'=>$reference]);
+    }
+
+    function save_supplier_quote($item_id){return $this->supplier_quote_action((int)$item_id,function($service)use($item_id){$quote=$service->save((int)$item_id,(array)$this->request->getPost(),(int)$this->login_user->id);return['success'=>true,'quote'=>$quote,'message'=>'Oferta guardada.'];});}
+    function select_supplier_quote($item_id,$quote_id){return $this->supplier_quote_action((int)$item_id,function($service)use($item_id,$quote_id){$selected=$service->select((int)$item_id,(int)$quote_id);return['success'=>true,'selected'=>$selected,'message'=>'Oferta seleccionada y aplicada a la partida.'];});}
+    function delete_supplier_quote($item_id,$quote_id){return $this->supplier_quote_action((int)$item_id,function($service)use($item_id,$quote_id){$service->delete((int)$item_id,(int)$quote_id);return['success'=>true,'message'=>'Oferta eliminada.'];});}
+    private function supplier_quote_action(int$itemId,callable$action){$permissions=is_array($this->login_user->permissions)?$this->login_user->permissions:(@unserialize((string)$this->login_user->permissions)?:[]);if(!$this->login_user->is_admin&&!get_array_value($permissions,'supplier_costs_edit'))return$this->response->setStatusCode(403)->setJSON(['success'=>false,'message'=>'No tiene permiso para editar costos de proveedor.']);$item=$this->Proposal_items_model->get_one($itemId);if(!$item->id)return$this->response->setStatusCode(404)->setJSON(['success'=>false,'message'=>'La partida no existe.']);$this->validate_proposal_access($item->proposal_id);if(!$this->_is_proposal_editable($item->proposal_id))return$this->response->setStatusCode(409)->setJSON(['success'=>false,'message'=>'La propuesta ya no permite editar ofertas.']);try{return$this->response->setJSON($action(new \App\Services\ProposalItemSupplierQuoteService()));}catch(\InvalidArgumentException$e){return$this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>$e->getMessage()]);}catch(\Throwable$e){log_message('error','Supplier quote failed: '.$e->getMessage());return$this->response->setStatusCode(500)->setJSON(['success'=>false,'message'=>'No fue posible procesar la oferta.']);}}
 
     /* add or edit an proposal item */
 
@@ -617,8 +653,14 @@ class Proposals extends Security_Controller {
         }
 
         $id = $this->request->getPost('id');
+        $permissions=is_array($this->login_user->permissions)?$this->login_user->permissions:(@unserialize((string)$this->login_user->permissions)?:[]);
+        $canEditSupplierCosts=$this->login_user->is_admin||(bool)get_array_value($permissions,'supplier_costs_edit');
+        $storedItem=$id?$this->Proposal_items_model->get_one($id):null;
+        $supplierId=$canEditSupplierCosts?(int)$this->request->getPost('supplier_id'):(int)($storedItem->supplier_id??0);
+        $postedCost=$canEditSupplierCosts?$this->request->getPost('proposal_item_cost'):($storedItem->cost??null);
+        if($supplierId){$supplier=(new \App\Models\Suppliers_model())->get_one($supplierId);if(!$supplier->id||$supplier->deleted||$supplier->status!=='active'){echo json_encode(['success'=>false,'message'=>'Seleccione un proveedor activo.']);return;}}
         $pricing = new \App\Services\CommercialMarginService();
-        try{$rate=$pricing->normalize($this->request->getPost('proposal_item_rate'),'Precio de venta',true);$quantity=$pricing->normalize($this->request->getPost('proposal_item_quantity'),'Cantidad',true);$cost=$pricing->normalize($this->request->getPost('proposal_item_cost'),'Costo');$postedMargin=$pricing->normalize($this->request->getPost('proposal_item_profit_percentage'),'Margen');if($postedMargin!==null&&\App\Services\Fiscal\FiscalDecimal::micros($postedMargin)>=100000000)throw new \InvalidArgumentException('El margen debe ser menor que 100%.');$margin=$cost!==null&&$postedMargin!==null?$pricing->marginFromPrice($cost,$rate):null;}catch(\InvalidArgumentException $e){echo json_encode(['success'=>false,'message'=>$e->getMessage()]);return;}
+        try{$rate=$pricing->normalize($this->request->getPost('proposal_item_rate'),'Precio de venta',true);$quantity=$pricing->normalize($this->request->getPost('proposal_item_quantity'),'Cantidad',true);$cost=$pricing->normalize($postedCost,'Costo');$postedMargin=$pricing->normalize($this->request->getPost('proposal_item_profit_percentage'),'Margen');if($postedMargin!==null&&\App\Services\Fiscal\FiscalDecimal::micros($postedMargin)>=100000000)throw new \InvalidArgumentException('El margen debe ser menor que 100%.');$margin=$cost!==null&&$postedMargin!==null?$pricing->marginFromPrice($cost,$rate):null;}catch(\InvalidArgumentException $e){echo json_encode(['success'=>false,'message'=>$e->getMessage()]);return;}
         $proposal_item_title = $this->request->getPost('proposal_item_title');
         $item_id = 0;
 
@@ -650,7 +692,7 @@ class Proposals extends Security_Controller {
             "description" => $this->request->getPost('proposal_item_description'),
             "quantity" => $quantity,
             "unit_type" => $this->request->getPost('proposal_unit_type'),
-            "cost" => $cost,"profit_percentage" => $margin,
+            "cost" => $cost,"profit_percentage" => $margin,"supplier_id" => $supplierId?:null,
             "rate" => $rate,
             "total" => \App\Services\Fiscal\FiscalDecimal::multiply($rate,$quantity),
             "fiscal_override_json" => $fiscalOverride,
@@ -770,7 +812,15 @@ class Proposals extends Security_Controller {
         $item = $this->Invoice_items_model->get_item_info_suggestion(array("item_id" => $item_id));
         if ($item) {
             $item->rate = $item->rate ? to_decimal_format($item->rate) : "";
-            $item->cost = isset($item->cost) && $item->cost!==null ? to_decimal_format($item->cost) : "";
+            $permissions=is_array($this->login_user->permissions)?$this->login_user->permissions:(@unserialize((string)$this->login_user->permissions)?:[]);
+            $canViewSupplierCosts=$this->login_user->is_admin||(bool)get_array_value($permissions,'supplier_costs_view')||(bool)get_array_value($permissions,'supplier_costs_edit');
+            if($canViewSupplierCosts){
+                $item->cost=isset($item->cost)&&$item->cost!==null?to_decimal_format($item->cost):"";
+                $item->supplier_cost_history=(new \App\Services\SupplierCostHistoryService())->productIndicators((int)$item->id);
+            }else{
+                unset($item->cost);
+                $item->supplier_cost_history=[];
+            }
             $master=(new \App\Services\Fiscal\ProductFiscalConfigurationResolver())->resolve((int)$item->id);$item->fiscal=['source'=>$master['source'],'ready'=>$master['ready'],'missing'=>$master['missing'],'setting'=>$master['setting'],'taxes'=>$master['taxes']];
             echo json_encode(array("success" => true, "item_info" => $item));
         } else {
@@ -1009,8 +1059,10 @@ class Proposals extends Security_Controller {
             $status_data = array("last_email_sent_date" => get_my_local_time());
             if ($this->_is_proposal_editable($current)) {
                 $status_data["status"] = "sent";
+                $snapshotSupplierCosts=true;
             }
             if ($this->Proposals_model->ci_save($status_data, $proposal_id)) {
+                if(!empty($snapshotSupplierCosts))(new \App\Services\SupplierCostHistoryService())->snapshotProposal((int)$proposal_id,'sent',(int)$this->login_user->id);
                 echo json_encode(array('success' => true, 'message' => app_lang("proposal_sent_message"), "proposal_id" => $proposal_id));
             }
 

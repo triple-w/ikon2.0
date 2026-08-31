@@ -52,7 +52,9 @@ class Stripe_redirect extends App_Controller {
         //the payment could be saved by webhook, check that first
         $existing = $this->Invoice_payments_model->get_one_where(array("transaction_id" => $payment->id));
         if (!$existing->id) {
-            $invoice_payment_id = $this->Invoice_payments_model->ci_save($invoice_payment_data);
+            $payment_service = new \App\Services\AdministrativePaymentService(db_connect());
+            $invoice_payment_data['destination_financial_account_id'] = $payment_service->defaultAccountForMethod((int) $invoice_payment_data['payment_method_id']);
+            $invoice_payment_id = $payment_service->save($invoice_payment_data);
 
             //as receiving payment for the invoice, we'll remove the 'draft' status from the invoice 
             $this->Invoices_model->update_invoice_status($invoice_id);

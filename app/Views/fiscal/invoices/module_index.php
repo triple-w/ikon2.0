@@ -97,7 +97,8 @@ $(document).ready(function(){
         var button=pendingButton;if(!button||button.data('busy'))return false;
         var token=$('#fiscal-pdf-csrf input'),data={regenerate:button.data('regenerate')?1:0}; data[token.attr('name')]=token.val();
         button.data('busy',true).addClass('disabled');$('#pdf-confirm-submit').prop('disabled',true);$('#pdf-confirm-progress').text('Generando PDF…');
-        $.post('<?php echo get_uri('fiscal/documents'); ?>/'+button.data('document-id')+'/pdf/generate',data,function(result){
+        var pdfAction=button.data('regenerate')?'regenerate':'generate';
+        $.post('<?php echo get_uri('fiscal/documents'); ?>/'+button.data('document-id')+'/pdf/'+pdfAction,data,function(result){
             if(result.csrf)token.attr('name',result.csrf.name).val(result.csrf.hash);
             if(result.success){appAlert.success(result.message||'PDF generado correctamente.');confirmModal.hide();$('#fiscal-invoices-table').appTable({reload:true});}
             else{appAlert.error(result.message||'No fue posible generar el PDF.');$('#pdf-confirm-progress').text(result.message||'No fue posible generar el PDF.');}
@@ -108,3 +109,5 @@ $(document).ready(function(){
     <?php } ?>
 });
 </script>
+
+<?php if(!empty($can_regenerate_pdf)){ echo view('fiscal/pdf_regeneration_modal', ['configure_pdf_allowed'=>(bool)($configure_pdf_allowed??false)]); } ?>

@@ -67,6 +67,7 @@ final class ProposalAcceptanceService
                     'user_id' => $actorId, 'created_at' => $now,
                 ]);
             }
+            (new SupplierCostHistoryService($this->db))->snapshotProposal($proposalId,'accepted',$actorId);
             if (! $this->db->transStatus()) {
                 throw new RuntimeException('La transacción de aceptación no pudo completarse.');
             }

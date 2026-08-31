@@ -68,6 +68,7 @@ $routes->get('fiscal/stamping/xml/download/(:num)', 'Fiscal\Stamping::downloadXm
 $routes->get('fiscal/documents/(:num)/pdf/preview', 'Fiscal\Stamping::viewPdf/$1');
 $routes->get('fiscal/documents/(:num)/pdf/download', 'Fiscal\Stamping::downloadPdf/$1');
 $routes->post('fiscal/documents/(:num)/pdf/generate', 'Fiscal\Stamping::generatePdf/$1', ['filter' => 'csrf']);
+$routes->post('fiscal/documents/(:num)/pdf/regenerate', 'Fiscal\Stamping::regeneratePdf/$1', ['filter' => 'csrf']);
 $routes->get('fiscal/pdf-templates', 'Fiscal\PdfTemplates::index');
 $routes->post('fiscal/pdf-templates/save', 'Fiscal\PdfTemplates::save', ['filter' => 'csrf']);
 $routes->get('fiscal/invoices', 'Fiscal\InvoiceModule::index');

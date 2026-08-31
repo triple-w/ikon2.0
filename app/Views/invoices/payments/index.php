@@ -2,6 +2,7 @@
     <div class="card-header fw-bold">
         <i data-feather="credit-card" class="icon-16"></i> &nbsp;<?php echo app_lang("payments"); ?>
     </div>
+    <?php if (isset($administrative_payment_summary)) { ?><div class="card-body border-bottom"><strong>Total:</strong> <?php echo to_currency($invoice_total_summary->invoice_total ?? 0); ?> &nbsp; <strong>Pagos aplicados:</strong> <?php echo to_currency($administrative_payment_summary['paid']); ?> &nbsp; <strong>Saldo administrativo:</strong> <?php echo to_currency($administrative_payment_summary['outstanding']); ?></div><?php if ($administrative_payment_summary['payments']) { ?><div class="table-responsive"><table class="table table-sm"><thead><tr><th>Fecha</th><th>Pago</th><th>Forma de pago</th><th>Monto recibido</th><th>Aplicado a esta venta</th><th>Estado</th></tr></thead><tbody><?php foreach($administrative_payment_summary['payments'] as $payment){ ?><tr><td><?php echo esc($payment->payment_date); ?></td><td>#<?php echo $payment->payment_id; ?></td><td><?php echo esc($payment->payment_method_title); ?></td><td><?php echo to_currency($payment->payment_amount); ?></td><td><?php echo to_currency($payment->amount_applied); ?></td><td><span class="badge bg-info">Administrativo</span></td></tr><?php } ?></tbody></table></div><?php } ?><?php } ?>
 
     <?php if ($invoice_status !== "cancelled" && $invoice_info->status !== "credited" && $can_edit_invoices) { ?>
         <div class="card-body">

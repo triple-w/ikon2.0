@@ -1004,9 +1004,12 @@
                                 "id='proposal_accept_and_convert' class='form-check-input'"
                             ); ?>
                             <label for="proposal_accept_and_convert"><?php echo app_lang("proposal_accept_and_convert"); ?></label>
-                        </div>
+                        </div>                        <div class="mt10"><b>Proveedores y costos internos</b></div>
+                        <?php foreach(['suppliers_view'=>'Ver proveedores','suppliers_manage'=>'Crear y editar proveedores','supplier_costs_view'=>'Ver costos e historial','supplier_costs_edit'=>'Editar costos de proveedor'] as $permissionName=>$permissionLabel): ?><div><?php echo form_checkbox($permissionName,'1',!empty($$permissionName),"id='$permissionName' class='form-check-input'"); ?><label for="<?php echo $permissionName; ?>"><?php echo $permissionLabel; ?></label></div><?php endforeach; ?>
                     </li>
                 <?php } ?>
+
+                <li><span data-feather="key" class="icon-14 ml-20"></span><h5>Almacenes y trazabilidad</h5><?php foreach(['warehouse_view'=>'Ver módulo de almacenes','warehouse_manage'=>'Administrar almacenes','warehouse_products_view'=>'Ver productos de almacén','warehouse_products_manage'=>'Administrar productos de almacén','warehouse_movements_view'=>'Ver movimientos y kardex','warehouse_movements_create'=>'Crear y confirmar movimientos','warehouse_adjustments'=>'Realizar ajustes físicos','warehouse_transfers_view'=>'Ver traspasos','warehouse_transfers_create'=>'Crear traspasos','warehouse_transfers_dispatch'=>'Despachar traspasos','warehouse_transfers_receive'=>'Recibir traspasos','warehouse_transfers_manage_logistics'=>'Administrar guía y logística'] as $permissionName=>$permissionLabel): ?><div><?php echo form_checkbox($permissionName,'1',!empty($$permissionName),"id='$permissionName' class='form-check-input'"); ?><label for="<?php echo$permissionName; ?>"><?php echo$permissionLabel; ?></label></div><?php endforeach; ?></li>
 
                 <?php if (get_setting("module_order")) { ?>
                     <li>

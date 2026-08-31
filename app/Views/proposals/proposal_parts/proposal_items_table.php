@@ -5,37 +5,43 @@ if (!$color) {
 }
 
 $discount_row = '<tr>
-                        <td colspan="3" style="text-align: right;">' . app_lang("discount") . '</td>
+                        <td colspan="4" style="text-align: right;">' . app_lang("discount") . '</td>
                         <td style="text-align: right; width: 20%; border: 1px solid #fff; background-color: #f4f4f4;">' . to_currency($proposal_total_summary->discount_total, $proposal_total_summary->currency_symbol) . '</td>
                     </tr>';
 
 $total_after_discount_row = '<tr>
-                                    <td colspan="3" style="text-align: right;">' . app_lang("total_after_discount") . '</td>
+                                    <td colspan="4" style="text-align: right;">' . app_lang("total_after_discount") . '</td>
                                     <td style="text-align: right; width: 20%; border: 1px solid #fff; background-color: #f4f4f4;">' . to_currency($proposal_total_summary->proposal_subtotal - $proposal_total_summary->discount_total, $proposal_total_summary->currency_symbol) . '</td>
                                 </tr>';
 ?>
 
 <table class="table-responsive" style="width: 100%;">
     <tr style="font-weight: bold; background-color: <?php echo $color; ?>; color: #fff;  ">
-        <th style="width: 45%; border-right: 1px solid #eee;"> <?php echo app_lang("item"); ?> </th>
-        <th style="text-align: center;  width: 15%; border-right: 1px solid #eee;"> <?php echo app_lang("quantity"); ?></th>
-        <th style="text-align: right;  width: 20%; border-right: 1px solid #eee;"> <?php echo app_lang("rate"); ?></th>
-        <th style="text-align: right;  width: 20%; "> <?php echo app_lang("total"); ?></th>
+        <th style="width: 20%; border-right: 1px solid #eee; text-align: center;"> Imagen </th>
+        <th style="width: 40%; border-right: 1px solid #eee;"> <?php echo app_lang("item"); ?> </th>
+        <th style="text-align: center; width: 12%; border-right: 1px solid #eee;"> <?php echo app_lang("quantity"); ?></th>
+        <th style="text-align: right; width: 14%; border-right: 1px solid #eee;"> <?php echo app_lang("rate"); ?></th>
+        <th style="text-align: right; width: 14%; "> <?php echo app_lang("total"); ?></th>
     </tr>
     <?php
     foreach ($proposal_items as $item) {
     ?>
         <tr style="background-color: #f4f4f4; ">
-            <td style="width: 45%; border: 1px solid #fff; padding: 10px; hyphens: auto;"><p class="mb5"><?php echo $item->title; ?></p>
+            <td style="width: 20%; border: 1px solid #fff; padding: 5px; text-align: center; vertical-align: middle;">
+                <?php if (!empty($item->product_image)) { ?>
+                    <img src="<?php echo esc($item->product_image, 'attr'); ?>" style="max-width: 95px; max-height: 90px; width: auto; height: auto;" />
+                <?php } ?>
+            </td>
+            <td style="width: 40%; border: 1px solid #fff; padding: 10px; hyphens: auto;"><p class="mb5"><?php echo $item->title; ?></p>
                 <span style="color: #888; font-size: 90%;"><?php echo custom_nl2br($item->description ? process_images_from_content($item->description) : ""); ?></span>
             </td>
-            <td style="text-align: center; width: 15%; border: 1px solid #fff;"> <?php echo $item->quantity . " " . $item->unit_type; ?></td>
-            <td style="text-align: right; width: 20%; border: 1px solid #fff;"> <?php echo to_currency($item->rate, $item->currency_symbol); ?></td>
-            <td style="text-align: right; width: 20%; border: 1px solid #fff;"> <?php echo to_currency($item->total, $item->currency_symbol); ?></td>
+            <td style="text-align: center; width: 12%; border: 1px solid #fff;"> <?php echo $item->quantity . " " . $item->unit_type; ?></td>
+            <td style="text-align: right; width: 14%; border: 1px solid #fff;"> <?php echo to_currency($item->rate, $item->currency_symbol); ?></td>
+            <td style="text-align: right; width: 14%; border: 1px solid #fff;"> <?php echo to_currency($item->total, $item->currency_symbol); ?></td>
         </tr>
     <?php } ?>
     <tr>
-        <td colspan="3" style="text-align: right;"><?php echo app_lang("sub_total"); ?></td>
+        <td colspan="4" style="text-align: right;"><?php echo app_lang("sub_total"); ?></td>
         <td style="text-align: right; width: 20%; border: 1px solid #fff; background-color: #f4f4f4;">
             <?php echo to_currency($proposal_total_summary->proposal_subtotal, $proposal_total_summary->currency_symbol); ?>
         </td>
@@ -47,7 +53,7 @@ $total_after_discount_row = '<tr>
     ?>
     <?php if ($proposal_total_summary->tax) { ?>
         <tr>
-            <td colspan="3" style="text-align: right;"><?php echo $proposal_total_summary->tax_name; ?></td>
+            <td colspan="4" style="text-align: right;"><?php echo $proposal_total_summary->tax_name; ?></td>
             <td style="text-align: right; width: 20%; border: 1px solid #fff; background-color: #f4f4f4;">
                 <?php echo to_currency($proposal_total_summary->tax, $proposal_total_summary->currency_symbol); ?>
             </td>
@@ -55,7 +61,7 @@ $total_after_discount_row = '<tr>
     <?php } ?>
     <?php if ($proposal_total_summary->tax2) { ?>
         <tr>
-            <td colspan="3" style="text-align: right;"><?php echo $proposal_total_summary->tax_name2; ?></td>
+            <td colspan="4" style="text-align: right;"><?php echo $proposal_total_summary->tax_name2; ?></td>
             <td style="text-align: right; width: 20%; border: 1px solid #fff; background-color: #f4f4f4;">
                 <?php echo to_currency($proposal_total_summary->tax2, $proposal_total_summary->currency_symbol); ?>
             </td>
@@ -67,7 +73,7 @@ $total_after_discount_row = '<tr>
     }
     ?>
     <tr>
-        <td colspan="3" style="text-align: right;"><?php echo app_lang("total"); ?></td>
+        <td colspan="4" style="text-align: right;"><?php echo app_lang("total"); ?></td>
         <td style="text-align: right; width: 20%; background-color: <?php echo $color; ?>; color: #fff;">
             <?php echo to_currency($proposal_total_summary->proposal_total, $proposal_total_summary->currency_symbol); ?>
         </td>

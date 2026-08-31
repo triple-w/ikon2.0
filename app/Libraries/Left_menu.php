@@ -86,6 +86,10 @@ class Left_menu {
                 $sales_submenu[] = array("name" => "invoice_payments", "url" => "invoice_payments", "class" => "compass");
             }
 
+            if ($this->ci->login_user->is_admin) {
+                $sales_submenu[] = array("name" => "financial_accounts", "url" => "financial_accounts", "class" => "credit-card");
+            }
+
             $access_items = $permission_manager->can_manage_items();
 
             if ($access_items) {
@@ -106,12 +110,32 @@ class Left_menu {
             }
             if ($this->ci->login_user->is_admin || get_array_value($permissions, "fiscal_invoices_view")) {
                 $fiscal_submenu[] = array("name" => "fiscal_invoices", "url" => "fiscal/invoices", "class" => "file-text");
+                $fiscal_submenu[] = array("name" => "credit_notes", "url" => "credit_notes", "class" => "file-minus");
+            }
+            if ($this->ci->login_user->is_admin) {
+                $fiscal_submenu[] = array("name" => "payment_complements", "url" => "payment_complements", "class" => "file-text");
             }
             if ($this->ci->login_user->is_admin || get_array_value($permissions, "fiscal_pdf_templates_view")) {
                 $fiscal_submenu[] = array("name" => "fiscal_pdf_templates", "url" => "fiscal/pdf-templates", "class" => "layout");
             }
             if (count($fiscal_submenu)) {
                 $sidebar_menu["fiscal_billing"] = array("name" => "fiscal_billing", "class" => "clipboard", "submenu" => $fiscal_submenu);
+            }
+
+            if ($this->ci->login_user->is_admin || get_array_value($permissions, 'warehouse_view') || get_array_value($permissions, 'warehouse_products_view') || get_array_value($permissions, 'warehouse_movements_view') || get_array_value($permissions, 'warehouse_transfers_view')) {
+                $warehouse_submenu = array(
+                    array('name'=>'warehouse_summary','url'=>'warehouses','class'=>'home'),
+                    array('name'=>'warehouses_catalog','url'=>'warehouses/catalog','class'=>'map-pin'),
+                    array('name'=>'warehouse_products','url'=>'warehouses/products','class'=>'box'),
+                    array('name'=>'warehouse_entries','url'=>'warehouses/entries','class'=>'log-in'),
+                    array('name'=>'warehouse_exits','url'=>'warehouses/exits','class'=>'log-out'),
+                    array('name'=>'warehouse_transfers','url'=>'warehouses/transfers','class'=>'repeat'),
+                    array('name'=>'warehouse_in_transit','url'=>'warehouses/transfers/in-transit','class'=>'truck'),
+                    array('name'=>'warehouse_receipts','url'=>'warehouses/transfers/receipts','class'=>'download'),
+                    array('name'=>'warehouse_adjustments','url'=>'warehouses/adjustments','class'=>'sliders'),
+                    array('name'=>'warehouse_history','url'=>'warehouses/history','class'=>'list')
+                );
+                $sidebar_menu['warehouses'] = array('name'=>'warehouses','class'=>'archive','submenu'=>$warehouse_submenu);
             }
 
 
@@ -129,6 +153,9 @@ class Left_menu {
 
             if (get_setting("module_proposal") && ($this->ci->login_user->is_admin || $access_proposal)) {
                 $prospects_submenu["proposals"] = array("name" => "proposals", "url" => "proposals", "class" => "coffee");
+            }
+            if ($this->ci->login_user->is_admin || get_array_value($permissions, 'suppliers_view') || get_array_value($permissions, 'suppliers_manage')) {
+                $prospects_submenu['suppliers'] = array('name' => 'suppliers', 'url' => 'suppliers', 'class' => 'users');
             }
 
             if (count($prospects_submenu)) {
@@ -224,7 +251,6 @@ class Left_menu {
             if (get_setting("module_expense") == "1" && ($this->ci->login_user->is_admin || $access_expense)) {
                 $sidebar_menu["expenses"] = array("name" => "expenses", "url" => "expenses", "class" => "arrow-right-circle");
             }
-
             $sidebar_menu["reports"] = array(
                 "name" => "reports",
                 "url" => "reports/index",

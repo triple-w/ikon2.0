@@ -575,6 +575,9 @@ class Cron_job {
             "description" => $expense->description,
             "category_id" => $expense->category_id,
             "amount" => $expense->amount,
+            "financial_total" => $expense->financial_total,
+            "source_financial_account_id" => $expense->source_financial_account_id,
+            "status" => "active",
             "project_id" => $expense->project_id,
             "user_id" => $expense->user_id,
             "tax_id" => $expense->tax_id,
@@ -582,8 +585,24 @@ class Cron_job {
             "recurring_expense_id" => $expense->id
         );
 
-        //create new expense
-        $new_expense_id = $this->ci->Expenses_model->ci_save($new_expense_data);
+        //Create the expense and its OUT movement as one economic transaction.
+        $db = db_connect();
+        $db->transBegin();
+        try {
+            $new_expense_id = $this->ci->Expenses_model->ci_save($new_expense_data);
+            if (!$new_expense_id) {
+                throw new \RuntimeException('No fue posible crear el egreso recurrente.');
+            }
+            (new \App\Services\FinancialAccountMovementService($db))->sync('expense', (int) $new_expense_id, (int) $expense->source_financial_account_id, 'out', $expense->financial_total, $expense_date, (int) $expense->created_by, $expense->title);
+            if (!$db->transStatus()) {
+                throw new \RuntimeException('No fue posible crear el movimiento del egreso recurrente.');
+            }
+            $db->transCommit();
+        } catch (\Throwable $e) {
+            $db->transRollback();
+            log_message('error', 'Recurring expense financial transaction failed: '.$e->getMessage());
+            return;
+        }
 
         //update the main recurring expense
         $no_of_cycles_completed = $expense->no_of_cycles_completed + 1;

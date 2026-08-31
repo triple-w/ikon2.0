@@ -153,14 +153,38 @@ final class Stamping extends Security_Controller
         catch(Throwable$e){log_message('warning','Fiscal PDF generation blocked for document {document}: {type}',['document'=>$id,'type'=>get_class($e)]);echo json_encode(['success'=>false,'status'=>'blocked','message'=>$this->pdfExceptionMessage($e),'csrf'=>['name'=>csrf_token(),'hash'=>csrf_hash()]],JSON_UNESCAPED_UNICODE);}
     }
 
+    public function regeneratePdf($documentId = 0): void
+    {
+        $id = (int) $documentId;
+        $this->guardDocumentAny($id, ['fiscal_pdf_generate']);
+        $this->guard('fiscal.advanced.regenerate_pdf');
+        try {
+            $result = (new FiscalPacPdfGenerationService())->generate($id, (int) $this->login_user->id, null, true);
+            $payload = $result->toArray() + [
+                'message' => $result->success ? 'PDF regenerado correctamente.' : $this->pdfResultMessage($result->providerCode, $result->providerMessage, $result->status),
+                'preview_url' => $result->pdfAvailable ? get_uri('fiscal/documents/'.$id.'/pdf/preview') : null,
+                'download_url' => $result->pdfAvailable ? get_uri('fiscal/documents/'.$id.'/pdf/download') : null,
+                'csrf' => ['name'=>csrf_token(),'hash'=>csrf_hash()],
+            ];
+            $this->response->setContentType('application/json')->setJSON($payload)->send();
+        } catch (Throwable $error) {
+            log_message('warning', 'Fiscal PDF regeneration blocked for document {document}: {type}', ['document'=>$id,'type'=>get_class($error)]);
+            $payload = [
+                'success'=>false,'status'=>'blocked','message'=>$this->pdfExceptionMessage($error),
+                'configure_url'=>in_array($error->getMessage(), ['FISCAL_PDF_TEMPLATE_INVALID','FISCAL_PDF_TEMPLATE_MISSING'], true) ? get_uri('fiscal/pdf-templates') : null,
+                'csrf'=>['name'=>csrf_token(),'hash'=>csrf_hash()],
+            ];
+            $this->response->setStatusCode(422)->setContentType('application/json')->setJSON($payload)->send();
+        }
+    }
     private function pdfExceptionMessage(Throwable $e):string
     {
         $message=$e->getMessage();
         if(str_starts_with($message,'FISCAL_PDF_XML_INVALID:'))return 'No se puede generar el PDF porque el XML timbrado está incompleto o dañado. Detalle: '.trim(substr($message,strlen('FISCAL_PDF_XML_INVALID:')));
         return match($message){
-            'FISCAL_PDF_STAMPED_XML_MISSING','FISCAL_PDF_STAMP_REQUIRED'=>'No se puede generar el PDF porque el documento todavía no tiene un XML timbrado válido.',
+            'FISCAL_PDF_STAMPED_XML_MISSING','FISCAL_PDF_STAMP_REQUIRED'=>'No existe XML timbrado para regenerar el PDF.',
             'FISCAL_PDF_UUID_MISSING'=>'UUID no encontrado en el XML.',
-            'FISCAL_PDF_TEMPLATE_INVALID','FISCAL_PDF_TEMPLATE_MISSING'=>'Plantilla PDF no configurada.',
+            'FISCAL_PDF_TEMPLATE_INVALID','FISCAL_PDF_TEMPLATE_MISSING'=>'No existe una plantilla PDF configurada para este tipo de documento. Configure una plantilla antes de regenerar el PDF.',
             'FISCAL_PDF_DISABLED','FISCAL_PDF_EXTERNAL_DISABLED','FISCAL_PDF_PRODUCTION_BLOCKED'=>'Servicio PDF deshabilitado.',
             'FISCAL_PDF_CREDENTIALS_MISSING'=>'Credenciales PDF no configuradas.',
             'FISCAL_PDF_INSECURE_ENDPOINT','FISCAL_PDF_HOST_NOT_ALLOWED'=>'No fue posible conectar con el proveedor.',
@@ -281,14 +305,13 @@ final class Stamping extends Security_Controller
         $db = db_connect();
         $document = $db->table('fiscal_documents')->where(['id' => $id, 'deleted' => 0])->get(1)->getRow();
         $stamp = $db->table('fiscal_document_stamps')->where('fiscal_document_id', $id)->get(1)->getRow();
-        if (!$document || !$stamp || !$db->tableExists('fiscal_document_binary_artifacts')) {
-            throw PageNotFoundException::forPageNotFound();
-        }
+        if (!$document || !$stamp || !$db->tableExists('fiscal_document_binary_artifacts')) throw PageNotFoundException::forPageNotFound();
         $pdf = (new PacPdfArtifactService($db))->read($id);
-        $name = 'CFDI-' . preg_replace('/[^A-Za-z0-9_-]/', '', (string) $document->series)
-            . '-' . (int) $document->folio . '.pdf';
+        $safeUuid = preg_replace('/[^A-Za-z0-9_-]/', '', (string) $stamp->uuid);
+        $name = strtolower((string) $document->document_type) === 'payment'
+            ? 'ComplementoPago_' . $safeUuid . '.pdf'
+            : 'CFDI-' . preg_replace('/[^A-Za-z0-9_-]/', '', (string) $document->series) . '-' . (int) $document->folio . '.pdf';
         $this->audit($id, $download ? 'downloaded_pac_pdf' : 'viewed_pac_pdf', (string) $stamp->uuid);
-
         return $this->response
             ->setHeader('Content-Type', 'application/pdf')
             ->setHeader('Content-Disposition', ($download ? 'attachment' : 'inline') . '; filename="' . $name . '"')
@@ -297,7 +320,6 @@ final class Stamping extends Security_Controller
             ->setHeader('X-Content-Type-Options', 'nosniff')
             ->setBody($pdf['bytes']);
     }
-
     private function audit(int $id, string $action, string $uuid): void
     {
         $db = db_connect();
