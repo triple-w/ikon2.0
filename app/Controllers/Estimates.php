@@ -627,6 +627,12 @@ class Estimates extends Security_Controller {
         $view_data['sat_tax_codes']=db_connect()->table('sat_tax_codes')->where('is_active',1)->orderBy('code')->get()->getResult();
         $view_data['sat_tax_objects']=db_connect()->table('sat_tax_object_codes')->where('is_active',1)->orderBy('code')->get()->getResult();
         $view_data['can_update_master_fiscal']=false;
+        $view_data['can_edit_supplier_costs']=$this->login_user->is_admin||(bool)get_array_value($permissions,'supplier_costs_edit');
+        $view_data['can_view_supplier_costs']=$this->login_user->is_admin||(bool)get_array_value($permissions,'supplier_costs_view')||$view_data['can_edit_supplier_costs'];
+        $view_data['can_manage_suppliers']=$this->login_user->is_admin||(bool)get_array_value($permissions,'suppliers_manage');
+        $view_data['suppliers_dropdown']=(new \App\Models\Suppliers_model())->activeDropdown((int)($view_data['model_info']->supplier_id??0));
+        $view_data['cost_indicators']=$view_data['model_info']->item_id&&$view_data['can_view_supplier_costs']?(new \App\Services\SupplierCostHistoryService())->productIndicators((int)$view_data['model_info']->item_id):[];
+        $view_data['selected_supplier_history']=$view_data['model_info']->item_id&&$view_data['model_info']->supplier_id&&$view_data['can_view_supplier_costs']?(new \App\Services\SupplierComparisonService())->supplierForProduct((int)$view_data['model_info']->item_id,(int)$view_data['model_info']->supplier_id):null;
         return $this->template->view('estimates/item_modal_form', $view_data);
     }
 
@@ -646,14 +652,20 @@ class Estimates extends Security_Controller {
         }
 
         $id = $this->request->getPost('id');
+        $permissions=is_array($this->login_user->permissions)?$this->login_user->permissions:(@unserialize((string)$this->login_user->permissions)?:[]);
+        $canEditSupplierCosts=$this->login_user->is_admin||(bool)get_array_value($permissions,'supplier_costs_edit');
+        $storedItem=$id?$this->Estimate_items_model->get_one($id):null;
+        $supplierId=$canEditSupplierCosts?(int)$this->request->getPost('supplier_id'):(int)($storedItem->supplier_id??0);
+        if($supplierId){$supplier=(new \App\Models\Suppliers_model())->get_one($supplierId);if(!$supplier->id||$supplier->deleted||$supplier->status!=='active'){echo json_encode(['success'=>false,'message'=>'Seleccione un proveedor activo.']);return;}}
         $pricing = new EstimateItemPricingService();
         try {
             $rate = $pricing->requiredNonNegativeDecimal($this->request->getPost('estimate_item_rate'), app_lang('sale_price'));
             $quantity = $pricing->positiveDecimal($this->request->getPost('estimate_item_quantity'), app_lang('quantity'));
             $cost = $pricing->optionalNonNegativeDecimal($this->request->getPost('estimate_item_cost'), app_lang('cost'));
-            $postedMargin = $pricing->optionalNonNegativeDecimal($this->request->getPost('estimate_item_profit_percentage'), 'Margen de utilidad (%)');
+            $postedMargin = $pricing->optionalNonNegativeDecimal($canEditSupplierCosts?$this->request->getPost('estimate_item_profit_percentage'):($storedItem->profit_percentage??null), 'Margen de utilidad (%)');
             if($postedMargin!==null&&\App\Services\Fiscal\FiscalDecimal::micros($postedMargin)>=100000000)throw new \InvalidArgumentException('El margen debe ser menor que 100%.');
             $profit_percentage = $cost!==null&&$postedMargin!==null?$pricing->marginFromRate($cost,$rate):null;
+            $priceOrigin=(new \App\Services\CommercialMarginService())->priceOrigin($canEditSupplierCosts?$this->request->getPost('price_origin'):($storedItem->price_origin??null),$cost,$postedMargin,$rate);
         } catch (\InvalidArgumentException $e) {
             echo json_encode(array("success" => false, "message" => $e->getMessage()));
             return;
@@ -687,8 +699,10 @@ class Estimates extends Security_Controller {
             "cost" => $cost,
             "profit_percentage" => $profit_percentage,
             "rate" => $rate,
+            "price_origin" => $priceOrigin,
             "total" => \App\Services\Fiscal\FiscalDecimal::multiply($rate,$quantity),
             "item_id" => $item_id,
+            "supplier_id" => $supplierId?:null,
             "fiscal_override_json" => $fiscalOverride
         );
 
@@ -1047,6 +1061,7 @@ class Estimates extends Security_Controller {
             // change email status
             $status_data = array("status" => "sent", "last_email_sent_date" => get_my_local_time());
             if ($this->Estimates_model->ci_save($status_data, $estimate_id)) {
+                (new \App\Services\SupplierCostHistoryService())->snapshotEstimate((int)$estimate_id,'sent',(int)$this->login_user->id);
                 echo json_encode(array('success' => true, 'message' => app_lang("estimate_sent_message"), "estimate_id" => $estimate_id));
             }
             // delete the temp estimate

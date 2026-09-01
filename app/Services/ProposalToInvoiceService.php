@@ -55,6 +55,8 @@ final class ProposalToInvoiceService
                 'unit_type' => (string) $item->unit_type,
                 'cost' => $item->cost ?? null,
                 'profit_percentage' => $item->profit_percentage ?? null,
+                'price_origin' => ($item->price_origin ?? null) === 'cost_margin' ? 'cost_margin' : null,
+                'supplier_id' => $item->supplier_id ?: null,
                 'rate' => $item->rate,
                 'total' => FiscalDecimal::multiply($quantityText,$rateText),
                 'taxable' => 0,

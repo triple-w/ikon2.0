@@ -668,7 +668,7 @@ class Proposals extends Security_Controller {
         $postedCost=$canEditSupplierCosts?$this->request->getPost('proposal_item_cost'):($storedItem->cost??null);
         if($supplierId){$supplier=(new \App\Models\Suppliers_model())->get_one($supplierId);if(!$supplier->id||$supplier->deleted||$supplier->status!=='active'){echo json_encode(['success'=>false,'message'=>'Seleccione un proveedor activo.']);return;}}
         $pricing = new \App\Services\CommercialMarginService();
-        try{$rate=$pricing->normalize($this->request->getPost('proposal_item_rate'),'Precio de venta',true);$quantity=$pricing->normalize($this->request->getPost('proposal_item_quantity'),'Cantidad',true);$cost=$pricing->normalize($postedCost,'Costo');$postedMargin=$pricing->normalize($this->request->getPost('proposal_item_profit_percentage'),'Margen');if($postedMargin!==null&&\App\Services\Fiscal\FiscalDecimal::micros($postedMargin)>=100000000)throw new \InvalidArgumentException('El margen debe ser menor que 100%.');$margin=$cost!==null&&$postedMargin!==null?$pricing->marginFromPrice($cost,$rate):null;}catch(\InvalidArgumentException $e){echo json_encode(['success'=>false,'message'=>$e->getMessage()]);return;}
+        try{$rate=$pricing->normalize($this->request->getPost('proposal_item_rate'),'Precio de venta',true);$quantity=$pricing->normalize($this->request->getPost('proposal_item_quantity'),'Cantidad',true);$cost=$pricing->normalize($postedCost,'Costo');$postedMargin=$pricing->normalize($canEditSupplierCosts?$this->request->getPost('proposal_item_profit_percentage'):($storedItem->profit_percentage??null),'Margen');if($postedMargin!==null&&\App\Services\Fiscal\FiscalDecimal::micros($postedMargin)>=100000000)throw new \InvalidArgumentException('El margen debe ser menor que 100%.');$margin=$cost!==null&&$postedMargin!==null?$pricing->marginFromPrice($cost,$rate):null;$priceOrigin=$pricing->priceOrigin($canEditSupplierCosts?$this->request->getPost('price_origin'):($storedItem->price_origin??null),$cost,$postedMargin,$rate);}catch(\InvalidArgumentException $e){echo json_encode(['success'=>false,'message'=>$e->getMessage()]);return;}
         $proposal_item_title = $this->request->getPost('proposal_item_title');
         $item_id = 0;
 
@@ -702,6 +702,7 @@ class Proposals extends Security_Controller {
             "unit_type" => $this->request->getPost('proposal_unit_type'),
             "cost" => $cost,"profit_percentage" => $margin,"supplier_id" => $supplierId?:null,
             "rate" => $rate,
+            "price_origin" => $priceOrigin,
             "total" => \App\Services\Fiscal\FiscalDecimal::multiply($rate,$quantity),
             "fiscal_override_json" => $fiscalOverride,
         );

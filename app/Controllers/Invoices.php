@@ -1018,6 +1018,12 @@ class Invoices extends Security_Controller {
         $view_data['fiscal_configuration']=$view_data['model_info']->id?(new \App\Services\Fiscal\InvoiceItemFiscalOverrideService())->effective((int)$view_data['model_info']->id):[];
         $view_data['fiscal_tax_options']=db_connect()->table('taxes t')->select('t.id,t.title,t.fiscal_tax_type,t.xml_rate,t.xml_quota,c.code tax_code,f.name factor_type')->join('sat_tax_codes c','c.id=t.sat_tax_code_id','left')->join('sat_tax_factor_types f','f.id=t.factor_type_id','left')->where(['t.deleted'=>0,'t.use_for_fiscal'=>1,'t.is_fiscal_ready'=>1])->orderBy('t.title')->get()->getResult();
         $view_data['sat_tax_codes']=db_connect()->table('sat_tax_codes')->where('is_active',1)->orderBy('code')->get()->getResult();$view_data['sat_tax_factors']=db_connect()->table('sat_tax_factor_types')->where('is_active',1)->orderBy('code')->get()->getResult();$view_data['sat_tax_objects']=db_connect()->table('sat_tax_object_codes')->where('is_active',1)->orderBy('code')->get()->getResult();$view_data['can_update_master_fiscal']=false;
+        $view_data['can_edit_supplier_costs']=$this->login_user->is_admin||(bool)get_array_value($permissions,'supplier_costs_edit');
+        $view_data['can_view_supplier_costs']=$this->login_user->is_admin||(bool)get_array_value($permissions,'supplier_costs_view')||$view_data['can_edit_supplier_costs'];
+        $view_data['can_manage_suppliers']=$this->login_user->is_admin||(bool)get_array_value($permissions,'suppliers_manage');
+        $view_data['suppliers_dropdown']=(new \App\Models\Suppliers_model())->activeDropdown((int)($view_data['model_info']->supplier_id??0));
+        $view_data['cost_indicators']=$view_data['model_info']->item_id&&$view_data['can_view_supplier_costs']?(new \App\Services\SupplierCostHistoryService())->productIndicators((int)$view_data['model_info']->item_id):[];
+        $view_data['selected_supplier_history']=$view_data['model_info']->item_id&&$view_data['model_info']->supplier_id&&$view_data['can_view_supplier_costs']?(new \App\Services\SupplierComparisonService())->supplierForProduct((int)$view_data['model_info']->item_id,(int)$view_data['model_info']->supplier_id):null;
         return $this->template->view('invoices/item_modal_form', $view_data);
     }
 
@@ -1044,8 +1050,12 @@ class Invoices extends Security_Controller {
         }
 
         $id = $this->request->getPost('id');
+        $canEditSupplierCosts=$this->login_user->is_admin||(bool)get_array_value($permissions,'supplier_costs_edit');
+        $storedItem=$id?$this->Invoice_items_model->get_one($id):null;
+        $supplierId=$canEditSupplierCosts?(int)$this->request->getPost('supplier_id'):(int)($storedItem->supplier_id??0);
+        if(!$fiscal_only&&$supplierId){$supplier=(new \App\Models\Suppliers_model())->get_one($supplierId);if(!$supplier->id||$supplier->deleted||$supplier->status!=='active'){echo json_encode(['success'=>false,'message'=>'Seleccione un proveedor activo.']);return;}}
         if($fiscal_only){$stored=$this->Invoice_items_model->get_one($id);if(!$stored->id||(int)$stored->invoice_id!==(int)$invoice_id){echo json_encode(['success'=>false,'message'=>'La partida no corresponde a la venta.']);return;}$db=db_connect();try{$json=(new \App\Services\Fiscal\InvoiceItemFiscalOverrideService($db))->fromValidatedInput((array)$this->request->getPost(),(int)$stored->item_id);if(!$json)throw new \InvalidArgumentException('Activa la configuración específica de esta venta.');$db->transBegin();$saved=$this->Invoice_items_model->ci_save(['fiscal_override_json'=>$json],$id);if(!$saved||!$db->transStatus())throw new \RuntimeException(app_lang('error_occurred'));$db->transCommit();echo json_encode(['success'=>true,'id'=>(int)$id,'invoice_id'=>(int)$invoice_id,'message'=>'Configuración fiscal guardada.']);}catch(\Throwable$e){if(isset($db)){$db->transRollback();$db->resetTransStatus();}echo json_encode(['success'=>false,'message'=>$e->getMessage()]);}return;}
-        $pricing=new \App\Services\CommercialMarginService();try{$rate=$pricing->normalize($this->request->getPost('invoice_item_rate'),'Precio de venta',true);$quantity=$pricing->normalize($this->request->getPost('invoice_item_quantity'),'Cantidad',true);$cost=$pricing->normalize($this->request->getPost('invoice_item_cost'),'Costo');$postedMargin=$pricing->normalize($this->request->getPost('invoice_item_profit_percentage'),'Margen');if($postedMargin!==null&&\App\Services\Fiscal\FiscalDecimal::micros($postedMargin)>=100000000)throw new \InvalidArgumentException('El margen debe ser menor que 100%.');$margin=$cost!==null&&$postedMargin!==null?$pricing->marginFromPrice($cost,$rate):null;}catch(\InvalidArgumentException $e){echo json_encode(['success'=>false,'message'=>$e->getMessage()]);return;}
+        $pricing=new \App\Services\CommercialMarginService();try{$rate=$pricing->normalize($this->request->getPost('invoice_item_rate'),'Precio de venta',true);$quantity=$pricing->normalize($this->request->getPost('invoice_item_quantity'),'Cantidad',true);$cost=$pricing->normalize($canEditSupplierCosts?$this->request->getPost('invoice_item_cost'):($storedItem->cost??null),'Costo');$postedMargin=$pricing->normalize($canEditSupplierCosts?$this->request->getPost('invoice_item_profit_percentage'):($storedItem->profit_percentage??null),'Margen');if($postedMargin!==null&&\App\Services\Fiscal\FiscalDecimal::micros($postedMargin)>=100000000)throw new \InvalidArgumentException('El margen debe ser menor que 100%.');$margin=$cost!==null&&$postedMargin!==null?$pricing->marginFromPrice($cost,$rate):null;$priceOrigin=$pricing->priceOrigin($canEditSupplierCosts?$this->request->getPost('price_origin'):($storedItem->price_origin??null),$cost,$postedMargin,$rate);}catch(\InvalidArgumentException $e){echo json_encode(['success'=>false,'message'=>$e->getMessage()]);return;}
         $invoice_item_title = $this->request->getPost('invoice_item_title');
         $item_id = (int)$this->request->getPost('item_id');if($id&&!$item_id){$stored=$this->Invoice_items_model->get_one($id);$item_id=(int)($stored->item_id??0);}
 
@@ -1071,9 +1081,11 @@ class Invoices extends Security_Controller {
             "unit_type" => $this->request->getPost('invoice_unit_type'),
             "cost"=>$cost,"profit_percentage"=>$margin,
             "rate" => $rate,
+            "price_origin" => $priceOrigin,
             "total" => \App\Services\Fiscal\FiscalDecimal::multiply($rate,$quantity),
             "taxable" => $this->request->getPost('taxable') ? $this->request->getPost('taxable') : "",
             "item_id" => $item_id,
+            "supplier_id"=>$supplierId?:null,
             "fiscal_override_json"=>$fiscalJson
         );
 
@@ -1555,6 +1567,9 @@ class Invoices extends Security_Controller {
             }
 
             if ($this->Invoices_model->ci_save($status_data, $invoice_id)) {
+                if(($status_data['status']??null)==='not_paid'){
+                    (new \App\Services\SupplierCostHistoryService())->snapshotInvoice((int)$invoice_id,'not_paid',(int)$this->login_user->id);
+                }
                 echo json_encode(array('success' => true, 'message' => app_lang("invoice_sent_message"), "invoice_id" => $invoice_id));
             }
 

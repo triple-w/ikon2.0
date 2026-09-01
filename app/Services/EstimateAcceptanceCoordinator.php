@@ -34,6 +34,8 @@ final class EstimateAcceptanceCoordinator
             $existing = $this->existingSale($estimate);
             if ($existing) {
                 $this->ensureBacklink($estimate, $existing, $acceptanceData, $userId);
+                (new SupplierCostHistoryService($this->db))->snapshotEstimate($estimateId, self::STATUS_ACCEPTED, $userId);
+                (new SupplierCostHistoryService($this->db))->snapshotInvoice((int)$existing->id, (string)($existing->status ?: 'not_paid'), $userId);
                 return $this->commit($this->result($estimateId, (int) $existing->id, 'existing'));
             }
             if (! self::acceptsStatus((string) $estimate->status)) {
@@ -42,6 +44,8 @@ final class EstimateAcceptanceCoordinator
             // Fiscal readiness is intentionally deferred to CFDI preparation.
             $invoiceId = $this->converter->createFromEstimate($estimate, $userId, 'not_paid');
             $this->persistAcceptance($estimate, $invoiceId, $acceptanceData, $userId);
+            (new SupplierCostHistoryService($this->db))->snapshotEstimate($estimateId, self::STATUS_ACCEPTED, $userId);
+            (new SupplierCostHistoryService($this->db))->snapshotInvoice($invoiceId, 'not_paid', $userId);
             return $this->commit($this->result($estimateId, $invoiceId, 'created'));
         } catch (\Throwable $e) {
             $this->db->transRollback();

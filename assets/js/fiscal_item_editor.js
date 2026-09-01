@@ -88,6 +88,7 @@
         var $margin = $box.find(".commercial-margin");
         var prefix = $box.attr("data-prefix") || "";
         var $price = $box.closest("form").find("#" + prefix + "_item_rate");
+        var $origin = $box.closest("form").find("[name=price_origin]");
         var syncing = false;
         function number(value) {
             var normalized = String(value == null ? "" : value).replace(/,/g, "").trim();
@@ -105,6 +106,7 @@
             if (!Number.isFinite(cost) || margin < 0 || margin >= 100) return;
             syncing = true;
             $price.val((cost / (1 - margin / 100)).toFixed(6));
+            $origin.val("cost_margin");
             syncing = false;
             loss();
         }
@@ -113,6 +115,7 @@
             var cost = number($cost.val()), price = number($price.val());
             if (!Number.isFinite(cost) || !Number.isFinite(price) || price < 0) return;
             syncing = true;
+            $origin.val("manual");
             $margin.val(price === 0 ? "0.000000" : (((price - cost) / price) * 100).toFixed(6));
             syncing = false;
             loss();

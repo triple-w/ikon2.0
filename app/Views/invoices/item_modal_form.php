@@ -75,7 +75,7 @@
                 </div>
             </div>
         </div>
-        <?php echo view('items/_commercial_margin_fields',['field_prefix'=>'invoice','model_info'=>$model_info]); ?>
+        <?php if(empty($fiscal_only))echo view('items/_supplier_cost_fields',array_merge(get_defined_vars(),['field_prefix'=>'invoice'])); ?>
         <div class="form-group">
             <div class="row">
                 <label for="invoice_item_rate" class=" col-md-3">Precio de venta</label>

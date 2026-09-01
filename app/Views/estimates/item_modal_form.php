@@ -75,7 +75,7 @@
                 </div>
             </div>
         </div>
-        <?php echo view('items/_commercial_margin_fields',['field_prefix'=>'estimate','model_info'=>$model_info]); ?>
+        <?php echo view('items/_supplier_cost_fields',array_merge(get_defined_vars(),['field_prefix'=>'estimate'])); ?>
         <?php echo view('items/_fiscal_item_fields',['fiscal_configuration'=>$fiscal_configuration??[],'sat_tax_codes'=>$sat_tax_codes??[],'sat_tax_objects'=>$sat_tax_objects??[],'can_update_master_fiscal'=>$can_update_master_fiscal??false]); ?>
         <div class="form-group">
             <div class="row">

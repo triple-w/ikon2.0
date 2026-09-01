@@ -24,5 +24,10 @@ final class CommercialMarginService
         $cost=$this->normalize($cost,'Costo',true);$price=$this->normalize($price,'Precio de venta',true);if(FiscalDecimal::micros($price)===0)return FiscalDecimal::micros($cost)===0?'0.000000':'0.000000';
         return FiscalDecimal::prorate(FiscalDecimal::subtract($price,$cost),'100.000000',$price);
     }
+    public function priceOrigin(mixed $posted,?string $cost,?string $margin,string $price):string
+    {
+        if($posted!=='cost_margin'||$cost===null||$margin===null)return'manual';
+        return FiscalDecimal::micros($this->priceFromMargin($cost,$margin))===FiscalDecimal::micros($price)?'cost_margin':'manual';
+    }
     private function localized(string$value):string{$value=trim($value);if(str_contains($value,',')&&str_contains($value,'.'))return strrpos($value,',')>strrpos($value,'.')?str_replace(',','.',str_replace('.','',$value)):str_replace(',','',$value);return str_replace(',','.',$value);}
 }

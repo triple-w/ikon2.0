@@ -19,17 +19,19 @@ final class CommercialItemTaxResolver
         return $this->calculate($resolved, $quantity, $unitPrice, $discount, $invoiceItemId);
     }
 
-    public function product(int $productId, int $companyId, string $quantity, string $unitPrice, string $discount = '0.000000', ?int $issuerId = null, ?array $override = null): array
+    public function product(int $productId, int $companyId, string $quantity, string $unitPrice, string $discount = '0.000000', ?int $issuerId = null, ?array $override = null, string $priceOrigin = 'manual'): array
     {
         $normalized=(new FiscalItemOverrideContract())->normalizeStored($override,$productId);
-        if($normalized&&$normalized['ready'])return $this->calculate(['source'=>'item_override']+$normalized,$quantity,$unitPrice,$discount,0);
+        if($normalized&&$normalized['ready'])return $this->calculate($this->pricing(['source'=>'item_override']+$normalized,$priceOrigin),$quantity,$unitPrice,$discount,0);
         $override=null; // invalid/partial stored flags are never trusted; product is the fallback.
         if ($productId <= 0) {
             return $this->notReady('manual_line', $normalized['missing']??['La partida libre requiere configuración fiscal propia.'],$normalized??[]);
         }
         if($override && !empty($override['ready'])){$issuer=$issuerId?$this->db->table('fiscal_profiles')->where('id',$issuerId)->get(1)->getRow():(new FiscalIssuerResolver($this->db))->resolve($companyId,config('Fiscal')->environment);$mode=(string)($issuer->tax_pricing_mode??'tax_inclusive');$resolved=array_merge($override,['source'=>'item_override','prices_include_tax'=>in_array($mode,['tax_inclusive','preserve_total'],true),'pricing_mode'=>$mode]);}else{$resolved=(new InvoiceItemTaxResolver($this->db))->resolveProduct($productId,$companyId,$issuerId);}
-        return $this->calculate($resolved, $quantity, $unitPrice, $discount, 0);
+        return $this->calculate($this->pricing($resolved,$priceOrigin), $quantity, $unitPrice, $discount, 0);
     }
+
+    private function pricing(array $resolved,string $origin):array{if($origin==='cost_margin'){$resolved['pricing_mode']='tax_exclusive';$resolved['prices_include_tax']=false;}$resolved['price_origin']=$origin==='cost_margin'?'cost_margin':'manual';return$resolved;}
 
     private function calculate(array $resolved, string $quantity, string $unitPrice, string $discount, int $invoiceItemId): array
     {
