@@ -80,6 +80,8 @@ class InvoiceCreationService
                     'unit_type' => $item['unit_type'] ?? '',
                     'cost' => $item['cost'] ?? null,
                     'profit_percentage' => $item['profit_percentage'] ?? null,
+                    'price_origin' => ($item['price_origin'] ?? null) === 'cost_margin' ? 'cost_margin' : 'manual',
+                    'supplier_id' => $item['supplier_id'] ?? null,
                     'rate' => $rate,
                     'total' => $item['total'] ?? FiscalDecimal::multiply((string) $quantity, (string) $rate),
                     'taxable' => array_key_exists('taxable', $item) ? (int) $item['taxable'] : 1,
@@ -95,6 +97,7 @@ class InvoiceCreationService
             if (! $invoices->update_invoice_total_meta($invoiceId)) {
                 throw new RuntimeException('No fue posible recalcular los totales oficiales de la venta.');
             }
+            (new \App\Services\Fiscal\CommercialSaleTotalConsistencyService($db))->synchronizeIfCanonical($invoiceId);
 
             $savedCount = $invoiceItems->get_all_where(['invoice_id' => $invoiceId, 'deleted' => 0])->resultID->num_rows;
             if ($savedCount !== count($items)) {

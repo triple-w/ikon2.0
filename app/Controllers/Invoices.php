@@ -1089,7 +1089,7 @@ class Invoices extends Security_Controller {
             "fiscal_override_json"=>$fiscalJson
         );
 
-        $db=db_connect();$db->transBegin();try{$invoice_item_id = $this->Invoice_items_model->save_item_and_update_invoice($invoice_item_data, $id, $invoice_id);if(!$invoice_item_id||!$db->transStatus())throw new \RuntimeException(app_lang('error_occurred'));$db->transCommit();}catch(\Throwable$e){$db->transRollback();$db->resetTransStatus();echo json_encode(['success'=>false,'message'=>$e->getMessage()]);return;}
+        $db=db_connect();$db->transBegin();try{$invoice_item_id = $this->Invoice_items_model->save_item_and_update_invoice($invoice_item_data, $id, $invoice_id);if(!$invoice_item_id||!$db->transStatus())throw new \RuntimeException(app_lang('error_occurred'));(new \App\Services\Fiscal\CommercialSaleTotalConsistencyService($db))->synchronizeIfCanonical((int)$invoice_id);$db->transCommit();}catch(\Throwable$e){$db->transRollback();$db->resetTransStatus();echo json_encode(['success'=>false,'message'=>$e->getMessage()]);return;}
         if ($invoice_item_id) {
             $options = array("id" => $invoice_item_id);
             $item_info = $this->Invoice_items_model->get_details($options)->getRow();

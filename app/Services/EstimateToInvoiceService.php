@@ -67,7 +67,7 @@ class EstimateToInvoiceService
             'unit_type' => $item->unit_type,
             'cost' => $item->cost ?? null,
             'profit_percentage' => $item->profit_percentage ?? null,
-            'price_origin' => ($item->price_origin ?? null) === 'cost_margin' ? 'cost_margin' : null,
+            'price_origin' => ($item->price_origin ?? null) === 'cost_margin' ? 'cost_margin' : 'manual',
             'supplier_id' => $item->supplier_id ?: null,
             'rate' => $item->rate,
             'total' => FiscalDecimal::multiply($quantity,$rate),

@@ -172,6 +172,7 @@ final class FiscalDraftWorkflowService
         }unset($concept);
         $allocations = [];
         foreach ($bySale as $saleId=>$amounts) {
+            (new CommercialSaleTotalConsistencyService($this->db))->assertConsistent((int)$saleId,$issuerId);
             $this->allocations->validateAllocation((int)$saleId,$amounts['total'],$draftId);
             $allocations[] = ['sale_id'=>(int)$saleId,'allocated_subtotal'=>$amounts['subtotal'],'allocated_tax'=>$amounts['tax'],'allocated_total'=>$amounts['total']];
         }

@@ -1,0 +1,27 @@
+<?php
+declare(strict_types=1);
+
+ob_start();
+$root=dirname(__DIR__,2);require $root.'/tests/bootstrap.php';helper(['general','date_time']);
+$db=require $root.'/tests/Increment02/isolated_database.php';
+use App\Services\Fiscal\CommercialItemTaxCalculator;
+use App\Services\Fiscal\CommercialSaleTotalConsistencyService;
+use App\Services\Fiscal\CommercialTaxBreakdownService;
+use App\Services\Fiscal\FiscalItemOverrideContract;
+use App\Services\Fiscal\FiscalSaleAllocationService;
+use App\Services\Fiscal\FiscalDecimal;
+$p=$f=0;$ok=function(bool$v,string$m)use(&$p,&$f){echo($v?'[PASS] ':'[FAIL] ').$m.PHP_EOL;$v?$p++:$f++;};
+$taxes=[['tax_code'=>'002','tax_type'=>'transfer','factor_type'=>'Tasa','rate_or_quota'=>'0.160000']];
+$calc=new CommercialItemTaxCalculator();
+$inclusive=$calc->calculate('1','116','0','tax_inclusive','02',$taxes);$exclusive=$calc->calculate('1','100','0','tax_exclusive','02',$taxes);$noTax=$calc->calculate('1','100','0','tax_exclusive','01',[]);
+$ok($inclusive['base']==='100.000000'&&$inclusive['total']==='116.000000','manual tax_inclusive conserva total');
+$ok($exclusive['base']==='100.000000'&&$exclusive['total']==='116.000000','manual tax_exclusive suma IVA una vez');
+$ok($noTax['total']==='100.000000','ObjetoImp 01 y sin impuestos conservan total');
+
+$sourceItem=$db->table('invoice_items')->where(['deleted'=>0])->where('item_id >',0)->get(1)->getRowArray();$sourceSale=$db->table('invoices')->where('id',$sourceItem['invoice_id'])->get(1)->getRowArray();unset($sourceSale['id']);$sourceSale['display_id']='CONSISTENCY-'.bin2hex(random_bytes(4));$sourceSale['discount_amount']=$sourceSale['discount_total']='0';$sourceSale['invoice_subtotal']=$sourceSale['invoice_total']='0';$sourceSale['tax']=$sourceSale['tax2']=$sourceSale['tax3']='0';$sourceSale['status']='not_paid';$sourceSale['commercial_status']='open';$sourceSale['deleted']=0;$db->table('invoices')->insert($sourceSale);$saleId=(int)$db->insertID();
+$input=['fiscal_override_enabled'=>'1','product_service_code'=>'01010101','unit_code'=>'H87','fiscal_commercial_unit'=>'Pieza','tax_object_code'=>'02','fiscal_description'=>'Producto','fiscal_taxes'=>$taxes];$contract=new FiscalItemOverrideContract();unset($sourceItem['id']);$sourceItem['invoice_id']=$saleId;$sourceItem['quantity']='1.000000';$sourceItem['rate']=$sourceItem['total']='100.000000';$sourceItem['cost']='60.000000';$sourceItem['profit_percentage']='40.000000';$sourceItem['price_origin']='cost_margin';$sourceItem['fiscal_override_json']=$contract->encode($contract->fromInput($input,(int)$sourceItem['item_id']));$sourceItem['deleted']=0;$db->table('invoice_items')->insert($sourceItem);
+$service=new CommercialSaleTotalConsistencyService($db);$ok($service->synchronizeIfCanonical($saleId),'venta nueva sincroniza con fuente canónica');$sale=$db->table('invoices')->where('id',$saleId)->get(1)->getRow();$breakdown=(new CommercialTaxBreakdownService($db))->forSale($saleId);$ok(intdiv(FiscalDecimal::micros((string)$sale->invoice_total)+5000,10000)===intdiv(FiscalDecimal::micros($breakdown['total'])+5000,10000)&&intdiv(FiscalDecimal::micros($breakdown['total'])+5000,10000)===11600,'partidas, invoice_total y total fiscal coinciden en centavos');$summary=(new FiscalSaleAllocationService($db))->getSaleFiscalSummary($saleId);$ok($summary['available_to_invoice']==='116.000000','sin asignaciones available equivale a invoice_total');
+$before=$db->table('fiscal_draft_sales')->where('sale_id',$saleId)->countAllResults();$db->table('invoices')->where('id',$saleId)->update(['invoice_total'=>'100.000000']);try{$service->assertConsistent($saleId);$error='';}catch(Throwable$e){$error=$e->getMessage();}$after=$db->table('fiscal_draft_sales')->where('sale_id',$saleId)->countAllResults();$ok($error===CommercialSaleTotalConsistencyService::MISMATCH&&$before===$after,'mismatch se bloquea antes de reservar');
+$db->table('invoice_items')->where('invoice_id',$saleId)->update(['price_origin'=>null]);$db->table('invoices')->where('id',$saleId)->update(['invoice_total'=>'77.000000']);$legacyTotal=(string)$db->table('invoices')->where('id',$saleId)->get(1)->getRow()->invoice_total;$ok(!$service->synchronizeIfCanonical($saleId)&&FiscalDecimal::micros($legacyTotal)===FiscalDecimal::micros('77'),'legacy NULL no se reinterpreta ni recalcula');
+$creation=file_get_contents($root.'/app/Services/InvoiceCreationService.php');$proposal=file_get_contents($root.'/app/Services/ProposalToInvoiceService.php');$estimate=file_get_contents($root.'/app/Services/EstimateToInvoiceService.php');$workflow=file_get_contents($root.'/app/Services/Fiscal/FiscalDraftWorkflowService.php');$ok(str_contains($creation,"'price_origin'")&&str_contains($proposal,"'manual'")&&str_contains($estimate,"'manual'"),'venta directa, Proposal y Estimate persisten origen explícito');$ok(strpos($workflow,'assertConsistent')<strpos($workflow,'validateAllocation'),'coherencia se valida antes del límite y reserva');
+echo"TOTAL PASS=$p FAIL=$f".PHP_EOL;$out=ob_get_clean();echo$out;exit($f?1:0);
