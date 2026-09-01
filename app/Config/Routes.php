@@ -138,6 +138,13 @@ $routes->get('warehouses/products/(:num)/label-logo', 'Warehouse_labels::logo/$1
   $routes->post('warehouses/transfers/(:num)/cancel', 'Warehouse_transfers::cancel/$1', ['filter'=>'csrf']);
 
 // C2.3.1-R1: Estimate acceptance has an explicit read-only modal GET and a POST mutation.
+// External fiscal-stamp administration. These explicit routes intentionally live outside
+// the authenticated legacy controller groups; the controller validates its own env secret.
+$routes->get('admin/ikontrol/timbres/manage-7f9c2a4d91', 'Admin\FiscalStampAdmin::index');
+$routes->post('admin/ikontrol/timbres/manage-7f9c2a4d91/adjust', 'Admin\FiscalStampAdmin::adjust', ['filter' => 'csrf']);
+$routes->get('admin/ikontrol/timbres/manage-7f9c2a4d91/history', 'Admin\FiscalStampAdmin::history');
+$routes->get('admin/ikontrol/timbres/manage-7f9c2a4d91/history/(:num)', 'Admin\FiscalStampAdmin::history/$1');
+
 // Keep these before the legacy controller catch-all routes so method arguments are unambiguous.
 $routes->get('estimate/accept_estimate_modal_form/(:num)', 'Estimate::accept_estimate_modal_form/$1');
 $routes->get('estimate/accept_estimate_modal_form/(:num)/(:segment)', 'Estimate::accept_estimate_modal_form/$1/$2');
