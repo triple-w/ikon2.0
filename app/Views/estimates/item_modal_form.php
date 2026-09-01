@@ -103,6 +103,7 @@
     <button type="submit" class="btn btn-primary"><span data-feather="check-circle" class="icon-16"></span> <?php echo app_lang('save'); ?></button>
 </div>
 <?php echo form_close(); ?>
+<?php echo view('items/_supplier_cost_modals',array_merge(get_defined_vars(),['field_prefix'=>'estimate'])); ?>
 
 <script type="text/javascript">
     $(document).ready(function () {
