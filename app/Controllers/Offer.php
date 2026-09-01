@@ -2,6 +2,8 @@
 
 namespace App\Controllers;
 
+use App\Services\ProposalAcceptanceService;
+
 class Offer extends Security_Controller {
 
     function __construct() {
@@ -67,15 +69,20 @@ class Offer extends Security_Controller {
 
         //client can only update the status once and the value should be either accepted or declined
         if ($status == "accepted" || $status == "declined") {
-            $proposal_data = array("status" => $status);
-            $proposal_id = $this->Proposals_model->ci_save($proposal_data, $proposal_id);
-            (new \App\Services\SupplierCostHistoryService())->snapshotProposal((int) $proposal_id, (string) $status, isset($this->login_user->id) ? (int) $this->login_user->id : 0);
-
-            //create notification
             if ($status == "accepted") {
+                try {
+                    $actorId = isset($this->login_user->id) ? (int) $this->login_user->id : 0;
+                    (new ProposalAcceptanceService())->acceptAndConvert((int) $proposal_id, $actorId, (string) $public_key);
+                } catch (\Throwable $e) {
+                    log_message('error', 'Public proposal acceptance failed: {exception}', ['exception' => $e]);
+                    $this->session->setFlashdata("error_message", $e->getMessage());
+                    return;
+                }
                 log_notification("proposal_accepted", array("proposal_id" => $proposal_id), isset($this->login_user->id) ? $this->login_user->id : "999999996");
                 $this->session->setFlashdata("success_message", app_lang("proposal_accepted"));
             } else if ($status == "declined") {
+                $proposal_id = $this->Proposals_model->ci_save(array("status" => $status), $proposal_id);
+                (new \App\Services\SupplierCostHistoryService())->snapshotProposal((int) $proposal_id, (string) $status, isset($this->login_user->id) ? (int) $this->login_user->id : 0);
                 log_notification("proposal_rejected", array("proposal_id" => $proposal_id), isset($this->login_user->id) ? $this->login_user->id : "999999996");
                 $this->session->setFlashdata("error_message", app_lang('proposal_rejected'));
             }

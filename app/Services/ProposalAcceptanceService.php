@@ -18,7 +18,7 @@ final class ProposalAcceptanceService
         $this->converter ??= new ProposalToInvoiceService(null, $this->db);
     }
 
-    public function acceptAndConvert(int $proposalId, int $actorId): array
+    public function acceptAndConvert(int $proposalId, int $actorId, ?string $publicKey = null): array
     {
         $this->db->transBegin();
         try {
@@ -27,7 +27,7 @@ final class ProposalAcceptanceService
             if (! $proposal) {
                 throw new RuntimeException('La propuesta no existe o fue eliminada.');
             }
-            $this->assertAuthorized($actorId, $proposal);
+            $conversionActorId = $this->authorizedConversionActor($actorId, $proposal, $publicKey);
 
             if ($proposal->converted_sale_id) {
                 $invoice = $this->db->table('invoices')->where(['id' => $proposal->converted_sale_id, 'proposal_id' => $proposalId, 'deleted' => 0])->get(1)->getRow();
@@ -46,7 +46,7 @@ final class ProposalAcceptanceService
                 throw new RuntimeException('El estado actual de la propuesta no permite aceptarla.');
             }
 
-            $invoiceId = $this->converter->createFromProposal($proposal, $actorId);
+            $invoiceId = $this->converter->createFromProposal($proposal, $conversionActorId);
             $now = get_current_utc_time();
             $updated = $this->db->table('proposals')->where(['id' => $proposalId, 'deleted' => 0])->update([
                 'status' => 'accepted',
@@ -54,7 +54,7 @@ final class ProposalAcceptanceService
                 'accepted_at' => $now,
                 'converted_sale_id' => $invoiceId,
                 'converted_at' => $now,
-                'converted_by' => $actorId,
+                'converted_by' => $conversionActorId,
             ]);
             if (! $updated) {
                 throw new RuntimeException('No fue posible cerrar la propuesta.');
@@ -64,10 +64,10 @@ final class ProposalAcceptanceService
                     'entity_type' => 'proposal', 'entity_id' => $proposalId,
                     'event' => 'proposal_converted', 'old_status' => $proposal->status,
                     'new_status' => 'accepted', 'reason' => null,
-                    'user_id' => $actorId, 'created_at' => $now,
+                    'user_id' => $conversionActorId, 'created_at' => $now,
                 ]);
             }
-            (new SupplierCostHistoryService($this->db))->snapshotProposal($proposalId,'accepted',$actorId);
+            (new SupplierCostHistoryService($this->db))->snapshotProposal($proposalId,'accepted',$conversionActorId);
             if (! $this->db->transStatus()) {
                 throw new RuntimeException('La transacción de aceptación no pudo completarse.');
             }
@@ -80,14 +80,37 @@ final class ProposalAcceptanceService
         }
     }
 
-    private function assertAuthorized(int $actorId, object $proposal): void
+    private function authorizedConversionActor(int $actorId, object $proposal, ?string $publicKey): int
     {
+        if ($publicKey !== null) {
+            if (! in_array($proposal->status, ['sent', 'accepted'], true)
+                || ! hash_equals((string) $proposal->public_key, $publicKey)) {
+                throw new RuntimeException('El enlace no permite aceptar esta propuesta.');
+            }
+            if ($actorId > 0) {
+                $actor = (new Users_model($this->db))->get_access_info($actorId);
+                if ($actor && $actor->user_type === 'client' && (int) $actor->client_id !== (int) $proposal->client_id) {
+                    throw new RuntimeException('El cliente no puede aceptar esta propuesta.');
+                }
+            }
+            return $this->proposalOwner($proposal);
+        }
         $actor = (new Users_model($this->db))->get_access_info($actorId);
-        if (! $actor || ! $actor->id || $actor->user_type !== 'staff') {
+        if (! $actor || ! $actor->id) {
+            throw new RuntimeException('El actor no puede aceptar propuestas.');
+        }
+        if ($actor->user_type === 'client') {
+            if ((int) $actor->client_id !== (int) $proposal->client_id
+                || ! in_array($proposal->status, ['sent', 'accepted'], true)) {
+                throw new RuntimeException('El cliente no puede aceptar esta propuesta.');
+            }
+            return $this->proposalOwner($proposal);
+        }
+        if ($actor->user_type !== 'staff') {
             throw new RuntimeException('El actor no puede aceptar propuestas.');
         }
         if ((int) $actor->is_admin === 1) {
-            return;
+            return $actorId;
         }
         $permissions = @unserialize((string) $actor->permissions) ?: [];
         $proposalPermission = $permissions['proposal'] ?? '';
@@ -101,5 +124,16 @@ final class ProposalAcceptanceService
         if (($permissions['proposal.accept_and_convert'] ?? '') !== '1' || ! $canAccessProposal || ! $canCreateSale) {
             throw new RuntimeException('El actor no tiene permisos para aceptar y convertir esta propuesta.');
         }
+        return $actorId;
+    }
+
+    private function proposalOwner(object $proposal): int
+    {
+        $ownerId = (int) ($proposal->created_by ?? 0);
+        $owner = $ownerId ? (new Users_model($this->db))->get_access_info($ownerId) : null;
+        if (! $owner || ! $owner->id || $owner->user_type !== 'staff') {
+            throw new RuntimeException('La propuesta no tiene un responsable válido para crear la venta.');
+        }
+        return $ownerId;
     }
 }

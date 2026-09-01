@@ -228,17 +228,25 @@ class Proposals extends Security_Controller {
                 //client can only update the status once and the value should be either accepted or declined
                 if ($proposal_info->status == "sent" && ($status == "accepted" || $status == "declined")) {
 
-                    $proposal_data = array("status" => $status);
                     if ($status == "accepted") {
-                        $proposal_data["accepted_by"] = $this->login_user->id;
-                    }
-                    $proposal_id = $this->Proposals_model->ci_save($proposal_data, $proposal_id);
-                    (new \App\Services\SupplierCostHistoryService())->snapshotProposal((int)$proposal_id,(string)$status,(int)$this->login_user->id);
-
-                    //create notification
-                    if ($status == "accepted") {
+                        try {
+                            $result = (new ProposalAcceptanceService())->acceptAndConvert((int) $proposal_id, (int) $this->login_user->id);
+                        } catch (\Throwable $e) {
+                            echo json_encode(array("success" => false, "message" => $e->getMessage()));
+                            return;
+                        }
                         log_notification("proposal_accepted", array("proposal_id" => $proposal_id));
+                        echo json_encode(array(
+                            "success" => true,
+                            "proposal_id" => (int) $proposal_id,
+                            "invoice_id" => $result["invoice_id"],
+                            "invoice_action" => $result["invoice_action"],
+                            "message" => app_lang("proposal_accepted_and_converted")
+                        ));
+                        return;
                     } else if ($status == "declined") {
+                        $proposal_id = $this->Proposals_model->ci_save(array("status" => $status), $proposal_id);
+                        (new \App\Services\SupplierCostHistoryService())->snapshotProposal((int)$proposal_id,(string)$status,(int)$this->login_user->id);
                         log_notification("proposal_rejected", array("proposal_id" => $proposal_id));
                     }
                 }

@@ -133,34 +133,60 @@
             }
         });
 
+        var proposalItemModalContent = $('#ajaxModalContent');
+        function selectSupplierInParent(data) {
+            var supplier = proposalItemModalContent.find('#proposal-item-supplier');
+            var id = String(data.supplier_id || data.id || '');
+            var text = data.supplier_name || data.name || data.text || '';
+            if (supplier.length !== 1 || !id || !text) {
+                return false;
+            }
+            var option = supplier.find('option[value="' + id + '"]');
+            if (!option.length) {
+                supplier.append(new Option(text, id, true, true));
+            } else {
+                option.text(text).prop('selected', true);
+            }
+            // Select2 v3 listens to the native change event. One event updates
+            // its UI and invokes the existing cost-reference workflow once.
+            supplier.val(id).trigger('change');
+            return true;
+        }
+
         var quickSupplierModal = document.getElementById('quick-supplier-modal');
         if (quickSupplierModal) {
             $(quickSupplierModal).appendTo(document.body);
             var supplierModal = new bootstrap.Modal(quickSupplierModal);
             var existingSupplier = null;
-            quickSupplierModal.addEventListener('hidden.bs.modal', function () { $('#quick-supplier-open').trigger('focus'); });
-            $('#quick-supplier-open').on('click', function () { var form=$('#quick-supplier-form'); form.find('[data-supplier-duplicate]').addClass('hide'); form.find('[data-supplier-allow-similar]').val('0'); supplierModal.show(); });
-            $('#quick-supplier-form').appForm({
+            var quickSupplierForm = $(quickSupplierModal).find('#quick-supplier-form');
+            quickSupplierModal.addEventListener('hidden.bs.modal', function () {
+                if ($('#ajaxModal').hasClass('show')) {
+                    document.body.classList.add('modal-open');
+                    proposalItemModalContent.find('#quick-supplier-open').trigger('focus');
+                }
+            });
+            proposalItemModalContent.find('#quick-supplier-open').on('click', function () { existingSupplier=null;quickSupplierForm.find('[data-supplier-duplicate]').addClass('hide'); quickSupplierForm.find('[data-supplier-allow-similar]').val('0'); supplierModal.show(); });
+            quickSupplierForm.appForm({
+                isModal: false,
                 closeModalOnSuccess: false,
                 onSuccess: function (result) {
-                    var supplier = $('#proposal-item-supplier'), id=String(result.supplier_id||result.id), text=result.supplier_name||result.text;
-                    if (!supplier.find('option[value="'+id+'"]').length) { supplier.append(new Option(text,id,false,false)); }
-                    supplier.val(id);
-                    if (supplier.data('select2')) { supplier.select2('val',id); }
-                    supplier.trigger('change');
+                    if (!selectSupplierInParent(result)) {
+                        appAlert.error('El proveedor se guardó, pero no fue posible seleccionarlo en la partida.');
+                        return;
+                    }
                     supplierModal.hide();
-                    $('#quick-supplier-form')[0].reset();
+                    quickSupplierForm[0].reset();
                 },
                 onError: function (result) {
                     if (!result.duplicate_supplier) { return; }
-                    existingSupplier=result.existing;var form=$('#quick-supplier-form'),box=form.find('[data-supplier-duplicate]').removeClass('hide');
+                    existingSupplier=result.existing;var form=quickSupplierForm,box=form.find('[data-supplier-duplicate]').removeClass('hide');
                     box.find('[data-supplier-duplicate-message]').text(result.message);box.find('[data-supplier-existing-name]').text(existingSupplier.name);
                     box.find('[data-supplier-existing-detail]').text([existingSupplier.rfc,existingSupplier.phone,existingSupplier.email].filter(Boolean).join(' · '));
                     box.find('[data-supplier-create-anyway]').toggleClass('hide',!result.allow_create);
                 }
             });
-            $('#quick-supplier-form').on('click','[data-supplier-use-existing]',function(){if(!existingSupplier){return;}var supplier=$('#proposal-item-supplier'),id=String(existingSupplier.id);if(!supplier.find('option[value="'+id+'"]').length){supplier.append(new Option(existingSupplier.name,id,false,false));}supplier.val(id);if(supplier.data('select2')){supplier.select2('val',id);}supplier.trigger('change');supplierModal.hide();});
-            $('#quick-supplier-form').on('click','[data-supplier-create-anyway]',function(){$('#quick-supplier-form').find('[data-supplier-allow-similar]').val('1');$('#quick-supplier-form').submit();});
+            quickSupplierForm.on('click','[data-supplier-use-existing]',function(){if(existingSupplier&&selectSupplierInParent(existingSupplier)){supplierModal.hide();}});
+            quickSupplierForm.on('click','[data-supplier-create-anyway]',function(){quickSupplierForm.find('[data-supplier-allow-similar]').val('1');quickSupplierForm.submit();});
             $('#ajaxModal').one('hidden.bs.modal', function () {
                 supplierModal.dispose();
                 $(quickSupplierModal).remove();
