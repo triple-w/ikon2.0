@@ -45,6 +45,20 @@ $assert($multiple === [
     'subtotal'=>'1.02','discount'=>'0.00','transferred'=>'0.15','withheld'=>'0.00','total'=>'1.17',
 ], 'Several fractional-cent lines close from their serialized values.');
 
+
+
+$allocationSubtotal = App\Services\Fiscal\FiscalDecimal::subtract($multiple['subtotal'], $multiple['discount']);
+$allocationTax = App\Services\Fiscal\FiscalDecimal::subtract($multiple['transferred'], $multiple['withheld']);
+$allocationTotal = App\Services\Fiscal\FiscalDecimal::add($allocationSubtotal, $allocationTax);
+$assert(App\Services\Fiscal\FiscalDecimal::micros($allocationTotal) === App\Services\Fiscal\FiscalDecimal::micros($multiple['total']), 'Three-line allocation equals the canonical document total exactly.');
+
+$workflowSource = file_get_contents(APPPATH . 'Services/Fiscal/FiscalDraftWorkflowService.php');
+$assert(
+    str_contains($workflowSource, 'CfdiCurrencyTotalsCalculator')
+    && str_contains($workflowSource, '$currencyLinesBySale'),
+    'Draft headers and per-sale allocations use the shared currency calculator.'
+);
+
 $discount = $totals->fromLines([[
     'subtotal'=>'100.005000','discount'=>'10.005000','transferred'=>'14.400000','withheld'=>'0',
 ]]);

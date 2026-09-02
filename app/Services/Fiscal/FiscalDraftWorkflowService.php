@@ -2,6 +2,7 @@
 declare(strict_types=1);
 namespace App\Services\Fiscal;
 
+use App\Services\Fiscal\Cfdi40\CfdiCurrencyTotalsCalculator;
 use RuntimeException;
 use Throwable;
 
@@ -170,19 +171,34 @@ final class FiscalDraftWorkflowService
             $bySale[$sid]['tax']=FiscalDecimal::add($bySale[$sid]['tax'],$concept['tax']);
             $bySale[$sid]['total']=FiscalDecimal::add($bySale[$sid]['total'],$calculated['total']);
         }unset($concept);
+        // Document headers and allocations share the exact per-concept currency equation.
+        $currencyCalculator = new CfdiCurrencyTotalsCalculator();
+        $currencyLines = [];
+        $currencyLinesBySale = [];
+        foreach ($concepts as $concept) {
+            $line = [
+                'subtotal' => (string) $concept['subtotal'],
+                'discount' => (string) $concept['discount'],
+                'transferred' => (string) ($concept['snapshot']['transferred_total'] ?? '0'),
+                'withheld' => (string) ($concept['snapshot']['withheld_total'] ?? '0'),
+            ];
+            $currencyLines[] = $line;
+            $currencyLinesBySale[(int) $concept['sale_id']][] = $line;
+        }
         $allocations = [];
-        foreach ($bySale as $saleId=>$amounts) {
+        foreach ($currencyLinesBySale as $saleId => $saleLines) {
+            $amounts = $currencyCalculator->fromLines($saleLines);
+            $allocatedSubtotal = FiscalDecimal::subtract($amounts['subtotal'], $amounts['discount']);
+            $allocatedTax = FiscalDecimal::subtract($amounts['transferred'], $amounts['withheld']);
             (new CommercialSaleTotalConsistencyService($this->db))->assertConsistent((int)$saleId,$issuerId);
             $this->allocations->validateAllocation((int)$saleId,$amounts['total'],$draftId);
-            $allocations[] = ['sale_id'=>(int)$saleId,'allocated_subtotal'=>$amounts['subtotal'],'allocated_tax'=>$amounts['tax'],'allocated_total'=>$amounts['total']];
+            $allocations[] = ['sale_id'=>(int)$saleId,'allocated_subtotal'=>$allocatedSubtotal,'allocated_tax'=>$allocatedTax,'allocated_total'=>$amounts['total']];
         }
-        $subtotal=$discount=$tax=$total='0';
-        foreach ($concepts as $concept) {
-            $subtotal=FiscalDecimal::add($subtotal,$concept['subtotal']);
-            $discount=FiscalDecimal::add($discount,$concept['discount']);
-            $tax=FiscalDecimal::add($tax,$concept['tax']);
-            $total=FiscalDecimal::add($total,$concept['total']);
-        }
+        $currencyTotals = $currencyCalculator->fromLines($currencyLines);
+        $subtotal = $currencyTotals['subtotal'];
+        $discount = $currencyTotals['discount'];
+        $tax = FiscalDecimal::subtract($currencyTotals['transferred'], $currencyTotals['withheld']);
+        $total = $currencyTotals['total'];
         try{$issueDate=(new FiscalIssueDateNormalizer())->normalizeTransport($input['issue_date']??null);}
         catch(RuntimeException$e){throw new RuntimeException(match($e->getMessage()){'FISCAL_ISSUE_DATE_REQUIRED'=>'La fecha de expedición es obligatoria.',default=>'La fecha de expedición no tiene un formato válido.'});}
         $issuer=(new FiscalIssuerResolver($this->db))->resolveById($issuerId,(int)$anchor->company_id,config('Fiscal')->environment);

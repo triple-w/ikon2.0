@@ -171,6 +171,7 @@ final class FiscalSaleAllocationService
             ));
             if (self::currencyCents($sum)!==self::currencyCents(FiscalDecimal::micros((string)$draft->total))
                 || self::currencyCents($sum)!==self::currencyCents(FiscalDecimal::micros((string)$document->total))) {
+                $this->logDocumentAllocationMismatch($draftId, $documentId, $draft, $document, $rows, $sum);
                 throw new RuntimeException('FISCAL_DOCUMENT_ALLOCATION_TOTAL_MISMATCH');
             }
             foreach ($rows as $row) {
@@ -269,6 +270,52 @@ final class FiscalSaleAllocationService
         return $sale;
     }
 
+    private function logDocumentAllocationMismatch(
+        int $draftId,
+        int $documentId,
+        object $draft,
+        object $document,
+        array $rows,
+        int $allocationMicros
+    ): void {
+        $sales = [];
+        $allocationSubtotal = $allocationTax = 0;
+        foreach ($rows as $row) {
+            $subtotal = FiscalDecimal::micros((string) $row['allocated_subtotal']);
+            $tax = FiscalDecimal::micros((string) $row['allocated_tax']);
+            $total = FiscalDecimal::micros((string) $row['allocated_total']);
+            $allocationSubtotal += $subtotal;
+            $allocationTax += $tax;
+            $sale = $this->db->table('invoices')->select('invoice_total')
+                ->where('id', (int) $row['sale_id'])->get(1)->getRow();
+            $sales[] = [
+                'sale_id' => (int) $row['sale_id'],
+                'sale_total' => (string) ($sale->invoice_total ?? '0'),
+                'allocated_subtotal' => FiscalDecimal::format($subtotal),
+                'allocated_tax' => FiscalDecimal::format($tax),
+                'allocated_total' => FiscalDecimal::format($total),
+            ];
+        }
+        $documentMicros = FiscalDecimal::micros((string) $document->total);
+        log_message('error', 'FISCAL_DOCUMENT_ALLOCATION_TOTAL_MISMATCH_DETAIL {detail}', [
+            'detail' => json_encode([
+                'draft_id' => $draftId,
+                'fiscal_document_id' => $documentId,
+                'sale_ids' => array_column($sales, 'sale_id'),
+                'draft_total' => (string) $draft->total,
+                'document_subtotal' => (string) $document->subtotal,
+                'document_discount' => (string) $document->discount,
+                'document_transferred_taxes' => (string) $document->transferred_tax_total,
+                'document_withheld_taxes' => (string) $document->withheld_tax_total,
+                'document_total' => (string) $document->total,
+                'allocation_subtotal' => FiscalDecimal::format($allocationSubtotal),
+                'allocation_tax' => FiscalDecimal::format($allocationTax),
+                'allocation_total' => FiscalDecimal::format($allocationMicros),
+                'difference' => FiscalDecimal::format($documentMicros - $allocationMicros),
+                'sales' => $sales,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        ]);
+    }
     private function fiscalStatus(
         int $active, int $cancelled, int $reserved, int $available,
         int $activeCount, int $cancelledCount, int $draftCount
