@@ -37,7 +37,7 @@
     }
     ?>
 
-    <?php if ($invoice_total_summary->tax) { ?>
+    <?php if (empty($canonical_tax_breakdown['ready']) && $invoice_total_summary->tax) { ?>
         <tr>
             <td><?php echo $invoice_total_summary->tax_name; ?></td>
             <td><?php echo to_currency($invoice_total_summary->tax, $invoice_total_summary->currency_symbol); ?></td>
@@ -55,7 +55,7 @@
     <?php if (!empty($canonical_tax_breakdown['ready'])) { ?>
         <tr><td>Total</td><td><?php echo to_currency($canonical_tax_breakdown['total'], $invoice_total_summary->currency_symbol); ?></td><?php if ($can_edit_invoices && $is_invoice_editable) { ?><td></td><?php } ?></tr>
     <?php } ?>
-    <?php if ($invoice_total_summary->tax2) { ?>
+    <?php if (empty($canonical_tax_breakdown['ready']) && $invoice_total_summary->tax2) { ?>
         <tr>
             <td><?php echo $invoice_total_summary->tax_name2; ?></td>
             <td><?php echo to_currency($invoice_total_summary->tax2, $invoice_total_summary->currency_symbol); ?></td>
@@ -64,7 +64,7 @@
             <?php } ?>
         </tr>
     <?php } ?>
-    <?php if ($invoice_total_summary->tax3) { ?>
+    <?php if (empty($canonical_tax_breakdown['ready']) && $invoice_total_summary->tax3) { ?>
         <tr>
             <td><?php echo $invoice_total_summary->tax_name3; ?></td>
             <td><?php echo to_currency($invoice_total_summary->tax3, $invoice_total_summary->currency_symbol); ?></td>

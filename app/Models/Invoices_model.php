@@ -554,16 +554,53 @@ LEFT JOIN (SELECT pa.invoice_id,SUM(pa.amount_applied) payment_received FROM $pa
 
     function get_invoice_total_meta($invoice_id) {
         $id = $this->_get_clean_value($invoice_id);
+        $consistency = new \App\Services\Fiscal\CommercialSaleTotalConsistencyService($this->db);
+        $canonical = $consistency->breakdownForEditableSale((int) $id);
+        if ($canonical) {
+            return $this->build_canonical_total_meta((int) $id, $canonical);
+        }
+        if ($consistency->hasProtectedFiscalHistory((int) $id)) {
+            // A stamped sale is immutable and is read from its persisted canonical header.
+            return $this->build_canonical_total_meta((int) $id);
+        }
 
+        // Compatibility only: incomplete or legacy, non-stamped documents retain RISE math.
         $invoices_table = $this->db->prefixTable('invoices');
         $invoice_items_table = $this->db->prefixTable('invoice_items');
-        $info = $this->get_sales_total_meta($id, $invoices_table, $invoice_items_table);
-        return $info;
+        return $this->get_sales_total_meta($id, $invoices_table, $invoice_items_table);
     }
 
+    private function build_canonical_total_meta(int $invoice_id, ?array $canonical = null) {
+        $stored = $this->db->table('invoices')
+            ->select('invoice_subtotal,discount_total,tax,tax2,tax3,invoice_total,discount_type')
+            ->where('id', $invoice_id)->get(1)->getRow();
+        if (!$stored) {
+            return null;
+        }
+        $info = new \stdClass();
+        $info->invoice_subtotal = $canonical['subtotal'] ?? $stored->invoice_subtotal;
+        $info->discount_total = $canonical['discount'] ?? $stored->discount_total;
+        $info->tax = $canonical
+            ? \App\Services\Fiscal\FiscalDecimal::subtract($canonical['transferred'], $canonical['withheld'])
+            : $stored->tax;
+        $info->tax2 = $canonical ? '0.00' : $stored->tax2;
+        $info->tax3 = $canonical ? '0.00' : $stored->tax3;
+        $info->invoice_total = $canonical['total'] ?? $stored->invoice_total;
+        $info->tax_percentage = $info->tax_percentage2 = $info->tax_percentage3 = null;
+        $info->tax_name = $info->tax_name2 = $info->tax_name3 = '';
+        $info->discount_type = $stored->discount_type;
+        return $info;
+    }
     function update_invoice_total_meta($invoice_id) {
-        $info = $this->get_invoice_total_meta($invoice_id);
+        $canonical = new \App\Services\Fiscal\CommercialSaleTotalConsistencyService($this->db);
+        if ($canonical->synchronizeIfCanonical((int) $invoice_id)) {
+            return (int) $invoice_id;
+        }
 
+        $info = $this->get_invoice_total_meta($invoice_id);
+        if (!$info) {
+            return false;
+        }
         $data = array(
             "invoice_total" => $info->invoice_total,
             "invoice_subtotal" => $info->invoice_subtotal,
@@ -572,7 +609,6 @@ LEFT JOIN (SELECT pa.invoice_id,SUM(pa.amount_applied) payment_received FROM $pa
             "tax2" => $info->tax2,
             "tax3" => $info->tax3
         );
-
         return $this->ci_save($data, $invoice_id);
     }
 

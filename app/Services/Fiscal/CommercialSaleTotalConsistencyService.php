@@ -5,7 +5,7 @@ namespace App\Services\Fiscal;
 
 use RuntimeException;
 
-/** Keeps newly-authored commercial sales aligned with their canonical fiscal lines. */
+/** Keeps editable, unstamped sales aligned with the canonical commercial/fiscal result. */
 final class CommercialSaleTotalConsistencyService
 {
     public const MISMATCH = 'FISCAL_SALE_TOTAL_MISMATCH';
@@ -21,29 +21,42 @@ final class CommercialSaleTotalConsistencyService
         return $breakdown;
     }
 
-    /** Legacy NULL origins and fiscally allocated sales remain untouched. */
+    /** Returns canonical totals only for editable sales whose fiscal history is not stamped. */
+    public function breakdownForEditableSale(int $saleId, ?int $issuerId = null): ?array
+    {
+        $sale = $this->sale($saleId);
+        if ((string) ($sale->type ?? 'invoice') !== 'invoice') return null;
+        if (!in_array((string) ($sale->commercial_status ?? 'open'), ['draft', 'open'], true)) return null;
+        if (in_array((string) ($sale->status ?? ''), ['cancelled', 'credited'], true)) return null;
+        if ($this->hasProtectedFiscalHistory($saleId)) return null;
+        $items = $this->db->table('invoice_items')->select('id')->where(['invoice_id' => $saleId, 'deleted' => 0])->get()->getResult();
+        if (!$items) return null;
+        $breakdown = (new CommercialTaxBreakdownService($this->db))->forSale($saleId, $issuerId);
+        return $breakdown['ready'] ? $breakdown : null;
+    }
+
     public function synchronizeIfCanonical(int $saleId, ?int $issuerId = null): bool
     {
-        $this->sale($saleId);
-        $items = $this->db->table('invoice_items')->select('id,price_origin')->where(['invoice_id' => $saleId, 'deleted' => 0])->get()->getResult();
-        if (!$items) return false;
-        foreach ($items as $item) if (!in_array((string) $item->price_origin, ['manual', 'cost_margin'], true)) return false;
-        if ($this->hasFiscalAllocation($saleId)) return false;
-        $breakdown = (new CommercialTaxBreakdownService($this->db))->forSale($saleId, $issuerId);
-        if (!$breakdown['ready']) return false;
+        $breakdown = $this->breakdownForEditableSale($saleId, $issuerId);
+        if (!$breakdown) return false;
         $updated = $this->db->table('invoices')->where(['id' => $saleId, 'deleted' => 0])->update([
-            'invoice_subtotal' => $breakdown['subtotal'], 'discount_total' => $breakdown['discount'],
+            'invoice_subtotal' => $breakdown['subtotal'],
+            'discount_total' => $breakdown['discount'],
             'tax' => FiscalDecimal::subtract((string) $breakdown['transferred'], (string) $breakdown['withheld']),
-            'tax2' => '0.000000', 'tax3' => '0.000000', 'invoice_total' => $breakdown['total'],
+            'tax2' => '0.000000',
+            'tax3' => '0.000000',
+            'invoice_total' => $breakdown['total'],
         ]);
         if (!$updated) throw new RuntimeException('No fue posible sincronizar los totales comerciales y fiscales.');
         return true;
     }
 
-    private function hasFiscalAllocation(int $saleId): bool
+    public function hasProtectedFiscalHistory(int $saleId): bool
     {
-        if ($this->db->table('fiscal_document_sales')->where('sale_id', $saleId)->where('allocation_status !=', 'cancelled')->countAllResults()) return true;
-        return (bool) $this->db->table('fiscal_draft_sales')->where(['sale_id' => $saleId, 'allocation_status' => 'reserved'])->countAllResults();
+        return (bool) $this->db->table('fiscal_document_sales a')
+            ->join('fiscal_documents d', 'd.id=a.fiscal_document_id')
+            ->where(['a.sale_id' => $saleId, 'a.allocation_status' => 'active', 'd.status' => 'stamped'])
+            ->countAllResults();
     }
 
     private function sale(int $saleId): object

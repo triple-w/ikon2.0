@@ -38,6 +38,13 @@ $productionCase = $canonical->calculate([
  ['sale_id'=>8,'subtotal'=>'119729.265000','discount'=>'0','snapshot'=>['transferred_total'=>'19156.682500','withheld_total'=>'0']],
 ]);
 $assert($productionCase['totals']===['subtotal'=>'239458.53','discount'=>'0.00','transferred'=>'38313.37','withheld'=>'0.00','total'=>'277771.90']&&$productionCase['allocations'][0]['allocated_total']==='277771.90','Production rounding case is identical in review, draft, allocation and document.');
+$invoice15Case = $canonical->calculate([
+ ['sale_id'=>15,'subtotal'=>'16363.500000','discount'=>'0','snapshot'=>['transferred_total'=>'2618.160000','withheld_total'=>'0']],
+ ['sale_id'=>15,'subtotal'=>'49230.769240','discount'=>'0','snapshot'=>['transferred_total'=>'7876.923078','withheld_total'=>'0']],
+ ['sale_id'=>15,'subtotal'=>'74285.714320','discount'=>'0','snapshot'=>['transferred_total'=>'11885.714291','withheld_total'=>'0']],
+ ['sale_id'=>15,'subtotal'=>'28619.999976','discount'=>'0','snapshot'=>['transferred_total'=>'4579.199996','withheld_total'=>'0']],
+]);
+$assert($invoice15Case['totals']===['subtotal'=>'168499.98','discount'=>'0.00','transferred'=>'26960.00','withheld'=>'0.00','total'=>'195459.98']&&$invoice15Case['allocations'][0]['allocated_total']==='195459.98','Four-line production fixture has one result for sale, draft, document, allocation and XML input.');
 
 $standard = $totals->fromLines([[
     'subtotal' => '14286.000000',
