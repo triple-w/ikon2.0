@@ -37,14 +37,14 @@ $productionCase = $canonical->calculate([
  ['sale_id'=>8,'subtotal'=>'119729.265000','discount'=>'0','snapshot'=>['transferred_total'=>'19156.682500','withheld_total'=>'0']],
  ['sale_id'=>8,'subtotal'=>'119729.265000','discount'=>'0','snapshot'=>['transferred_total'=>'19156.682500','withheld_total'=>'0']],
 ]);
-$assert($productionCase['totals']===['subtotal'=>'239458.53','discount'=>'0.00','transferred'=>'38313.37','withheld'=>'0.00','total'=>'277771.90']&&$productionCase['allocations'][0]['allocated_total']==='277771.90','Production rounding case is identical in review, draft, allocation and document.');
+$assert($productionCase['totals']===['subtotal'=>'239458.54','discount'=>'0.00','transferred'=>'38313.36','withheld'=>'0.00','total'=>'277771.90']&&$productionCase['allocations'][0]['allocated_total']==='277771.90','Production rounding case is identical in review, draft, allocation and document.');
 $invoice15Case = $canonical->calculate([
  ['sale_id'=>15,'subtotal'=>'16363.500000','discount'=>'0','snapshot'=>['transferred_total'=>'2618.160000','withheld_total'=>'0']],
  ['sale_id'=>15,'subtotal'=>'49230.769240','discount'=>'0','snapshot'=>['transferred_total'=>'7876.923078','withheld_total'=>'0']],
  ['sale_id'=>15,'subtotal'=>'74285.714320','discount'=>'0','snapshot'=>['transferred_total'=>'11885.714291','withheld_total'=>'0']],
  ['sale_id'=>15,'subtotal'=>'28619.999976','discount'=>'0','snapshot'=>['transferred_total'=>'4579.199996','withheld_total'=>'0']],
 ]);
-$assert($invoice15Case['totals']===['subtotal'=>'168499.98','discount'=>'0.00','transferred'=>'26960.00','withheld'=>'0.00','total'=>'195459.98']&&$invoice15Case['allocations'][0]['allocated_total']==='195459.98','Four-line production fixture has one result for sale, draft, document, allocation and XML input.');
+$assert($invoice15Case['totals']===['subtotal'=>'168499.98','discount'=>'0.00','transferred'=>'26959.99','withheld'=>'0.00','total'=>'195459.97']&&$invoice15Case['allocations'][0]['allocated_total']==='195459.97','Four-line production fixture has one result for sale, draft, document, allocation and XML input.');
 
 $standard = $totals->fromLines([[
     'subtotal' => '14286.000000',
@@ -60,7 +60,7 @@ $multiple = $totals->fromLines([
     ['subtotal'=>'0.335000','discount'=>'0','transferred'=>'0.053600','withheld'=>'0'],
 ]);
 $assert($multiple === [
-    'subtotal'=>'1.01','discount'=>'0.00','transferred'=>'0.16','withheld'=>'0.00','total'=>'1.17',
+    'subtotal'=>'1.02','discount'=>'0.00','transferred'=>'0.15','withheld'=>'0.00','total'=>'1.17',
 ], 'Several fractional-cent lines close from their serialized values.');
 
 
@@ -72,7 +72,7 @@ $assert(App\Services\Fiscal\FiscalDecimal::micros($allocationTotal) === App\Serv
 $manyLines = [];
 for ($i=0; $i<100; $i++) $manyLines[]=['sale_id'=>20,'subtotal'=>'0.335000','discount'=>'0','snapshot'=>['transferred_total'=>'0.053600','withheld_total'=>'0']];
 $many = $canonical->calculate($manyLines);
-$assert($many['totals']['total']==='38.86' && $many['allocations'][0]['allocated_total']==='38.86', 'Many fractional products cannot accumulate an allocation remainder.');
+$assert($many['totals']['total']==='39.00' && $many['allocations'][0]['allocated_total']==='39.00', 'Many fractional products cannot accumulate an allocation remainder.');
 
 $flowSource=file_get_contents(APPPATH.'Services/Fiscal/FiscalInvoiceFlowService.php');
 $closePosition=strpos($flowSource,'posterior a timbrado CFDI');
@@ -120,6 +120,37 @@ $assert($semantic['is_valid'], 'Aquashoes passes semantic validation with canoni
 $xml=(new CfdiXmlBuilder())->build($document);
 $assert(str_contains($xml,'SubTotal="4545.45"')&&str_contains($xml,'TotalImpuestosTrasladados="727.27"')&&str_contains($xml,'Total="5272.72"'),'Aquashoes XML serializes the same canonical equation.');
 
+$fixtureAmounts=['18939.39','49292.31','74285.71','28619.76'];
+$fixtureTaxes=['3030.30','7886.77','11885.71','4579.16'];
+$fixtureLines=[];$fixtureConcepts=[];
+foreach($fixtureAmounts as $i=>$amount){
+    $fixtureLines[]=['subtotal'=>$amount,'discount'=>'0','transferred'=>$fixtureTaxes[$i],'withheld'=>'0'];
+    $fixtureConcepts[]=new CfdiConcept([
+        'product_service_code'=>'53121600','quantity'=>'1.000000','unit_code'=>'H87',
+        'description'=>'Producto '.($i+1),'unit_value'=>$amount,'gross_amount'=>$amount,
+        'discount'=>'0.00','tax_object_code'=>'02',
+    ],[new CfdiConceptTax('002','transferred','Tasa','0.160000',$amount,$fixtureTaxes[$i])]);
+}
+$fixtureTotals=$totals->fromLines($fixtureLines);
+$fixtureDocument=new CfdiDocument([
+    'status'=>'locked','document_type'=>'income','series'=>'T','folio'=>'9',
+    'issue_date'=>'2026-09-02 10:00:00','currency_code'=>'MXN','payment_form_code'=>'01',
+    'payment_method_code'=>'PUE','export_code'=>'01','expedition_postal_code'=>'06000',
+    'subtotal'=>$fixtureTotals['subtotal'],'discount'=>$fixtureTotals['discount'],
+    'transferred_tax_total'=>$fixtureTotals['transferred'],'withheld_tax_total'=>$fixtureTotals['withheld'],
+    'total'=>$fixtureTotals['total'],
+],$partyIssuer,$partyReceiver,$fixtureConcepts,[new CfdiTaxSummary('002','transferred','Tasa','0.160000','171137.17','27381.94')]);
+$fixtureXml=(new CfdiXmlBuilder())->build($fixtureDocument);
+$dom=new DOMDocument();$dom->loadXML($fixtureXml);$xpath=new DOMXPath($dom);$xpath->registerNamespace('cfdi','http://www.sat.gob.mx/cfd/4');
+$sumAttribute=static function(DOMNodeList $nodes,string $attribute):string{$sum='0';foreach($nodes as $node)$sum=App\Services\Fiscal\FiscalDecimal::add($sum,(string)$node->attributes->getNamedItem($attribute)->nodeValue);return(new App\Services\Fiscal\FiscalDecimalCalculator())->money($sum);};
+$root=$xpath->query('/cfdi:Comprobante')->item(0);
+$conceptSum=$sumAttribute($xpath->query('//cfdi:Concepto'),'Importe');
+$conceptTaxSum=$sumAttribute($xpath->query('//cfdi:Concepto/cfdi:Impuestos/cfdi:Traslados/cfdi:Traslado'),'Importe');
+$globalTaxSum=$sumAttribute($xpath->query('/cfdi:Comprobante/cfdi:Impuestos/cfdi:Traslados/cfdi:Traslado'),'Importe');
+$xmlExpected=(new App\Services\Fiscal\FiscalDecimalCalculator())->money(App\Services\Fiscal\FiscalDecimal::add((string)$root->getAttribute('SubTotal'),$globalTaxSum));
+$assert($fixtureTotals===['subtotal'=>'171137.17','discount'=>'0.00','transferred'=>'27381.94','withheld'=>'0.00','total'=>'198519.11'],'Exact production PreXML fixture uses serialized operands as canonical totals.');
+$assert($conceptSum===(string)$root->getAttribute('SubTotal')&&$conceptTaxSum===$globalTaxSum&&$globalTaxSum===(string)$xpath->query('/cfdi:Comprobante/cfdi:Impuestos')->item(0)->attributes->getNamedItem('TotalImpuestosTrasladados')->nodeValue&&$xmlExpected===(string)$root->getAttribute('Total'),'Final PreXML is mathematically self-consistent when parsed back from XML.');
+$assert((new CfdiSemanticValidator())->validate($fixtureDocument)['is_valid'],'Semantic validator consumes the same serialized monetary operands.');
 $inclusive = $totals->fromAggregates('86.21','0','13.79','0');
 $exclusive = $totals->fromAggregates('100.00','0','16.00','0');
 $assert($inclusive['total']==='100.00', 'Resolved tax-inclusive components close exactly.');

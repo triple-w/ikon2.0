@@ -118,6 +118,7 @@ final class FiscalDocumentFromDraftSnapshotService
 
     private function insertItems(int $documentId, array $snapshot, string $now): void
     {
+        $money = new FiscalDecimalCalculator();
         foreach ($snapshot['items'] as $index => $item) {
             $s = $item['snapshot'];
             $this->db->table('fiscal_document_items')->insert([
@@ -131,10 +132,10 @@ final class FiscalDocumentFromDraftSnapshotService
                 // CFDI Importe must equal Cantidad × ValorUnitario. For tax-inclusive
                 // sales the commercial rate is gross; the fiscal snapshot subtotal is net.
                 'unit_value' => FiscalDecimal::divide((string)$item['subtotal'], (string)$item['quantity']),
-                'gross_amount' => $item['subtotal'],
-                'discount' => $item['discount'], 'tax_object_code' => $s['object_tax'] ?? $s['tax_object_code'],
-                'taxable_base' => $s['taxable_base'], 'transferred_tax_total' => $s['transferred_total'],
-                'withheld_tax_total' => $s['withheld_total'], 'line_total' => $item['total'], 'created_at' => $now,
+                'gross_amount' => $money->money((string)$item['subtotal']),
+                'discount' => $money->money((string)$item['discount']), 'tax_object_code' => $s['object_tax'] ?? $s['tax_object_code'],
+                'taxable_base' => $money->money((string)$s['taxable_base']), 'transferred_tax_total' => $money->money((string)$s['transferred_total']),
+                'withheld_tax_total' => $money->money((string)$s['withheld_total']), 'line_total' => $money->money((string)$item['total']), 'created_at' => $now,
             ]);
             $documentItemId = (int)$this->db->insertID();
             foreach ($item['taxes'] as $order => $tax) {
@@ -143,7 +144,7 @@ final class FiscalDocumentFromDraftSnapshotService
                     'fiscal_document_item_id' => $documentItemId, 'administrative_tax_id' => null,
                     'tax_code' => $tax['tax_code'], 'tax_type' => $documentTaxType,
                     'factor_type' => $tax['factor_type'], 'rate_or_quota' => $tax['rate_or_quota'],
-                    'taxable_base' => $tax['tax_base'], 'amount' => $tax['tax_amount'],
+                    'taxable_base' => $money->money((string)$tax['tax_base']), 'amount' => $money->money((string)$tax['tax_amount']),
                     'sort_order' => $order, 'created_at' => $now,
                 ]);
             }
@@ -193,12 +194,12 @@ final class FiscalDocumentFromDraftSnapshotService
         if($this->db->table('fiscal_stamp_attempts')->where('fiscal_document_id',$documentId)->countAllResults())throw new RuntimeException('Un documento con intento PAC no puede reconciliarse localmente.');
         $items=$this->db->table('fiscal_document_items')->where('fiscal_document_id',$documentId)->get()->getResultArray();
         if(!$items)throw new RuntimeException('El documento fiscal no contiene conceptos.');
-        $subtotal=$discount='0.000000';
-        foreach($items as$item){$subtotal=FiscalDecimal::add($subtotal,(string)$item['gross_amount']);$discount=FiscalDecimal::add($discount,(string)$item['discount']);}
-        $taxes=$this->db->table('fiscal_document_item_taxes t')->select('t.tax_type,t.amount')->join('fiscal_document_items i','i.id=t.fiscal_document_item_id')->where('i.fiscal_document_id',$documentId)->get()->getResultArray();
-        $transferred=$withheld='0.000000';
-        foreach($taxes as$tax){if($tax['tax_type']==='withheld')$withheld=FiscalDecimal::add($withheld,(string)$tax['amount']);else$transferred=FiscalDecimal::add($transferred,(string)$tax['amount']);}
-        $currency=(new \App\Services\Fiscal\Cfdi40\CfdiCurrencyTotalsCalculator())->fromAggregates($subtotal,$discount,$transferred,$withheld);
+        $taxes=$this->db->table('fiscal_document_item_taxes t')->select('t.fiscal_document_item_id,t.tax_type,t.amount')->join('fiscal_document_items i','i.id=t.fiscal_document_item_id')->where('i.fiscal_document_id',$documentId)->get()->getResultArray();
+        $taxByItem=[];
+        foreach($taxes as$tax){$itemId=(int)$tax['fiscal_document_item_id'];$key=$tax['tax_type']==='withheld'?'withheld':'transferred';$taxByItem[$itemId][$key]=FiscalDecimal::add($taxByItem[$itemId][$key]??'0',(string)$tax['amount']);}
+        $lines=[];
+        foreach($items as$item)$lines[]=['subtotal'=>(string)$item['gross_amount'],'discount'=>(string)$item['discount'],'transferred'=>$taxByItem[(int)$item['id']]['transferred']??'0','withheld'=>$taxByItem[(int)$item['id']]['withheld']??'0'];
+        $currency=(new \App\Services\Fiscal\Cfdi40\CfdiCurrencyTotalsCalculator())->fromLines($lines);
         $this->db->transBegin();
         try{
             $this->db->table('fiscal_documents')->where('id',$documentId)->update(['subtotal'=>$currency['subtotal'],'discount'=>$currency['discount'],'transferred_tax_total'=>$currency['transferred'],'withheld_tax_total'=>$currency['withheld'],'total'=>$currency['total'],'updated_at'=>get_current_utc_time()]);
