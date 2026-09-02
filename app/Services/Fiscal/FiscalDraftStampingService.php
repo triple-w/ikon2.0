@@ -55,6 +55,7 @@ final class FiscalDraftStampingService
         if ($acquired !== 1) throw new RuntimeException('El borrador ya está siendo procesado.');
         $documentId = null;
         try {
+            (new FiscalPreparedDocumentLifecycleService($this->db))->invalidateIfSnapshotChanged($draftId, $userId);
             $prepared=$this->db->table('fiscal_drafts')->select('fiscal_document_id')->where('id',$draftId)->get(1)->getRow();
             $documentId=(int)($prepared->fiscal_document_id??0);
             $saleFlow ? $this->preflight->requireReadyForSaleFlow($draftId, $documentId>0) : $this->preflight->requireReady($draftId, $documentId>0);

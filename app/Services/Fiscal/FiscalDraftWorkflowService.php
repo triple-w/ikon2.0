@@ -98,6 +98,7 @@ final class FiscalDraftWorkflowService
             if($candidate){$candidateSales=array_map('intval',array_column($this->db->table('fiscal_draft_sales')->select('sale_id')->where('fiscal_draft_id',$candidate->id)->where('allocation_status','reserved')->get()->getResultArray(),'sale_id'));sort($candidateSales);$requested=$saleIds;sort($requested);if($candidateSales===$requested)$draftId=(int)$candidate->id;}
         }
         $existing = $draftId ? $this->draft($draftId) : null;
+        if ($existing) (new FiscalPreparedDocumentLifecycleService($this->db))->assertDraftEditable($draftId);
         if ($existing && !in_array($existing->status, ['draft','ready','error'], true)) {
             throw new RuntimeException('El estado del borrador no permite ediciÃ³n.');
         }
@@ -244,6 +245,7 @@ final class FiscalDraftWorkflowService
                 ]);
                 $this->audit($id,(int)$concept['sale_id'],$userId,$draftId?'draft_tax_snapshot_updated':'draft_tax_snapshot_created',['item_id'=>$draftItemId,'tax_count'=>count($itemTaxes),'snapshot_version'=>2]);
             }
+            if ($draftId) (new FiscalPreparedDocumentLifecycleService($this->db))->invalidateIfSnapshotChanged($id,$userId);
             $this->audit($id,null,$userId,$event,['sales'=>$saleIds,'total'=>$total,'status'=>$draftData['status']]);
             foreach ($allocations as $allocation) $this->audit($id,$allocation['sale_id'],$userId,$draftId?'allocation_changed':'allocation_reserved',['total'=>$allocation['allocated_total']]);
             if ($draftData['status']==='ready') $this->audit($id,null,$userId,'draft_marked_ready',['validation'=>'complete']);

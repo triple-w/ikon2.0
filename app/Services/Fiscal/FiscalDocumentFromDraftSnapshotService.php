@@ -30,7 +30,7 @@ final class FiscalDocumentFromDraftSnapshotService
             if (!$series) throw new RuntimeException('La serie fiscal del snapshot ya no está disponible.');
             $folio = max((int)$series['initial_folio'], (int)$series['current_folio'] + 1);
             $now = get_current_utc_time();
-            $sourceHash = hash('sha256', json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $sourceHash = (new FiscalDraftSnapshotHashService())->hash($snapshot);
             $firstSale = (int)$snapshot['allocations'][0]['sale_id'];
             $currencyTotals=$this->currencyTotals($snapshot);
             $document = [
