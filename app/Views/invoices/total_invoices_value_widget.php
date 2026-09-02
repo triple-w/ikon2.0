@@ -6,7 +6,8 @@ $lang = "";
 $link = "";
 
 if ($type == "invoices") {
-    $lang = app_lang("total_invoiced");
+    // This widget sums administrative sales (invoices), not stamped fiscal_documents.
+    $lang = "Total vendido";
     $card = "bg-primary";
     $icon = "file-text";
     $value = to_currency($invoices_info->invoices_total);
