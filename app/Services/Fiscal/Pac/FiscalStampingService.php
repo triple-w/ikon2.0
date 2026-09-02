@@ -285,13 +285,15 @@ final class FiscalStampingService
             }
             $this->db->transCommit();
 
+            $commercialReconciliationPending=false;
             try {
                 ($this->stampAccounts ??= new FiscalStampAccountService($this->db))
                     ->consumeReservation((int)$attempt->id,$stampId,$userId);
             } catch (Throwable $commercialError) {
-                $this->db->table('fiscal_stamp_attempts')->where('id',$attempt->id)->update(['status'=>'reconciliation_required','requires_reconciliation'=>1,'error_category'=>'commercial_consumption','updated_at'=>get_current_utc_time()]);
-                $this->db->table('fiscal_documents')->where('id',$documentId)->update(['status'=>'stamp_status_unknown','stamp_updated_at'=>get_current_utc_time()]);
-                throw new RuntimeException('El timbre fiscal fue persistido, pero su consumo comercial requiere conciliación.',0,$commercialError);
+                $commercialReconciliationPending=true;
+                $this->db->table('fiscal_stamp_attempts')->where('id',$attempt->id)->update(['status'=>'success_local_reconciliation_pending','requires_reconciliation'=>1,'error_category'=>'commercial_consumption','updated_at'=>get_current_utc_time()]);
+                $this->db->table('fiscal_documents')->where('id',$documentId)->update(['status'=>'stamped_local_reconciliation_pending','stamp_updated_at'=>get_current_utc_time()]);
+                log_message('error','CFDI stamped; local stamp consumption pending for document {document}: {type}',['document'=>$documentId,'type'=>get_class($commercialError)]);
             }
 
             $pdfResult = $this->persistOptionalPacPdf(
@@ -302,7 +304,7 @@ final class FiscalStampingService
                 $providerConfig,
                 $userId
             );
-            $operationalStatus = match ($pdfResult['status']) {
+            $operationalStatus = $commercialReconciliationPending ? 'stamped_local_reconciliation_pending' : match ($pdfResult['status']) {
                 'valid' => 'stamped',
                 'pending' => 'stamped_pdf_pending',
                 default => 'stamped_pdf_error',
@@ -312,17 +314,48 @@ final class FiscalStampingService
                 'stamp_updated_at' => get_current_utc_time(),
             ]);
 
+            $resultStage = $commercialReconciliationPending ? 'local_reconciliation' : ($operationalStatus === 'stamped' ? 'completed' : 'pdf');
+            $resultMessage = $commercialReconciliationPending
+                ? 'CFDI timbrado; conciliacion administrativa local pendiente.'
+                : ($operationalStatus === 'stamped' ? $response->message : ($pdfResult['status'] === 'pending' ? 'CFDI timbrado; PDF pendiente.' : 'CFDI timbrado; PDF invalido.'));
             return new FiscalStampingResult(
-                $operationalStatus === 'stamped', $operationalStatus, $documentId, (int) $attempt->id,
-                $operationalStatus === 'stamped' ? 'completed' : 'pdf', $response->code,
-                $operationalStatus === 'stamped' ? $response->message : ($pdfResult['status'] === 'pending' ? 'CFDI timbrado; PDF pendiente.' : 'CFDI timbrado; PDF inválido.'),
+                true, $operationalStatus, $documentId, (int) $attempt->id,
+                $resultStage, $response->code, $resultMessage,
                 $response->httpStatus, $validated['uuid'], false, false,
-                $operationalStatus === 'stamped' ? null : 'Recuperar PDF',
+                $commercialReconciliationPending ? 'Completar conciliacion local' : ($operationalStatus === 'stamped' ? null : 'Recuperar PDF'),
                 true, $pdfResult['status'] === 'valid',
-                $operationalStatus !== 'stamped'
+                !$commercialReconciliationPending && $operationalStatus !== 'stamped'
             );
         } catch (Throwable $e) {
             $this->db->transRollback();
+            $persistedStamp = $this->db->table('fiscal_document_stamps')
+                ->where('fiscal_document_id', $documentId)->get(1)->getRow();
+            if ($persistedStamp && trim((string) ($persistedStamp->uuid ?? '')) !== '') {
+                $this->db->table('fiscal_stamp_attempts')->where('id', $attempt->id)->update([
+                    'status' => 'success_local_reconciliation_pending',
+                    'error_category' => 'post_stamp_local_failure',
+                    'requires_reconciliation' => 1,
+                    'retryable' => 0,
+                    'updated_at' => get_current_utc_time(),
+                ]);
+                $this->db->table('fiscal_documents')->where('id', $documentId)->update([
+                    'status' => 'stamped_local_reconciliation_pending',
+                    'stamp_updated_at' => get_current_utc_time(),
+                ]);
+                log_message('error', 'CFDI_POST_STAMP_PERSISTENCE_FAILURE document {document}: {type}', [
+                    'document' => $documentId,
+                    'type' => get_class($e),
+                ]);
+                return new FiscalStampingResult(
+                    true, 'stamped_local_reconciliation_pending', $documentId, (int) $attempt->id,
+                    'local_reconciliation', null,
+                    'CFDI timbrado; existe una actualizacion local pendiente.',
+                    null, (string) $persistedStamp->uuid, false, false,
+                    'Completar conciliacion local', true,
+                    (string) ($persistedStamp->pdf_status ?? '') === 'valid',
+                    (string) ($persistedStamp->pdf_status ?? '') !== 'valid'
+                );
+            }
             $this->db->table('fiscal_stamp_attempts')->where('id', $attempt->id)->update([
                 'status' => 'reconciliation_required',
                 'error_category' => 'persistence_error',
@@ -334,10 +367,9 @@ final class FiscalStampingService
                 'status' => 'stamp_status_unknown',
                 'stamp_updated_at' => get_current_utc_time(),
             ]);
-            throw new RuntimeException('La respuesta fiscal requiere conciliación por un error de persistencia.');
+            throw new RuntimeException('La respuesta fiscal requiere conciliacion por un error de persistencia.');
         }
     }
-
     private function prepare(
         int $documentId,
         int $userId,

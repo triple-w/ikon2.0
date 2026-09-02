@@ -1001,6 +1001,10 @@ class Invoices extends Security_Controller {
         if (!$fiscal_only&&!$this->is_invoice_editable($invoice_id)) {
             app_redirect("forbidden");
         }
+        $stampedEditDecision = (new \App\Services\Sales\SaleLifecycleService())->canEdit((int) $invoice_id, (int) $this->login_user->id, true);
+        if (!$stampedEditDecision['allowed'] && $stampedEditDecision['code'] === 'SALE_HAS_STAMPED_CFDI') {
+            echo json_encode(['success'=>false, 'message'=>$stampedEditDecision['message']]); return;
+        }
         if (!$fiscal_only&&!(new \App\Services\Sales\SaleLifecycleService())->canEdit((int)$invoice_id, (int)$this->login_user->id, true)['allowed']) {
             echo json_encode(["success"=>false,"message"=>"La venta está cerrada para cambios de partidas."]); return;
         }
@@ -1044,6 +1048,10 @@ class Invoices extends Security_Controller {
 
         if (!$fiscal_only&&!$this->is_invoice_editable($invoice_id)) {
             app_redirect("forbidden");
+        }
+        $stampedEditDecision = (new \App\Services\Sales\SaleLifecycleService())->canEdit((int) $invoice_id, (int) $this->login_user->id, true);
+        if (!$stampedEditDecision['allowed'] && $stampedEditDecision['code'] === 'SALE_HAS_STAMPED_CFDI') {
+            echo json_encode(['success'=>false, 'message'=>$stampedEditDecision['message']]); return;
         }
         if (!$fiscal_only&&!(new \App\Services\Sales\SaleLifecycleService())->canEdit((int)$invoice_id, (int)$this->login_user->id, true)['allowed']) {
             echo json_encode(["success"=>false,"message"=>"La venta está cerrada para cambios de partidas."]); return;
@@ -1756,6 +1764,8 @@ class Invoices extends Security_Controller {
         ));
 
         $invoice_id = $this->request->getPost('invoice_id');
+        $editDecision = (new \App\Services\Sales\SaleLifecycleService())->canEdit((int) $invoice_id, (int) $this->login_user->id, true);
+        if (!$editDecision['allowed']) { echo json_encode(['success'=>false, 'message'=>$editDecision['message']]); return; }
 
         $discount_type = $this->request->getPost('discount_type');
         $discount_amount_type = $this->request->getPost('discount_amount_type');
@@ -2070,6 +2080,8 @@ class Invoices extends Security_Controller {
         }
 
         validate_numeric_value($id);
+        $editDecision = (new \App\Services\Sales\SaleLifecycleService())->canEdit((int) $id, (int) $this->login_user->id, true);
+        if (!$editDecision['allowed']) { echo json_encode(['success'=>false, 'message'=>$editDecision['message']]); return; }
 
         if (!$this->can_edit_invoices($id)) {
             app_redirect("forbidden");

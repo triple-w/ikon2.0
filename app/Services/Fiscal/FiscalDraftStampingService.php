@@ -7,6 +7,7 @@ use App\Services\Fiscal\Cfdi40\CfdiPreXmlArtifactService;
 use App\Services\Fiscal\Cfdi40\CfdiSigningService;
 use App\Services\Fiscal\Pac\FiscalStampingService as PacStampingService;
 use App\Services\Fiscal\Pdf\FiscalPacPdfGenerationService;
+use App\Services\Sales\SaleLifecycleService;
 use RuntimeException;
 use Throwable;
 
@@ -58,9 +59,15 @@ final class FiscalDraftStampingService
             (new FiscalPreparedDocumentLifecycleService($this->db))->invalidateIfSnapshotChanged($draftId, $userId);
             $prepared=$this->db->table('fiscal_drafts')->select('fiscal_document_id')->where('id',$draftId)->get(1)->getRow();
             $documentId=(int)($prepared->fiscal_document_id??0);
+            if ($documentId>0) {
+                $existingStamp=$this->db->table('fiscal_document_stamps')->where('fiscal_document_id',$documentId)->get(1)->getRow();
+                if ($existingStamp && trim((string)$existingStamp->uuid)!=='') return $this->completeStampedLocally($draftId,$documentId,$userId,$existingStamp);
+            }
             $saleFlow ? $this->preflight->requireReadyForSaleFlow($draftId, $documentId>0) : $this->preflight->requireReady($draftId, $documentId>0);
             if($documentId===0)$documentId = $this->materializer->materialize($draftId, $userId, $saleFlow);
             else if(!$this->db->table('fiscal_stamp_attempts')->where('fiscal_document_id',$documentId)->countAllResults())$this->materializer->reconcileLocalDocumentCurrencyTotals($documentId);
+            // Exact final gate before signing, stamp reservation, and PAC transport.
+            $this->allocations->validateDraftDocumentConsistency($draftId, $documentId);
             $signature=$this->db->table('fiscal_document_signatures')->where([
                 'fiscal_document_id'=>$documentId,'signature_verified'=>1,'xsd_status'=>'valid',
             ])->orderBy('id','DESC')->get(1)->getRow();
@@ -78,44 +85,13 @@ final class FiscalDraftStampingService
             }
             $result = $this->stamping->stamp($documentId, $userId, true);
             if ($result->xmlAvailable && $result->uuid) {
-                $this->allocations->convertDraftAllocationsToDocument($draftId, $documentId, $userId);
-                $this->db->table('fiscal_drafts')->where('id', $draftId)->update([
-                    'fiscal_document_id' => $documentId, 'status' => 'stamped',
-                    'updated_by' => $userId, 'updated_at' => get_current_utc_time(),
-                ]);
-                $this->audit($draftId, $userId, 'draft_stamped', [
-                    'document_id' => $documentId, 'attempt_id' => $result->attemptId,
-                    'pdf_available' => $result->pdfAvailable,
-                ]);
-                if (!$result->pdfAvailable && config('FiscalPdfProvider')->enabled) {
-                    try {
-                        $pdf = ($this->pdfGeneration ?? new FiscalPacPdfGenerationService($this->db))
-                            ->generate($documentId, $userId);
-                        $this->audit($draftId, $userId, 'pac_pdf_requested', [
-                            'document_id' => $documentId,
-                            'success' => $pdf->success,
-                            'pdf_available' => $pdf->pdfAvailable,
-                        ]);
-                    } catch (Throwable $pdfError) {
-                        log_message('warning', 'PAC PDF generation failed after draft stamping document {document}: {type}', [
-                            'document' => $documentId,
-                            'type' => get_class($pdfError),
-                        ]);
-                    }
-                }
-            } elseif ($result->requiresReconciliation) {
-                $this->setDraftState($draftId, 'blocked', $userId);
-            } else {
-                $this->setDraftState($draftId, 'ready', $userId);
+                $stamp=$this->db->table('fiscal_document_stamps')->where('fiscal_document_id',$documentId)->get(1)->getRow();
+                if(!$stamp||trim((string)$stamp->uuid)==='')throw new RuntimeException('PAC_SUCCESS_WAS_NOT_PERSISTED');
+                return $this->completeStampedLocally($draftId,$documentId,$userId,$stamp,$result->toArray());
             }
-            $resultArray = $result->toArray();
-            if ($result->xmlAvailable && $result->uuid) {
-                $persistedStamp = $this->db->table('fiscal_document_stamps')->where('fiscal_document_id', $documentId)->get(1)->getRow();
-                $resultArray['success'] = true;
-                $resultArray['status'] = ($persistedStamp->pdf_status ?? '') === 'valid' ? 'stamped' : 'stamped_pdf_pending';
-                $resultArray['pdfAvailable'] = ($persistedStamp->pdf_status ?? '') === 'valid' && (int)($persistedStamp->pac_pdf_artifact_id ?? 0) > 0;
-            }
-            return ['document_id' => $documentId, 'result' => $resultArray];
+            if ($result->requiresReconciliation) $this->setDraftState($draftId,'blocked',$userId);
+            else $this->setDraftState($draftId,'ready',$userId);
+            return ['document_id'=>$documentId,'result'=>$result->toArray()];
         } catch (Throwable $e) {
             $this->audit($draftId,$userId,'draft_stamp_failed',[
                 'document_id'=>$documentId,'error_class'=>get_class($e),
@@ -137,6 +113,40 @@ final class FiscalDraftStampingService
         }
     }
 
+    private function completeStampedLocally(int $draftId,int $documentId,int $userId,object $stamp,array $providerResult=[]):array
+    {
+        $pending=[];
+        $attemptId=(int)($stamp->stamp_attempt_id??0);
+        if($attemptId>0){$attempt=$this->db->table('fiscal_stamp_attempts')->select('status, requires_reconciliation')->where('id',$attemptId)->get(1)->getRow();if($attempt&&(int)($attempt->requires_reconciliation??0)===1&&(string)($attempt->status??'')==='success_local_reconciliation_pending')$pending[]='stamp_consumption';}
+        try{
+            $reserved=$this->db->table('fiscal_draft_sales')->where(['fiscal_draft_id'=>$draftId,'allocation_status'=>'reserved'])->countAllResults();
+            $active=$this->db->table('fiscal_document_sales')->where(['fiscal_document_id'=>$documentId,'allocation_status'=>'active'])->countAllResults();
+            if($reserved)$this->allocations->convertDraftAllocationsToDocument($draftId,$documentId,$userId);
+            elseif(!$active)throw new RuntimeException('FISCAL_LOCAL_ALLOCATION_RECONCILIATION_REQUIRED');
+        }catch(Throwable $allocationError){$pending[]='allocations';$this->postStampWarning($draftId,$documentId,$userId,'allocation_conversion',$allocationError);}
+        $saleIds=array_map('intval',array_column($this->db->table('fiscal_draft_sales')->select('sale_id')->where('fiscal_draft_id',$draftId)->get()->getResultArray(),'sale_id'));
+        $document=$this->db->table('fiscal_documents')->select('invoice_id')->where('id',$documentId)->get(1)->getRow();
+        if(!empty($document->invoice_id))$saleIds[]=(int)$document->invoice_id;
+        foreach(array_values(array_unique(array_filter($saleIds)))as$saleId){
+            try{$sale=$this->db->table('invoices')->select('commercial_status')->where(['id'=>$saleId,'deleted'=>0])->get(1)->getRow();if($sale&&in_array((string)$sale->commercial_status,['draft','open'],true))(new SaleLifecycleService($this->db))->close($saleId,$userId,'Cierre automatico posterior a timbrado CFDI');}
+            catch(Throwable $closeError){$pending[]='sale_close';$this->postStampWarning($draftId,$documentId,$userId,'sale_close',$closeError);}
+        }
+        $pdfAvailable=(string)($stamp->pdf_status??'')==='valid'&&(int)($stamp->pac_pdf_artifact_id??0)>0;
+        if(!$pdfAvailable&&config('FiscalPdfProvider')->enabled){try{$pdf=($this->pdfGeneration??new FiscalPacPdfGenerationService($this->db))->generate($documentId,$userId);$pdfAvailable=$pdf->pdfAvailable;}catch(Throwable $pdfError){$this->postStampWarning($draftId,$documentId,$userId,'pdf_generation',$pdfError);}}
+        $localPending=(bool)$pending;
+        $status=$localPending?'stamped_local_reconciliation_pending':($pdfAvailable?'stamped':'stamped_pdf_pending');
+        $this->db->table('fiscal_drafts')->where('id',$draftId)->update(['fiscal_document_id'=>$documentId,'status'=>$localPending?'error':'stamped','updated_by'=>$userId,'updated_at'=>get_current_utc_time()]);
+        $this->db->table('fiscal_documents')->where('id',$documentId)->update(['status'=>$status,'stamp_updated_at'=>get_current_utc_time()]);
+        $message=$localPending?'Factura timbrada correctamente. Falta completar una actualizacion administrativa local.':($pdfAvailable?'Factura timbrada correctamente.':'Factura timbrada correctamente. El PDF esta pendiente de generacion.');
+        $this->audit($draftId,$userId,$localPending?'draft_stamped_local_reconciliation_pending':'draft_stamped',['document_id'=>$documentId,'attempt_id'=>(int)($stamp->stamp_attempt_id??0),'uuid'=>(string)$stamp->uuid,'pending'=>$pending,'pdf_available'=>$pdfAvailable]);
+        return['document_id'=>$documentId,'result'=>array_replace($providerResult,['success'=>true,'status'=>$status,'documentId'=>$documentId,'attemptId'=>(int)($stamp->stamp_attempt_id??0),'providerMessage'=>$message,'uuid'=>(string)$stamp->uuid,'retryable'=>false,'requiresReconciliation'=>false,'xmlAvailable'=>true,'pdfAvailable'=>$pdfAvailable,'requiresPdfRecovery'=>!$pdfAvailable])];
+    }
+
+    private function postStampWarning(int $draftId,int $documentId,int $userId,string $stage,Throwable $error):void
+    {
+        log_message('error','CFDI_POST_STAMP_LOCAL_FAILURE {detail}',['detail'=>json_encode(['draft_id'=>$draftId,'fiscal_document_id'=>$documentId,'stage'=>$stage,'exception_class'=>get_class($error),'exception_message'=>$error->getMessage()],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)]);
+        $this->audit($draftId,$userId,'post_stamp_local_failure',['document_id'=>$documentId,'stage'=>$stage,'exception_class'=>get_class($error)]);
+    }
     private function activeCertificate(int $documentId): object
     {
         $document = $this->db->table('fiscal_documents')->select('issuer_profile_id')

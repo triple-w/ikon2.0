@@ -183,6 +183,39 @@ final class FiscalSaleAllocationService
         }
     }
 
+    public function validateDraftDocumentConsistency(int $draftId, int $documentId): array
+    {
+        $draft = $this->db->table('fiscal_drafts')->where('id', $draftId)->get(1)->getRow();
+        $document = $this->db->table('fiscal_documents')->where(['id'=>$documentId, 'deleted'=>0])->get(1)->getRow();
+        $rows = $this->db->table('fiscal_draft_sales')->where(['fiscal_draft_id'=>$draftId, 'allocation_status'=>'reserved'])->get()->getResultArray();
+        if (!$draft || !$document || !$rows) throw new RuntimeException('FISCAL_DRAFT_CONVERSION_INVALID');
+        $subtotal = $tax = $total = 0;
+        foreach ($rows as $row) {
+            $this->validateParts($row);
+            $subtotal += FiscalDecimal::micros((string)$row['allocated_subtotal']);
+            $tax += FiscalDecimal::micros((string)$row['allocated_tax']);
+            $total += FiscalDecimal::micros((string)$row['allocated_total']);
+        }
+        $draftSubtotal = FiscalDecimal::micros((string)$draft->subtotal);
+        $draftDiscount = FiscalDecimal::micros((string)$draft->discount);
+        $draftNetSubtotal = $draftSubtotal - $draftDiscount;
+        $draftTax = FiscalDecimal::micros((string)$draft->tax_total);
+        $draftTotal = FiscalDecimal::micros((string)$draft->total);
+        $documentSubtotal = FiscalDecimal::micros((string)$document->subtotal);
+        $documentDiscount = FiscalDecimal::micros((string)$document->discount);
+        $documentNetSubtotal = $documentSubtotal - $documentDiscount;
+        $documentTax = FiscalDecimal::micros((string)$document->transferred_tax_total) - FiscalDecimal::micros((string)$document->withheld_tax_total);
+        $documentTotal = FiscalDecimal::micros((string)$document->total);
+        $consistent = $subtotal === $draftNetSubtotal && $tax === $draftTax && $total === $draftTotal
+            && $draftTotal === $draftNetSubtotal + $draftTax
+            && $subtotal === $documentNetSubtotal && $tax === $documentTax && $total === $documentTotal
+            && $documentTotal === $documentNetSubtotal + $documentTax;
+        if (!$consistent) {
+            $this->logDocumentAllocationMismatch($draftId, $documentId, $draft, $document, $rows, $total);
+            throw new RuntimeException('FISCAL_DOCUMENT_ALLOCATION_TOTAL_MISMATCH');
+        }
+        return ['draft'=>$draft, 'document'=>$document, 'rows'=>$rows];
+    }
     public function convertDraftAllocationsToDocument(int $draftId, int $documentId, int $userId): void
     {
         $this->db->transBegin();
