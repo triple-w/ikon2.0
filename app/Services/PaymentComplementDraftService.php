@@ -50,6 +50,19 @@ final class PaymentComplementDraftService
         return'Las facturas PPD del cliente no tienen saldo fiscal disponible o ya están reservadas en otro complemento.';
     }
 
+    public function addDocumentDiagnostics(int$complementId,int$fiscalDocumentId,$requestedAmount):array
+    {
+        $row=$this->db->table('payment_complements c')->select('c.status complement_status,c.client_id,p.source_invoice_payment_id,p.amount included_amount,ip.amount payment_amount,d.status document_status,d.document_type,d.payment_method_code,d.total document_total,COALESCE(fds.sale_id,d.invoice_id) sale_id,r.id receiver_id,r.rfc receiver_rfc',false)
+            ->join('payment_complement_payments p','p.payment_complement_id=c.id AND p.deleted=0','left')->join('invoice_payments ip','ip.id=p.source_invoice_payment_id','left')
+            ->join('fiscal_documents d','d.id='.$fiscalDocumentId,'left')->join('fiscal_document_sales fds','fds.fiscal_document_id=d.id','left')
+            ->join('fiscal_document_receivers r','r.fiscal_document_id=d.id','left')->where('c.id',$complementId)->get(1)->getRow();
+        $out=['payment_complement_id'=>$complementId,'fiscal_document_id'=>$fiscalDocumentId,'requested_amount'=>(string)$requestedAmount];if(!$row)return$out+['validation_code'=>'COMPLEMENT_NOT_FOUND'];
+        foreach((array)$row as$key=>$value)$out[$key]=$value;
+        $included=$this->decimal($row->included_amount??'0');$paymentAmount=$this->decimal($row->payment_amount??'0');$out['payment_available']=FiscalDecimal::subtract($paymentAmount,$included);
+        try{$balance=(new \App\Services\Fiscal\FiscalInvoiceOutstandingBalanceService($this->db))->breakdown($fiscalDocumentId,$complementId);$out+=['fiscal_outstanding'=>$balance['outstanding'],'fiscal_reserved'=>$balance['reserved'],'fiscal_available'=>$balance['available']];}catch(Throwable$e){$out['balance_error']=$e->getMessage();}
+        return$out;
+    }
+
     public function addDocument(int$complementId,int$fiscalDocumentId,$requestedAmount,?int$actor):int
     {
         $this->db->transBegin();
