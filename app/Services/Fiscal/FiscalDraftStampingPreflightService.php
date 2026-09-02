@@ -83,6 +83,7 @@ final class FiscalDraftStampingPreflightService
             $errors[] = 'Los totales del snapshot fiscal no son consistentes.';
         }
         $allocated = 0;
+        $availability = new FiscalSaleAllocationService($this->db);
         foreach ($snapshot['allocations'] as $allocation) {
             if (($allocation['allocation_status'] ?? '') !== 'reserved') {
                 $errors[] = 'Las asignaciones del borrador no están reservadas.';
@@ -93,6 +94,23 @@ final class FiscalDraftStampingPreflightService
                 ->where('id', (int)$allocation['sale_id'])->get(1)->getRowArray();
             if (!$sale || (int)$sale['deleted'] === 1 || $sale['status'] === 'cancelled'
                 || !in_array((string)($sale['commercial_status'] ?? 'open'), ($allowOpenSale || $fiscal->runtimeMode==='automated_test') ? ['draft','open','closed'] : ['closed'], true)) {
+                $errors[] = 'Una venta relacionada no está disponible para facturación.';
+                continue;
+            }
+            try {
+                $availability->validateDraftAvailability(
+                    (int) $allocation['sale_id'], $draftId, (string) $allocation['allocated_total']
+                );
+            } catch (Throwable $exception) {
+                $detail = $availability->getDraftAvailability((int) $allocation['sale_id'], $draftId);
+                log_message('error', 'FISCAL_PREFLIGHT_SALE_AVAILABILITY_FAILURE {detail}', [
+                    'detail' => json_encode($detail + [
+                        'draft_id' => $draftId,
+                        'sale_id' => (int) $allocation['sale_id'],
+                        'current_draft_allocated_total' => (string) $allocation['allocated_total'],
+                        'exception_class' => get_class($exception),
+                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                ]);
                 $errors[] = 'Una venta relacionada no está disponible para facturación.';
             }
         }

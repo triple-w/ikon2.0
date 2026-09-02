@@ -14,13 +14,13 @@ final class FiscalDocumentFromDraftSnapshotService
         $this->preflight ??= new FiscalDraftStampingPreflightService($this->db);
     }
 
-    public function materialize(int $draftId, int $userId): int
+    public function materialize(int $draftId, int $userId, bool $saleFlow = false): int
     {
         $this->db->transBegin();
         try {
             $draftTable = $this->db->prefixTable('fiscal_drafts');
             $this->db->query("SELECT id FROM {$draftTable} WHERE id=? FOR UPDATE", [$draftId]);
-            $snapshot = $this->preflight->requireReady($draftId);
+            $snapshot = $saleFlow ? $this->preflight->requireReadyForSaleFlow($draftId) : $this->preflight->requireReady($draftId);
             $draft = $snapshot['draft'];
             $seriesTable = $this->db->prefixTable('fiscal_series');
             $series = $this->db->query(

@@ -72,17 +72,48 @@ final class FiscalSaleAllocationService
     public function getAvailableAmount(int $saleId, ?int $excludeDraftId = null): string
     {
         $summary = $this->getSaleFiscalSummary($saleId);
-        $available = FiscalDecimal::micros($summary['available_to_invoice']);
+        $sale = FiscalDecimal::micros($summary['sale_total']);
+        $active = FiscalDecimal::micros($summary['active_invoiced_total']);
+        $reserved = FiscalDecimal::micros($summary['draft_reserved_total']);
         if ($excludeDraftId) {
-            $reserved = $this->db->table('fiscal_draft_sales')
-                ->select('allocated_total')->where([
-                    'fiscal_draft_id' => $excludeDraftId,
-                    'sale_id' => $saleId,
-                    'allocation_status' => 'reserved',
-                ])->get(1)->getRow();
-            if ($reserved) $available += FiscalDecimal::micros((string) $reserved->allocated_total);
+            $current = $this->db->table('fiscal_draft_sales')->select('allocated_total')->where([
+                'fiscal_draft_id' => $excludeDraftId,
+                'sale_id' => $saleId,
+                'allocation_status' => 'reserved',
+            ])->get(1)->getRow();
+            if ($current) $reserved = max(0, $reserved - FiscalDecimal::micros((string) $current->allocated_total));
         }
-        return FiscalDecimal::format($available);
+        return FiscalDecimal::format(max(0, $sale - $active - $reserved));
+    }
+
+    public function getDraftAvailability(int $saleId, int $draftId): array
+    {
+        $summary = $this->getSaleFiscalSummary($saleId);
+        $current = $this->db->table('fiscal_draft_sales')->select('allocated_total')->where([
+            'fiscal_draft_id' => $draftId,
+            'sale_id' => $saleId,
+            'allocation_status' => 'reserved',
+        ])->get(1)->getRow();
+        $currentAmount = (string) ($current->allocated_total ?? '0');
+        $otherReserved = max(0,
+            FiscalDecimal::micros((string) $summary['draft_reserved_total']) - FiscalDecimal::micros($currentAmount)
+        );
+        return [
+            'sale_total' => (string) $summary['sale_total'],
+            'active_document_allocated' => (string) $summary['active_invoiced_total'],
+            'reserved_by_other_drafts' => FiscalDecimal::format($otherReserved),
+            'reserved_by_current_draft' => FiscalDecimal::format(FiscalDecimal::micros($currentAmount)),
+            'available_for_current_draft' => $this->getAvailableAmount($saleId, $draftId),
+        ];
+    }
+
+    public function validateDraftAvailability(int $saleId, int $draftId, string $currentAllocatedTotal): array
+    {
+        $availability = $this->getDraftAvailability($saleId, $draftId);
+        if (FiscalDecimal::micros($currentAllocatedTotal) > FiscalDecimal::micros($availability['available_for_current_draft'])) {
+            throw new RuntimeException('FISCAL_DRAFT_SALE_NOT_AVAILABLE');
+        }
+        return $availability;
     }
 
     public function validateAllocation(int $saleId, string $allocatedTotal, ?int $excludeDraftId = null): void

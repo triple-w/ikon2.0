@@ -58,7 +58,7 @@ final class FiscalDraftStampingService
             $prepared=$this->db->table('fiscal_drafts')->select('fiscal_document_id')->where('id',$draftId)->get(1)->getRow();
             $documentId=(int)($prepared->fiscal_document_id??0);
             $saleFlow ? $this->preflight->requireReadyForSaleFlow($draftId, $documentId>0) : $this->preflight->requireReady($draftId, $documentId>0);
-            if($documentId===0)$documentId = $this->materializer->materialize($draftId, $userId);
+            if($documentId===0)$documentId = $this->materializer->materialize($draftId, $userId, $saleFlow);
             else if(!$this->db->table('fiscal_stamp_attempts')->where('fiscal_document_id',$documentId)->countAllResults())$this->materializer->reconcileLocalDocumentCurrencyTotals($documentId);
             $signature=$this->db->table('fiscal_document_signatures')->where([
                 'fiscal_document_id'=>$documentId,'signature_verified'=>1,'xsd_status'=>'valid',
