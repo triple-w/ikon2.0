@@ -7,6 +7,9 @@ $statusColor=$isFiscalCancelled?'secondary':($isStamped?'primary':($complement->
 $bankForms=['02','03','04','05','06','28','29'];
 $banking=in_array((string)$payment->effective_payment_form,$bankForms,true);
 ?>
+<?php if(!$isStamped && !$candidates && !empty($candidate_empty_reason)): ?>
+<div class="alert alert-info mb15"><b>Facturas elegibles:</b> <?php echo esc($candidate_empty_reason); ?></div>
+<?php endif; ?>
 <div class="page-content invoice-details-view clearfix"><div class="container-fluid">
 <div class="page-title clearfix"><h1 class="pull-left"><i data-feather="file-text" class="icon-18"></i> Complemento de Pago #<?php echo (int)$complement->id; ?></h1><div class="title-button-group"><a class="btn btn-default" href="<?php echo site_url('payment_complements'); ?>">Volver al listado</a></div></div>
 <div class="details-view-wrapper d-flex"><div class="w-100 pr15">
