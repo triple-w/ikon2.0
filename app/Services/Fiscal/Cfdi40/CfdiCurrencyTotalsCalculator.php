@@ -20,12 +20,14 @@ final class CfdiCurrencyTotalsCalculator
 
     public function fromLines(array $lines): array
     {
-        $subtotal = $discount = $transferred = $withheld = '0.00';
+        // CFDI concept operands retain six decimals. Aggregate those exact
+        // operands first, then quantize each document currency component once.
+        $subtotal = $discount = $transferred = $withheld = '0.000000';
         foreach ($lines as $line) {
-            $subtotal = $this->decimal->add($subtotal, $this->decimal->money((string) ($line['subtotal'] ?? '0')));
-            $discount = $this->decimal->add($discount, $this->decimal->money((string) ($line['discount'] ?? '0')));
-            $transferred = $this->decimal->add($transferred, $this->decimal->money((string) ($line['transferred'] ?? '0')));
-            $withheld = $this->decimal->add($withheld, $this->decimal->money((string) ($line['withheld'] ?? '0')));
+            $subtotal = $this->decimal->add($subtotal, (string) ($line['subtotal'] ?? '0'));
+            $discount = $this->decimal->add($discount, (string) ($line['discount'] ?? '0'));
+            $transferred = $this->decimal->add($transferred, (string) ($line['transferred'] ?? '0'));
+            $withheld = $this->decimal->add($withheld, (string) ($line['withheld'] ?? '0'));
         }
         return $this->fromAggregates($subtotal, $discount, $transferred, $withheld);
     }

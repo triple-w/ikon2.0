@@ -2,7 +2,6 @@
 declare(strict_types=1);
 namespace App\Services\Fiscal;
 
-use App\Services\Fiscal\Cfdi40\CfdiCurrencyTotalsCalculator;
 use RuntimeException;
 use Throwable;
 
@@ -100,7 +99,7 @@ final class FiscalDraftWorkflowService
         }
         $existing = $draftId ? $this->draft($draftId) : null;
         if ($existing && !in_array($existing->status, ['draft','ready','error'], true)) {
-            throw new RuntimeException('El estado del borrador no permite edición.');
+            throw new RuntimeException('El estado del borrador no permite ediciÃ³n.');
         }
         $anchor = $this->sale($saleIds[0]);
         $issuerId = (int)($input['issuer_id'] ?? 0);
@@ -109,7 +108,6 @@ final class FiscalDraftWorkflowService
         $quantities = (array)($input['quantities'] ?? []);
         $fiscalOverrides=(array)($input['fiscal_items']??[]);
         $concepts = [];
-        $bySale = [];
         $resolvedLines=new FiscalResolvedInvoiceLineService($this->db);
         foreach ($saleIds as $saleId) {
             $sale = $this->sale($saleId);
@@ -122,7 +120,7 @@ final class FiscalDraftWorkflowService
                 $quantity = trim((string)($quantities[$item->id] ?? '0'));
                 if ($quantity === '' || FiscalDecimal::micros($quantity) === 0) continue;
                 if (FiscalDecimal::micros($quantity) < 0 || FiscalDecimal::micros($quantity) > FiscalDecimal::micros((string)$item->quantity)) {
-                    throw new RuntimeException('La cantidad seleccionada no es válida.');
+                    throw new RuntimeException('La cantidad seleccionada no es vÃ¡lida.');
                 }
                 $subtotal = FiscalDecimal::multiply($quantity, (string)$item->rate);
                 $discount = FiscalDecimal::prorate((string)$sale->discount_total, $subtotal, (string)$sale->invoice_subtotal);
@@ -135,7 +133,7 @@ final class FiscalDraftWorkflowService
                 if (($input['ux_mode'] ?? '') === 'normal' && (int)$item->item_id > 0) $override=[];
                 if (($input['ux_mode'] ?? '') === 'normal') {
                     $line=$resolvedLines->resolve($item,$quantity,$discount,$issuerId);
-                    if(!$line['ready'])throw new RuntimeException($line['blockers'][0]??'Falta la configuración fiscal del concepto.');
+                    if(!$line['ready'])throw new RuntimeException($line['blockers'][0]??'Falta la configuraciÃ³n fiscal del concepto.');
                     $concepts[]=['sale_id'=>$saleId]+$line+['_resolved'=>true,'_taxes'=>$line['taxes']];
                     continue;
                 }
@@ -146,17 +144,14 @@ final class FiscalDraftWorkflowService
                     'quantity'=>$quantity,'unit_price'=>FiscalDecimal::format(FiscalDecimal::micros((string)$item->rate)),
                     'discount'=>$discount,'subtotal'=>$subtotal,'tax'=>$tax,'total'=>$total,'snapshot'=>$snapshot,
                 ];
-                $bySale[$saleId] ??= ['subtotal'=>'0','tax'=>'0','total'=>'0'];
-                $bySale[$saleId]['subtotal'] = FiscalDecimal::add($bySale[$saleId]['subtotal'], FiscalDecimal::subtract($subtotal,$discount));
-                $bySale[$saleId]['tax'] = FiscalDecimal::add($bySale[$saleId]['tax'],$tax);
-                $bySale[$saleId]['total'] = FiscalDecimal::add($bySale[$saleId]['total'],$total);
             }
         }
         if (!$concepts) throw new RuntimeException('Selecciona al menos un concepto con cantidad mayor que cero.');
         $issuerPricing=$this->db->table('fiscal_profiles')->select('tax_pricing_mode')->where('id',$issuerId)->get(1)->getRow();
-        $pricingMode=(string)($issuerPricing->tax_pricing_mode??'tax_inclusive');$taxSnapshots=new FiscalDraftTaxSnapshotService($this->db);$bySale=[];
+        $pricingMode=(string)($issuerPricing->tax_pricing_mode??'tax_inclusive');
+        $taxSnapshots=new FiscalDraftTaxSnapshotService($this->db);
         foreach($concepts as&$concept){
-            if(!empty($concept['_resolved'])){$sid=(int)$concept['sale_id'];$bySale[$sid]??=['subtotal'=>'0.000000','tax'=>'0.000000','total'=>'0.000000'];$bySale[$sid]['subtotal']=FiscalDecimal::add($bySale[$sid]['subtotal'],FiscalDecimal::subtract($concept['subtotal'],$concept['discount']));$bySale[$sid]['tax']=FiscalDecimal::add($bySale[$sid]['tax'],$concept['tax']);$bySale[$sid]['total']=FiscalDecimal::add($bySale[$sid]['total'],$concept['total']);continue;}
+            if(!empty($concept['_resolved']))continue;
             $calculated=$taxSnapshots->calculate($concept,$pricingMode);
             $concept['subtotal']=FiscalDecimal::add($calculated['base'],$concept['discount']);
             $concept['tax']=FiscalDecimal::subtract($calculated['transferred'],$calculated['withheld']);
@@ -166,41 +161,19 @@ final class FiscalDraftWorkflowService
             $concept['snapshot']['taxable_base']=$calculated['base'];$concept['snapshot']['transferred_total']=$calculated['transferred'];
             $concept['snapshot']['withheld_total']=$calculated['withheld'];$concept['snapshot']['concept_total']=$calculated['total'];
             $concept['snapshot']['taxes']=$calculated['taxes'];$concept['_taxes']=$calculated['taxes'];
-            $sid=(int)$concept['sale_id'];$bySale[$sid]??=['subtotal'=>'0.000000','tax'=>'0.000000','total'=>'0.000000'];
-            $bySale[$sid]['subtotal']=FiscalDecimal::add($bySale[$sid]['subtotal'],$calculated['base']);
-            $bySale[$sid]['tax']=FiscalDecimal::add($bySale[$sid]['tax'],$concept['tax']);
-            $bySale[$sid]['total']=FiscalDecimal::add($bySale[$sid]['total'],$calculated['total']);
         }unset($concept);
-        // Document headers and allocations share the exact per-concept currency equation.
-        $currencyCalculator = new CfdiCurrencyTotalsCalculator();
-        $currencyLines = [];
-        $currencyLinesBySale = [];
-        foreach ($concepts as $concept) {
-            $line = [
-                'subtotal' => (string) $concept['subtotal'],
-                'discount' => (string) $concept['discount'],
-                'transferred' => (string) ($concept['snapshot']['transferred_total'] ?? '0'),
-                'withheld' => (string) ($concept['snapshot']['withheld_total'] ?? '0'),
-            ];
-            $currencyLines[] = $line;
-            $currencyLinesBySale[(int) $concept['sale_id']][] = $line;
+        $calculation = (new FiscalCanonicalCalculationService())->calculate($concepts);
+        $allocations = $calculation['allocations'];
+        foreach ($allocations as $allocation) {
+            (new CommercialSaleTotalConsistencyService($this->db))->assertConsistent((int) $allocation['sale_id'], $issuerId);
+            $this->allocations->validateAllocation((int) $allocation['sale_id'], $allocation['allocated_total'], $draftId);
         }
-        $allocations = [];
-        foreach ($currencyLinesBySale as $saleId => $saleLines) {
-            $amounts = $currencyCalculator->fromLines($saleLines);
-            $allocatedSubtotal = FiscalDecimal::subtract($amounts['subtotal'], $amounts['discount']);
-            $allocatedTax = FiscalDecimal::subtract($amounts['transferred'], $amounts['withheld']);
-            (new CommercialSaleTotalConsistencyService($this->db))->assertConsistent((int)$saleId,$issuerId);
-            $this->allocations->validateAllocation((int)$saleId,$amounts['total'],$draftId);
-            $allocations[] = ['sale_id'=>(int)$saleId,'allocated_subtotal'=>$allocatedSubtotal,'allocated_tax'=>$allocatedTax,'allocated_total'=>$amounts['total']];
-        }
-        $currencyTotals = $currencyCalculator->fromLines($currencyLines);
-        $subtotal = $currencyTotals['subtotal'];
-        $discount = $currencyTotals['discount'];
-        $tax = FiscalDecimal::subtract($currencyTotals['transferred'], $currencyTotals['withheld']);
-        $total = $currencyTotals['total'];
+        $subtotal = $calculation['totals']['subtotal'];
+        $discount = $calculation['totals']['discount'];
+        $tax = FiscalDecimal::subtract($calculation['totals']['transferred'], $calculation['totals']['withheld']);
+        $total = $calculation['totals']['total'];
         try{$issueDate=(new FiscalIssueDateNormalizer())->normalizeTransport($input['issue_date']??null);}
-        catch(RuntimeException$e){throw new RuntimeException(match($e->getMessage()){'FISCAL_ISSUE_DATE_REQUIRED'=>'La fecha de expedición es obligatoria.',default=>'La fecha de expedición no tiene un formato válido.'});}
+        catch(RuntimeException$e){throw new RuntimeException(match($e->getMessage()){'FISCAL_ISSUE_DATE_REQUIRED'=>'La fecha de expediciÃ³n es obligatoria.',default=>'La fecha de expediciÃ³n no tiene un formato vÃ¡lido.'});}
         $issuer=(new FiscalIssuerResolver($this->db))->resolveById($issuerId,(int)$anchor->company_id,config('Fiscal')->environment);
         $receiver=$this->db->table('fiscal_profiles')->where(['id'=>$receiverId,'client_id'=>$anchor->client_id,'profile_type'=>'receiver'])->whereIn('status',['active','ready'])->get(1)->getRow();
         $regime=$receiver?$this->db->table('sat_tax_regimes')->where('id',$receiver->tax_regime_id)->get(1)->getRow():null;
@@ -279,7 +252,7 @@ final class FiscalDraftWorkflowService
             return ['id'=>$id,'status'=>$draftData['status'],'validation'=>$validation];
         } catch (Throwable $e) {
             $this->db->transRollback();
-            if (str_contains($e->getMessage(),'EXCEEDS_AVAILABLE')) throw new RuntimeException('El saldo disponible de una o más ventas cambió. Revisa las asignaciones antes de guardar nuevamente.');
+            if (str_contains($e->getMessage(),'EXCEEDS_AVAILABLE')) throw new RuntimeException('El saldo disponible de una o mÃ¡s ventas cambiÃ³. Revisa las asignaciones antes de guardar nuevamente.');
             throw $e;
         }
     }
@@ -308,7 +281,7 @@ final class FiscalDraftWorkflowService
         $rows=$this->db->table('fiscal_draft_items')->where('fiscal_draft_id',$draftId)->get()->getResultArray();$concepts=[];
         foreach($rows as$row){$concepts[]=['quantity'=>$row['quantity'],'total'=>$row['total'],'snapshot'=>json_decode((string)$row['fiscal_snapshot'],true)?:[]];}
         $validation=$this->validation->validate((array)$draft+['receiver_profile_id'=>$draft->receiver_profile_id],$allocations,$concepts);
-        if(!$validation['valid'])throw new RuntimeException($validation['errors'][0]['message']??'El borrador todavía tiene datos pendientes.');
+        if(!$validation['valid'])throw new RuntimeException($validation['errors'][0]['message']??'El borrador todavÃ­a tiene datos pendientes.');
         $now=get_current_utc_time();$this->db->table('fiscal_drafts')->where('id',$draftId)->update(['status'=>'ready','ready_at'=>$now,'updated_by'=>$userId,'updated_at'=>$now]);
         $this->audit($draftId,null,$userId,'draft_marked_ready',['validation'=>'complete']);
     }

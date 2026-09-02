@@ -18,6 +18,16 @@ final class FiscalDraftStampingPreflightService
 
     public function inspect(int $draftId, bool $allowPreparedDocument = false): array
     {
+        return $this->inspectWithSalePolicy($draftId, $allowPreparedDocument, false);
+    }
+
+    public function inspectForSaleFlow(int $draftId, bool $allowPreparedDocument = false): array
+    {
+        return $this->inspectWithSalePolicy($draftId, $allowPreparedDocument, true);
+    }
+
+    private function inspectWithSalePolicy(int $draftId, bool $allowPreparedDocument, bool $allowOpenSale): array
+    {
         $errors = [];
         try {
             $snapshot = $this->snapshots->getCompleteFiscalSnapshot($draftId);
@@ -82,7 +92,7 @@ final class FiscalDraftStampingPreflightService
             $sale = $this->db->table('invoices')->select('status,commercial_status,deleted')
                 ->where('id', (int)$allocation['sale_id'])->get(1)->getRowArray();
             if (!$sale || (int)$sale['deleted'] === 1 || $sale['status'] === 'cancelled'
-                || !in_array((string)($sale['commercial_status'] ?? 'open'), $fiscal->runtimeMode==='automated_test'?['open','closed']:['closed'], true)) {
+                || !in_array((string)($sale['commercial_status'] ?? 'open'), ($allowOpenSale || $fiscal->runtimeMode==='automated_test') ? ['draft','open','closed'] : ['closed'], true)) {
                 $errors[] = 'Una venta relacionada no está disponible para facturación.';
             }
         }
@@ -119,6 +129,13 @@ final class FiscalDraftStampingPreflightService
     public function requireReady(int $draftId, bool $allowPreparedDocument = false): array
     {
         $result = $this->inspect($draftId, $allowPreparedDocument);
+        if (!$result['allowed']) throw new RuntimeException($result['errors'][0]);
+        return $result['snapshot'];
+    }
+
+    public function requireReadyForSaleFlow(int $draftId, bool $allowPreparedDocument = false): array
+    {
+        $result = $this->inspectForSaleFlow($draftId, $allowPreparedDocument);
         if (!$result['allowed']) throw new RuntimeException($result['errors'][0]);
         return $result['snapshot'];
     }

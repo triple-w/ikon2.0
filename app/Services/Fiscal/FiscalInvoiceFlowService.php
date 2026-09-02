@@ -25,14 +25,19 @@ final class FiscalInvoiceFlowService
         return['ready'=>!$errors,'status'=>$errors?'review_needed':'ready','blockers'=>array_map([$this,'actionable'],$errors),'summary'=>$this->summary($snapshot,$balance),'draft_id'=>$draftId,'document_id'=>$documentId?:null];
     }
 
-    public function execute(int$draftId,int$userId,bool$authorized):array
+    public function execute(int $draftId, int $userId, bool $authorized): array
+    {
+        return $this->executeInternal($draftId, $userId, $authorized, false);
+    }
+
+    private function executeInternal(int $draftId, int $userId, bool $authorized, bool $saleFlow): array
     {
         if(!$authorized)return$this->blocked('No tiene permiso para generar facturas.')+['success'=>false];$lock='fiscal_invoice_flow_'.$draftId;$acquired=(int)($this->db->query('SELECT GET_LOCK(?, 0) acquired',[$lock])->getRow()->acquired??0);if($acquired!==1)return['success'=>false,'status'=>'processing','retry_allowed'=>false,'message'=>'La factura ya está siendo procesada.'];
-        try{$inspection=$this->inspect($draftId);if(!$inspection['ready'])return$inspection+['success'=>false,'keep_modal_open'=>true];$draft=$this->db->table('fiscal_drafts')->where('id',$draftId)->get(1)->getRow();if(!$draft)throw new RuntimeException('La revisión fiscal no existe.');if($draft->status!=='ready')$this->workflow->markReady($draftId,$userId);$prepared=(int)($draft->fiscal_document_id??0)>0;$preflight=$this->preflight->inspect($draftId,$prepared);if(!$preflight['allowed'])return$this->blockers($preflight['errors']);
-            $result=$this->stamping->stamp($draftId,$userId,true);$stamp=$result['result'];$documentId=(int)$result['document_id'];if(!empty($stamp['requiresReconciliation']))return$this->unknown($draftId,$documentId,'Estamos verificando el resultado de la factura. No vuelva a facturar este documento.')+['success'=>false,'attempt_id'=>$stamp['attemptId']??null,'http_status'=>$stamp['httpStatus']??null,'provider_code'=>$stamp['providerCode']??null];
-            if(empty($stamp['xmlAvailable'])||empty($stamp['uuid'])){$providerMessage=$this->sanitizeProviderMessage((string)($stamp['providerMessage']??''));$providerCode=$this->sanitize((string)($stamp['providerCode']??''));$rejected=($stamp['status']??'')==='rejected';return['success'=>false,'status'=>'correctable_error','category'=>$rejected?'provider_rejected':'validation','keep_modal_open'=>true,'retry_allowed'=>$rejected,'message'=>$rejected?'No fue posible timbrar la factura.':($providerMessage?:'No fue posible generar la factura.'),'provider_code'=>$providerCode,'provider_message'=>$providerMessage,'blockers'=>$rejected?array_values(array_filter([['message'=>$providerCode!==''?'Código: '.$providerCode:'','action'=>'Corregir revisión'],['message'=>$providerMessage!==''?'Mensaje: '.$providerMessage:'','action'=>'Corregir revisión']],fn($b)=>$b['message']!=='')):[],'actions'=>[['type'=>'review','label'=>'Revisar datos fiscales']],'technical_reference'=>['document_id'=>$documentId,'attempt_id'=>$stamp['attemptId']??null],'document_id'=>$documentId,'attempt_id'=>$stamp['attemptId']??null];}
+        try{$inspection=$this->inspect($draftId,$saleFlow);if(!$inspection['ready'])return$inspection+['success'=>false,'keep_modal_open'=>true];$draft=$this->db->table('fiscal_drafts')->where('id',$draftId)->get(1)->getRow();if(!$draft)throw new RuntimeException('La revisión fiscal no existe.');if($draft->status!=='ready')$this->workflow->markReady($draftId,$userId);$prepared=(int)($draft->fiscal_document_id??0)>0;$preflight=$saleFlow?$this->preflight->inspectForSaleFlow($draftId,$prepared):$this->preflight->inspect($draftId,$prepared);if(!$preflight['allowed'])return$this->blockers($preflight['errors']);
+            $result=$saleFlow?$this->stamping->stampSaleFlow($draftId,$userId,true):$this->stamping->stamp($draftId,$userId,true);$stamp=$result['result'];$documentId=(int)$result['document_id'];if(!empty($stamp['requiresReconciliation']))return$this->unknown($draftId,$documentId,'Estamos verificando el resultado de la factura. No vuelva a facturar este documento.')+['success'=>false,'attempt_id'=>$stamp['attemptId']??null,'http_status'=>$stamp['httpStatus']??null,'provider_code'=>$stamp['providerCode']??null];
+            if(empty($stamp['xmlAvailable'])||empty($stamp['uuid'])){$providerMessage=$this->sanitizeProviderMessage((string)($stamp['providerMessage']??''));$providerCode=$this->sanitize((string)($stamp['providerCode']??''));$rejected=($stamp['status']??'')==='rejected';return$this->withXmlInspection(['success'=>false,'status'=>'correctable_error','category'=>$rejected?'provider_rejected':'validation','keep_modal_open'=>true,'retry_allowed'=>$rejected,'message'=>$rejected?'No fue posible timbrar la factura.':($providerMessage?:'No fue posible generar la factura.'),'provider_code'=>$providerCode,'provider_message'=>$providerMessage,'blockers'=>$rejected?array_values(array_filter([['message'=>$providerCode!==''?'Código: '.$providerCode:'','action'=>'Corregir revisión'],['message'=>$providerMessage!==''?'Mensaje: '.$providerMessage:'','action'=>'Corregir revisión']],fn($b)=>$b['message']!=='')):[],'actions'=>[['type'=>'review','label'=>'Revisar datos fiscales']],'technical_reference'=>['document_id'=>$documentId,'attempt_id'=>$stamp['attemptId']??null],'document_id'=>$documentId,'attempt_id'=>$stamp['attemptId']??null],$draftId,$documentId);}
             $persisted=$this->db->table('fiscal_document_stamps')->where('fiscal_document_id',$documentId)->get(1)->getRow();$pdfAvailable=(int)($persisted->pac_pdf_artifact_id??0)>0&&($persisted->pdf_status??'')==='valid';return['success'=>true,'status'=>'stamped','message'=>$pdfAvailable?'Factura generada correctamente.':'Factura timbrada correctamente, pero el PDF no pudo generarse.','document_id'=>$documentId,'attempt_id'=>$stamp['attemptId']??null,'uuid'=>$stamp['uuid'],'xml_available'=>true,'pdf_available'=>$pdfAvailable,'pdf_status'=>$persisted->pdf_status??'pending','http_status'=>$stamp['httpStatus']??null,'provider_code'=>$stamp['providerCode']??null,'provider_message'=>$this->sanitize((string)($stamp['providerMessage']??'')),'redirect_url'=>get_uri('fiscal/invoices/'.$documentId),'keep_modal_open'=>false];
-        }catch(Throwable$e){log_message('error','UX2 invoice flow failed for draft {draft}: {type}',['draft'=>$draftId,'type'=>get_class($e)]);$inspection=$this->inspect($draftId);if(($inspection['status']??'')==='verification_pending')return$inspection+['success'=>false];return$this->blocked($this->safeError($e,'invoice_flow.execute',$draftId))+['success'=>false,'keep_modal_open'=>true];}finally{$this->db->query('SELECT RELEASE_LOCK(?)',[$lock]);}
+        }catch(Throwable$e){log_message('error','UX2 invoice flow failed for draft {draft}: {type}',['draft'=>$draftId,'type'=>get_class($e)]);$inspection=$this->inspect($draftId);if(($inspection['status']??'')==='verification_pending')return$inspection+['success'=>false];return$this->withXmlInspection($this->blocked($this->safeError($e,'invoice_flow.execute',$draftId))+['success'=>false,'keep_modal_open'=>true],$draftId);}finally{$this->db->query('SELECT RELEASE_LOCK(?)',[$lock]);}
     }
 
     public function executeSale(int$saleId,array$input,int$userId,bool$authorized):array
@@ -41,13 +46,40 @@ final class FiscalInvoiceFlowService
         try{$sale=$this->db->table('invoices')->where(['id'=>$saleId,'deleted'=>0])->get(1)->getRow();if(!$sale)return$this->blocked('La venta no existe.')+['success'=>false,'category'=>'validation'];$draftId=$this->activeDraftForSale($saleId);$input['sale_ids']=[$saleId];$input['ux_mode']='normal';$input['save_as_draft']=0;
             if($draftId){$saved=$this->workflow->save($input,$userId,$draftId);$draftId=(int)$saved['id'];$inspection=$this->inspect($draftId,true);if(!$inspection['ready'])return$inspection+['success'=>false,'category'=>'validation','keep_modal_open'=>true];}
             else{$data=$this->workflow->formData(null,[$saleId]);$preparation=(new FiscalReviewPreparation($this->db))->prepare($data,$input);if(!$preparation['validation']['valid'])return['success'=>false,'category'=>'validation','status'=>'review_needed','retry_allowed'=>true,'keep_modal_open'=>true,'message'=>'No es posible facturar todavía.','blockers'=>array_map([$this,'actionable'],$preparation['validation']['errors'])];$saved=$this->workflow->save($input,$userId);$draftId=(int)$saved['id'];}
-            // Closing is a consequence of successfully persisting and reserving the
-            // fiscal preparation. A rejected save must leave the commercial sale open.
-            if(in_array((string)$sale->commercial_status,['draft','open'],true))(new SaleLifecycleService($this->db))->close($saleId,$userId,'Cierre automático al confirmar facturación');
-            return$this->execute($draftId,$userId,true)+['sale_id'=>$saleId,'sale_closed'=>true];
+            $result=$this->executeInternal($draftId,$userId,true,true);
+            $saleClosed=false;
+            if(!empty($result['success'])&&($result['status']??'')==='stamped'){
+                $freshSale=$this->db->table('invoices')->select('commercial_status')->where('id',$saleId)->get(1)->getRow();
+                if($freshSale&&in_array((string)$freshSale->commercial_status,['draft','open'],true)){
+                    (new SaleLifecycleService($this->db))->close($saleId,$userId,'Cierre automático posterior a timbrado CFDI');
+                }
+                $saleClosed=true;
+            }
+            return$result+['sale_id'=>$saleId,'sale_closed'=>$saleClosed];
         }catch(Throwable$e){return$this->blocked($this->safeError($e,'invoice_flow.execute_sale',null,$saleId))+['success'=>false,'category'=>'validation','keep_modal_open'=>true];}finally{$this->db->query('SELECT RELEASE_LOCK(?)',[$lock]);}
     }
 
+    private function withXmlInspection(array $result, int $draftId, ?int $documentId = null): array
+    {
+        if (!$documentId) {
+            $draft = $this->db->table('fiscal_drafts')->select('fiscal_document_id')->where('id', $draftId)->get(1)->getRow();
+            $documentId = (int) ($draft->fiscal_document_id ?? 0);
+        }
+        if (!$documentId) return $result;
+        $signature = $this->db->table('fiscal_document_signatures')->select('signed_xml_artifact_id')
+            ->where('fiscal_document_id', $documentId)->orderBy('id', 'DESC')->get(1)->getRow();
+        if (!empty($signature->signed_xml_artifact_id)) {
+            $result['xml_inspection'] = ['label'=>'Ver XML enviado al PAC','url'=>url_to('fiscal_signed_xml_view', $documentId),'kind'=>'signed'];
+            return $result;
+        }
+        $artifact = $this->db->table('fiscal_document_artifacts')->select('id')
+            ->where(['fiscal_document_id'=>$documentId,'artifact_type'=>'pre_xml','superseded_at'=>null])
+            ->orderBy('id','DESC')->get(1)->getRow();
+        if ($artifact) {
+            $result['xml_inspection'] = ['label'=>'Ver XML preliminar','url'=>get_uri('fiscal/invoices/prexml/view/'.$artifact->id),'kind'=>'pre_xml'];
+        }
+        return $result;
+    }
     private function hasActiveAttempt(int$id):bool{return(bool)$this->db->table('fiscal_stamp_attempts')->where('fiscal_document_id',$id)->groupStart()->whereIn('status',['pending','sending','unknown','timeout_unknown','transport_unknown','reconciliation_required'])->orWhere('requires_reconciliation',1)->groupEnd()->countAllResults();}
     private function hasRejectedAttempt(int$id):bool{return(bool)$this->db->table('fiscal_stamp_attempts')->where('fiscal_document_id',$id)->whereIn('status',['rejected','provider_rejected'])->countAllResults();}
     private function summary(array$s,array$balance):array{$d=$s['draft'];return['issuer_id'=>(int)$d['issuer_id'],'receiver_name'=>(string)($s['receiver_snapshot']['legal_name']??''),'receiver_rfc'=>(string)($s['receiver_snapshot']['rfc']??''),'series'=>(string)($s['series_snapshot']['series']??$d['provisional_series']??''),'issue_date'=>(string)$d['issue_date'],'cfdi_use'=>(string)$d['cfdi_use_code'],'payment_method'=>(string)$d['payment_method_code'],'payment_form'=>(string)$d['payment_form_code'],'subtotal'=>(string)$s['totals']['subtotal'],'transferred'=>(string)$s['totals']['transferred'],'withheld'=>(string)$s['totals']['withheld'],'total'=>(string)$s['totals']['total'],'wallet_available'=>(int)$balance['available'],'wallet_reserved'=>(int)$balance['reserved']];}

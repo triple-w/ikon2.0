@@ -39,6 +39,16 @@ final class FiscalDraftStampingService
 
     public function stamp(int $draftId, int $userId, bool $authorized): array
     {
+        return $this->stampInternal($draftId, $userId, $authorized, false);
+    }
+
+    public function stampSaleFlow(int $draftId, int $userId, bool $authorized): array
+    {
+        return $this->stampInternal($draftId, $userId, $authorized, true);
+    }
+
+    private function stampInternal(int $draftId, int $userId, bool $authorized, bool $saleFlow): array
+    {
         if (!$authorized) throw new RuntimeException('No tiene permiso para facturar el borrador.');
         $lockName = 'fiscal_draft_stamp_' . $draftId;
         $acquired = (int)($this->db->query('SELECT GET_LOCK(?, 0) acquired', [$lockName])->getRow()->acquired ?? 0);
@@ -47,7 +57,7 @@ final class FiscalDraftStampingService
         try {
             $prepared=$this->db->table('fiscal_drafts')->select('fiscal_document_id')->where('id',$draftId)->get(1)->getRow();
             $documentId=(int)($prepared->fiscal_document_id??0);
-            $this->preflight->requireReady($draftId, $documentId>0);
+            $saleFlow ? $this->preflight->requireReadyForSaleFlow($draftId, $documentId>0) : $this->preflight->requireReady($draftId, $documentId>0);
             if($documentId===0)$documentId = $this->materializer->materialize($draftId, $userId);
             else if(!$this->db->table('fiscal_stamp_attempts')->where('fiscal_document_id',$documentId)->countAllResults())$this->materializer->reconcileLocalDocumentCurrencyTotals($documentId);
             $signature=$this->db->table('fiscal_document_signatures')->where([

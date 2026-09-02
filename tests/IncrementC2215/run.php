@@ -27,6 +27,17 @@ $assert($aquashoes === [
     'withheld' => '0.00',
     'total' => '5272.72',
 ], 'Aquashoes derives Total from the same two-decimal CFDI components.');
+$canonical = new App\Services\Fiscal\FiscalCanonicalCalculationService();
+$canonicalAquashoes = $canonical->calculate([[
+    'sale_id'=>10, 'subtotal'=>'4545.454550', 'discount'=>'0',
+    'snapshot'=>['transferred_total'=>'727.272728','withheld_total'=>'0'],
+]]);
+$assert($canonicalAquashoes['totals'] === $aquashoes && $canonicalAquashoes['allocations'][0]['allocated_total'] === '5272.72', 'Review, draft and allocation consume one canonical result.');
+$productionCase = $canonical->calculate([
+ ['sale_id'=>8,'subtotal'=>'119729.265000','discount'=>'0','snapshot'=>['transferred_total'=>'19156.682500','withheld_total'=>'0']],
+ ['sale_id'=>8,'subtotal'=>'119729.265000','discount'=>'0','snapshot'=>['transferred_total'=>'19156.682500','withheld_total'=>'0']],
+]);
+$assert($productionCase['totals']===['subtotal'=>'239458.53','discount'=>'0.00','transferred'=>'38313.37','withheld'=>'0.00','total'=>'277771.90']&&$productionCase['allocations'][0]['allocated_total']==='277771.90','Production rounding case is identical in review, draft, allocation and document.');
 
 $standard = $totals->fromLines([[
     'subtotal' => '14286.000000',
@@ -42,7 +53,7 @@ $multiple = $totals->fromLines([
     ['subtotal'=>'0.335000','discount'=>'0','transferred'=>'0.053600','withheld'=>'0'],
 ]);
 $assert($multiple === [
-    'subtotal'=>'1.02','discount'=>'0.00','transferred'=>'0.15','withheld'=>'0.00','total'=>'1.17',
+    'subtotal'=>'1.01','discount'=>'0.00','transferred'=>'0.16','withheld'=>'0.00','total'=>'1.17',
 ], 'Several fractional-cent lines close from their serialized values.');
 
 
@@ -51,11 +62,22 @@ $allocationSubtotal = App\Services\Fiscal\FiscalDecimal::subtract($multiple['sub
 $allocationTax = App\Services\Fiscal\FiscalDecimal::subtract($multiple['transferred'], $multiple['withheld']);
 $allocationTotal = App\Services\Fiscal\FiscalDecimal::add($allocationSubtotal, $allocationTax);
 $assert(App\Services\Fiscal\FiscalDecimal::micros($allocationTotal) === App\Services\Fiscal\FiscalDecimal::micros($multiple['total']), 'Three-line allocation equals the canonical document total exactly.');
+$manyLines = [];
+for ($i=0; $i<100; $i++) $manyLines[]=['sale_id'=>20,'subtotal'=>'0.335000','discount'=>'0','snapshot'=>['transferred_total'=>'0.053600','withheld_total'=>'0']];
+$many = $canonical->calculate($manyLines);
+$assert($many['totals']['total']==='38.86' && $many['allocations'][0]['allocated_total']==='38.86', 'Many fractional products cannot accumulate an allocation remainder.');
+
+$flowSource=file_get_contents(APPPATH.'Services/Fiscal/FiscalInvoiceFlowService.php');
+$closePosition=strpos($flowSource,'posterior a timbrado CFDI');
+$stampPosition=strpos($flowSource,"==='stamped'");
+$assert($closePosition!==false&&$stampPosition!==false&&$closePosition>$stampPosition&&!str_contains($flowSource,'al confirmar facturaciÃ³n'),'Sale closes only inside the stamped-success branch.');
+$preXmlSource=file_get_contents(APPPATH.'Services/Fiscal/Cfdi40/CfdiPreXmlArtifactService.php');
+$assert(str_contains($preXmlSource,'storeDiagnosticXml')&&str_contains($preXmlSource,"'validation_status'=>'semantic_error'"),'Semantic failures retain a non-signable diagnostic Pre-XML.');
 
 $workflowSource = file_get_contents(APPPATH . 'Services/Fiscal/FiscalDraftWorkflowService.php');
 $assert(
-    str_contains($workflowSource, 'CfdiCurrencyTotalsCalculator')
-    && str_contains($workflowSource, '$currencyLinesBySale'),
+    str_contains($workflowSource, 'FiscalCanonicalCalculationService')
+    && str_contains($workflowSource, 'allocations'),
     'Draft headers and per-sale allocations use the shared currency calculator.'
 );
 
