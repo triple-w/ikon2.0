@@ -23,14 +23,14 @@ final class PaymentAllocationService
         $payment = $this->payment($id);
         if (!$payment) throw new RuntimeException('El pago no existe.');
         if ($payment->status !== 'active' || (int) $payment->deleted) return '0.000000';
-        return FinancialMoney::subtract((string) $payment->amount, $this->paymentApplied($id));
+        return FinancialMoney::subtract(FinancialMoney::fromDatabase($payment->amount), $this->paymentApplied($id));
     }
 
     public function saleOutstanding(int $id): string
     {
         $sale = $this->sale($id);
         if (!$sale) throw new RuntimeException('La venta no existe.');
-        return FinancialMoney::subtract((string) $sale->invoice_total, $this->salePaid($id));
+        return FinancialMoney::subtract(FinancialMoney::fromDatabase($sale->invoice_total), $this->salePaid($id));
     }
 
     public function create(int $paymentId, int $saleId, $amount, ?int $actor, ?string $date = null): int
@@ -76,8 +76,8 @@ final class PaymentAllocationService
         $paymentApplied = $this->lockedSum('invoice_payment_id', $paymentId, $existing?->id);
         $salePaid = $this->lockedSum('invoice_id', $saleId, $existing?->id);
         $saleCredits = (new \App\Services\Fiscal\CreditNoteBalanceService($this->db))->creditedSaleAmount($saleId);
-        $available = FinancialMoney::subtract((string) $payment->amount, $paymentApplied);
-        $outstanding = FinancialMoney::subtract(FinancialMoney::subtract((string) $sale->invoice_total, $salePaid), $saleCredits);
+        $available = FinancialMoney::subtract(FinancialMoney::fromDatabase($payment->amount), $paymentApplied);
+        $outstanding = FinancialMoney::subtract(FinancialMoney::subtract(FinancialMoney::fromDatabase($sale->invoice_total), $salePaid), FinancialMoney::fromDatabase($saleCredits));
         if (bccomp($amount, $available, 6) > 0) throw new RuntimeException('El importe excede el saldo disponible del pago.');
         if (bccomp($amount, $outstanding, 6) > 0) throw new RuntimeException('El importe excede el saldo pendiente de la venta.');
         $data = ['amount_applied' => $amount, 'allocation_date' => $date ?: gmdate('Y-m-d'), 'status' => 'active', 'deleted' => 0, 'deactivated_at' => null, 'deactivated_by' => null, 'deactivation_reason' => null, 'updated_at' => get_current_utc_time()];
@@ -122,13 +122,13 @@ final class PaymentAllocationService
     {
         $payment = $this->payment($paymentId);
         if (!$payment) return [];
-        $rows=$this->db->table('invoices i')->select("i.id,i.display_id,i.bill_date,i.invoice_total total,COALESCE(SUM(pa.amount_applied),0) paid_amount,(i.invoice_total-COALESCE(SUM(pa.amount_applied),0)) outstanding", false)->join('payment_allocations pa', "pa.invoice_id=i.id AND pa.deleted=0 AND pa.status='active'", 'left')->where(['i.client_id' => $payment->client_id, 'i.deleted' => 0, 'i.type' => 'invoice'])->whereNotIn('i.status', ['cancelled', 'credited'])->where('i.commercial_status !=', 'cancelled')->groupBy('i.id')->having('outstanding >', 0)->orderBy('i.id', 'DESC')->get()->getResult();foreach($rows as$row)$row->outstanding=FinancialMoney::subtract((string)$row->outstanding,(new \App\Services\Fiscal\CreditNoteBalanceService($this->db))->creditedSaleAmount((int)$row->id));return array_values(array_filter($rows,fn($row)=>bccomp((string)$row->outstanding,'0',6)>0));
+        $rows=$this->db->table('invoices i')->select("i.id,i.display_id,i.bill_date,i.invoice_total total,COALESCE(SUM(pa.amount_applied),0) paid_amount,(i.invoice_total-COALESCE(SUM(pa.amount_applied),0)) outstanding", false)->join('payment_allocations pa', "pa.invoice_id=i.id AND pa.deleted=0 AND pa.status='active'", 'left')->where(['i.client_id' => $payment->client_id, 'i.deleted' => 0, 'i.type' => 'invoice'])->whereNotIn('i.status', ['cancelled', 'credited'])->where('i.commercial_status !=', 'cancelled')->groupBy('i.id')->having('outstanding >', 0)->orderBy('i.id', 'DESC')->get()->getResult();foreach($rows as$row)$row->outstanding=FinancialMoney::subtract(FinancialMoney::fromDatabase($row->outstanding),(new \App\Services\Fiscal\CreditNoteBalanceService($this->db))->creditedSaleAmount((int)$row->id));return array_values(array_filter($rows,fn($row)=>bccomp((string)$row->outstanding,'0',6)>0));
     }
 
     public function allocationsForPayment(int $paymentId): array
     {
         $pa = $this->db->prefixTable('payment_allocations');
-        $rows=$this->db->table('payment_allocations pa')->select("pa.*,i.display_id,i.bill_date,i.invoice_total total,(i.invoice_total-COALESCE((SELECT SUM(x.amount_applied) FROM {$pa} x WHERE x.invoice_id=i.id AND x.deleted=0 AND x.status='active'),0)) outstanding", false)->join('invoices i', 'i.id=pa.invoice_id')->where(['pa.invoice_payment_id' => $paymentId, 'pa.deleted' => 0, 'pa.status' => 'active'])->get()->getResult();foreach($rows as$row)$row->outstanding=FinancialMoney::subtract((string)$row->outstanding,(new \App\Services\Fiscal\CreditNoteBalanceService($this->db))->creditedSaleAmount((int)$row->invoice_id));return$rows;
+        $rows=$this->db->table('payment_allocations pa')->select("pa.*,i.display_id,i.bill_date,i.invoice_total total,(i.invoice_total-COALESCE((SELECT SUM(x.amount_applied) FROM {$pa} x WHERE x.invoice_id=i.id AND x.deleted=0 AND x.status='active'),0)) outstanding", false)->join('invoices i', 'i.id=pa.invoice_id')->where(['pa.invoice_payment_id' => $paymentId, 'pa.deleted' => 0, 'pa.status' => 'active'])->get()->getResult();foreach($rows as$row)$row->outstanding=FinancialMoney::subtract(FinancialMoney::fromDatabase($row->outstanding),(new \App\Services\Fiscal\CreditNoteBalanceService($this->db))->creditedSaleAmount((int)$row->invoice_id));return$rows;
     }
 
     public function paymentsForSale(int $saleId): array
@@ -139,7 +139,7 @@ final class PaymentAllocationService
     private function sum(string $field, int $id): string
     {
         $row = $this->db->table('payment_allocations')->selectSum('amount_applied', 'total')->where([$field => $id, 'deleted' => 0, 'status' => 'active'])->get()->getRow();
-        return FinancialMoney::normalize($row->total ?? '0');
+        return FinancialMoney::fromDatabase($row->total ?? '0');
     }
 
     private function lockedSum(string $field, int $id, ?int $exclude): string
@@ -147,6 +147,6 @@ final class PaymentAllocationService
         $sql = 'SELECT COALESCE(SUM(amount_applied),0) total FROM '.$this->db->prefixTable('payment_allocations').' WHERE '.$field.'=? AND deleted=0 AND status=\'active\'';
         $args = [$id];
         if ($exclude) { $sql .= ' AND id<>?'; $args[] = $exclude; }
-        return FinancialMoney::normalize($this->db->query($sql, $args)->getRow()->total ?? '0');
+        return FinancialMoney::fromDatabase($this->db->query($sql, $args)->getRow()->total ?? '0');
     }
 }

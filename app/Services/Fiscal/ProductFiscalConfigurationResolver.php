@@ -18,10 +18,7 @@ final class ProductFiscalConfigurationResolver
         if($setting)$taxes=$this->db->table('item_fiscal_taxes ft')->select('t.fiscal_tax_type tax_type,c.code tax_code,f.name factor_type,COALESCE(t.xml_rate,t.xml_quota) rate_or_quota,ft.sort_order calculation_order')
             ->join('taxes t','t.id=ft.tax_id')->join('sat_tax_codes c','c.id=t.sat_tax_code_id','left')->join('sat_tax_factor_types f','f.id=t.factor_type_id','left')
             ->where(['ft.item_fiscal_setting_id'=>$setting['id'],'ft.is_active'=>1,'t.deleted'=>0,'t.use_for_fiscal'=>1,'t.is_fiscal_ready'=>1])->orderBy('ft.sort_order')->get()->getResultArray();
-        $missing=[];
-        foreach(['product_service_code'=>'Clave SAT','unit_code'=>'Unidad SAT','tax_object_code'=>'Objeto de impuesto'] as $field=>$label)if(trim((string)($setting[$field]??''))==='')$missing[]=$label;
-        if(($setting['tax_object_code']??'')!=='01'&&!$taxes)$missing[]='Impuestos';
-        $ready=$setting&&in_array($setting['status'],['active','ready'],true)&&!$missing;
-        return ['source'=>'master_product','ready'=>(bool)$ready,'product_id'=>$productId,'setting'=>$setting,'taxes'=>$taxes,'missing'=>$missing];
+        $assessment=(new ProductFiscalReadinessService())->evaluate($setting,$taxes);
+        return ['source'=>'master_product','ready'=>$assessment['ready'],'product_id'=>$productId,'setting'=>$setting,'taxes'=>$taxes,'missing'=>$assessment['missing']];
     }
 }

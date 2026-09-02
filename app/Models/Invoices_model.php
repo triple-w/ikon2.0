@@ -218,7 +218,7 @@ LEFT JOIN (SELECT pa.invoice_id,SUM(pa.amount_applied) payment_received FROM $pa
         $payment = $this->db->query($payment_sql)->getRow();
 
         $result->total_paid = is_null($payment->total_paid) ? 0 : $payment->total_paid;
-        $result->balance_due = \App\Services\FinancialMoney::subtract((string)$result->invoice_total,(string)$result->total_paid);
+        $result->balance_due = \App\Services\FinancialMoney::subtract(\App\Services\FinancialMoney::fromDatabase($result->invoice_total),\App\Services\FinancialMoney::fromDatabase($result->total_paid));
 
         return $result;
     }
