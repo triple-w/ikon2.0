@@ -985,14 +985,21 @@ if (!function_exists('get_proposal_making_data')) {
 
                 if ($item_id && !array_key_exists($item_id, $item_image_cache)) {
                     $product_info = $ci->Items_model->get_one($item_id);
+                    $product_files = $product_info ? @unserialize($product_info->files) : array();
                     $item_image_cache[$item_id] = $product_info
                         ? get_store_item_image($product_info->files)
                         : get_store_item_image("");
+                    $item_image_cache[$item_id . '_pdf'] = $product_info && is_array($product_files) && count($product_files)
+                        ? get_store_item_image_pdf_source($product_info->files)
+                        : '';
                 }
 
                 $proposal_item->product_image = $item_id
                     ? $item_image_cache[$item_id]
                     : get_store_item_image("");
+                $proposal_item->product_image_pdf = $item_id
+                    ? ($item_image_cache[$item_id . '_pdf'] ?? '')
+                    : '';
             }
             $data['proposal_items'] = $proposal_items;
             $data["proposal_total_summary"] = $ci->Proposals_model->get_proposal_total_summary($proposal_id);
@@ -2069,6 +2076,29 @@ if (!function_exists('convert_comment_link')) {
  * @param proposal making data $proposal_data
  * @return array
  */
+if (!function_exists('normalize_proposal_items_template_layout')) {
+
+    /**
+     * Remove the legacy reference-image/table wrapper around PROPOSAL_ITEMS.
+     * Existing proposals keep their stored editorial content; both preview and
+     * PDF receive the normalized, full-width product table at render time.
+     */
+    function normalize_proposal_items_template_layout($content) {
+        if (!$content || strpos($content, '{PROPOSAL_ITEMS}') === false) {
+            return $content;
+        }
+
+        $pattern = '#<table\b[^>]*>\s*(?:<tbody>)?\s*<tr\b[^>]*>\s*'
+            . '<!--\s*(?:IMAGEN\s+DE\s+REFERENCIA|FOTO)\s*-->.*?'
+            . '<!--\s*(?:TABLA\s+REAL\s+DE\s+PRODUCTOS|PRODUCTOS\s+REALES\s+DE\s+LA\s+PROPUESTA)\s*-->\s*'
+            . '<td\b[^>]*>\s*\{PROPOSAL_ITEMS\}\s*</td>\s*'
+            . '</tr>\s*(?:</tbody>)?\s*</table>#isu';
+
+        $normalized = preg_replace($pattern, '{PROPOSAL_ITEMS}', $content);
+        return $normalized === null ? $content : $normalized;
+    }
+}
+
 if (!function_exists('prepare_proposal_view')) {
 
     function prepare_proposal_view($proposal_data) {
@@ -2143,7 +2173,8 @@ if (!function_exists('prepare_proposal_view')) {
             }
 
             $parser = \Config\Services::parser();
-            $content = remove_custom_field_titles_from_variables($proposal_info->content);
+            $content = normalize_proposal_items_template_layout($proposal_info->content);
+            $content = remove_custom_field_titles_from_variables($content);
             $proposal_view = $parser->setData($parser_data)->renderString($content);
             $proposal_view = htmlspecialchars_decode($proposal_view);
             $proposal_view = process_images_from_content($proposal_view);
@@ -2951,6 +2982,11 @@ if (!function_exists('prepare_proposal_pdf')) {
     function prepare_proposal_pdf($proposal_data, $mode = "download", $is_mobiel_preview = false) {
         if ($proposal_data) {
             $proposal_data["mode"] = clean_data($mode);
+
+            foreach ($proposal_data['proposal_items'] ?? array() as $proposal_item) {
+                $proposal_item->product_image = $proposal_item->product_image_pdf ?? '';
+            }
+            $proposal_data['proposal_preview'] = prepare_proposal_view($proposal_data);
 
             $html = view("proposals/proposal_pdf", $proposal_data);
 

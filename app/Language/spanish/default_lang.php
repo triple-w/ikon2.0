@@ -531,6 +531,7 @@ $lang["add_payment"] = "Añadir pago";
 $lang["never"] = "Nunca";
 $lang["email_invoice_to_client"] = "Enviar correo al cliente";
 $lang["download_pdf"] = "Descargar PDF";
+$lang["download_xml"] = "Descargar XML";
 $lang["print"] = "Imprimir";
 $lang["actions"] = "Acciones";
 $lang["balance_due"] = "Vencimiento de balance";

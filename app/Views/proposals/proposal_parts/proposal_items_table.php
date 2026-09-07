@@ -4,6 +4,13 @@ if (!$color) {
     $color = get_setting("invoice_color") ? get_setting("invoice_color") : "#2AA384";
 }
 
+$pdf_render = isset($mode);
+$image_column_width = $pdf_render ? 18 : 20;
+$item_column_width = $pdf_render ? 42 : 40;
+$image_max_width = $pdf_render ? 90 : 95;
+$image_max_height = $pdf_render ? 85 : 90;
+$item_cell_padding = $pdf_render ? 5 : 10;
+
 $discount_row = '<tr>
                         <td colspan="4" style="text-align: right;">' . app_lang("discount") . '</td>
                         <td style="text-align: right; width: 20%; border: 1px solid #fff; background-color: #f4f4f4;">' . to_currency($proposal_total_summary->discount_total, $proposal_total_summary->currency_symbol) . '</td>
@@ -15,24 +22,38 @@ $total_after_discount_row = '<tr>
                                 </tr>';
 ?>
 
-<table class="table-responsive" style="width: 100%;">
+<table class="table-responsive" cellpadding="0" style="width: 100%; border-collapse: collapse;">
     <tr style="font-weight: bold; background-color: <?php echo $color; ?>; color: #fff;  ">
-        <th style="width: 20%; border-right: 1px solid #eee; text-align: center;"> Imagen </th>
-        <th style="width: 40%; border-right: 1px solid #eee;"> <?php echo app_lang("item"); ?> </th>
+        <th style="width: <?php echo $image_column_width; ?>%; border-right: 1px solid #eee; text-align: center;"> Imagen </th>
+        <th style="width: <?php echo $item_column_width; ?>%; border-right: 1px solid #eee;"> <?php echo app_lang("item"); ?> </th>
         <th style="text-align: center; width: 12%; border-right: 1px solid #eee;"> <?php echo app_lang("quantity"); ?></th>
         <th style="text-align: right; width: 14%; border-right: 1px solid #eee;"> <?php echo app_lang("rate"); ?></th>
         <th style="text-align: right; width: 14%; "> <?php echo app_lang("total"); ?></th>
     </tr>
     <?php
     foreach ($proposal_items as $item) {
+        $product_image_source = '';
+        if (!empty($item->product_image)) {
+            if ($pdf_render) {
+                $candidate = (string) $item->product_image;
+                if (preg_match('#\Adata:image/(?:png|jpeg);base64,[A-Za-z0-9+/]+={0,2}\z#D', $candidate)) {
+                    // This source is generated from a validated local PNG/JPEG by
+                    // get_store_item_image_pdf_source(). Attribute escaping would
+                    // encode the URI delimiters and TCPDF would no longer detect it.
+                    $product_image_source = esc($candidate);
+                }
+            } else {
+                $product_image_source = esc($item->product_image, 'attr');
+            }
+        }
     ?>
-        <tr style="background-color: #f4f4f4; ">
-            <td style="width: 20%; border: 1px solid #fff; padding: 5px; text-align: center; vertical-align: middle;">
-                <?php if (!empty($item->product_image)) { ?>
-                    <img src="<?php echo esc($item->product_image, 'attr'); ?>" style="max-width: 95px; max-height: 90px; width: auto; height: auto;" />
+        <tr nobr="true" style="background-color: #f4f4f4; page-break-inside: avoid;">
+            <td style="width: <?php echo $image_column_width; ?>%; border: 1px solid #fff; padding: <?php echo $pdf_render ? 3 : 5; ?>px; text-align: center; vertical-align: middle;">
+                <?php if ($product_image_source) { ?>
+                    <img src="<?php echo $product_image_source; ?>" style="max-width: <?php echo $image_max_width; ?>px; max-height: <?php echo $image_max_height; ?>px; width: auto; height: auto;" />
                 <?php } ?>
             </td>
-            <td style="width: 40%; border: 1px solid #fff; padding: 10px; hyphens: auto;"><p class="mb5"><?php echo $item->title; ?></p>
+            <td style="width: <?php echo $item_column_width; ?>%; border: 1px solid #fff; padding: <?php echo $item_cell_padding; ?>px; hyphens: auto;"><p class="mb5"><?php echo $item->title; ?></p>
                 <span style="color: #888; font-size: 90%;"><?php echo custom_nl2br($item->description ? process_images_from_content($item->description) : ""); ?></span>
             </td>
             <td style="text-align: center; width: 12%; border: 1px solid #fff;"> <?php echo $item->quantity . " " . $item->unit_type; ?></td>

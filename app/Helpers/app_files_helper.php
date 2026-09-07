@@ -892,14 +892,52 @@ if (!function_exists('update_file_indexes')) {
 
 if (!function_exists('get_store_item_image')) {
 
-    function get_store_item_image($files) {
+    function get_store_item_image($files, $only_file_path = false) {
         $files = @unserialize($files);
         if ($files && is_array($files) && count($files)) {
             $first_file = get_array_value($files, 0);
-            return get_source_url_of_file($first_file, get_setting("timeline_file_path"), "thumbnail");
+            return get_source_url_of_file($first_file, get_setting("timeline_file_path"), "thumbnail", $only_file_path);
         } else {
-            return get_source_url_of_file(array("file_name" => "store-item-no-image.png"), get_setting("system_file_path"));
+            return get_source_url_of_file(array("file_name" => "store-item-no-image.png"), get_setting("system_file_path"), "", $only_file_path);
         }
+    }
+}
+
+if (!function_exists('get_store_item_image_path')) {
+
+    function get_store_item_image_path($files) {
+        $source = get_store_item_image($files, true);
+        if (!$source) {
+            return '';
+        }
+
+        if (is_file($source)) {
+            return $source;
+        }
+
+        $path = realpath(FCPATH . ltrim($source, '/\\'));
+        return $path && is_file($path) ? $path : '';
+    }
+}
+if (!function_exists('get_store_item_image_pdf_source')) {
+
+    function get_store_item_image_pdf_source($files) {
+        $path = get_store_item_image_path($files);
+        if (!$path || !is_readable($path)) {
+            return '';
+        }
+
+        $bytes = file_get_contents($path);
+        if ($bytes === false || $bytes === '' || strlen($bytes) > 5242880) {
+            return '';
+        }
+
+        $mime = class_exists('\\finfo') ? (new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes) : '';
+        if (!in_array($mime, array('image/png', 'image/jpeg'), true)) {
+            return '';
+        }
+
+        return 'data:' . $mime . ';base64,' . base64_encode($bytes);
     }
 }
 

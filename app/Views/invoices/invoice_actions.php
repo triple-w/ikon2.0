@@ -36,7 +36,7 @@ if ($login_user->is_admin || get_array_value($fiscalPermissions, "fiscal.sales.i
 <?php if (get_setting("enable_e_invoice")) { ?>
     <div class="card">
         <div class="card-body text-center">
-            <?php echo anchor(get_uri("invoices/download_xml/" . $invoice_info->id), "<i data-feather='file' class='icon-16'></i> " . "Download XML", array("title" => "Download XML", "class" => "")); ?>
+            <?php echo anchor(get_uri("invoices/download_xml/" . $invoice_info->id), "<i data-feather='file' class='icon-16'></i> " . app_lang('download_xml'), array("title" => app_lang('download_xml'), "class" => "")); ?>
         </div>
     </div>
 <?php } ?>

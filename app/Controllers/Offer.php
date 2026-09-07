@@ -202,15 +202,28 @@ class Offer extends Security_Controller {
             $proposal_data["accepted_by"] = $this->login_user->id;
         }
 
-        $proposal_data["meta_data"] = serialize($meta_data);
-        $proposal_data["status"] = "accepted";
-
-        if ($this->Proposals_model->ci_save($proposal_data, $proposal_id)) {
-            (new \App\Services\SupplierCostHistoryService())->snapshotProposal((int) $proposal_id, 'accepted', (!$name && isset($this->login_user->id)) ? (int) $this->login_user->id : 0);
-            log_notification("proposal_accepted", array("proposal_id" => $proposal_id), ($name ? "999999996" : $this->login_user->id));
-            echo json_encode(array("success" => true, "message" => app_lang("proposal_accepted")));
-        } else {
-            echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));
+        $actorId = (!$name && isset($this->login_user->id)) ? (int) $this->login_user->id : 0;
+        try {
+            $result = (new ProposalAcceptanceService())->acceptAndConvert(
+                (int) $proposal_id,
+                $actorId,
+                $name ? (string) $public_key : null,
+                ['meta_data' => serialize($meta_data)]
+            );
+            log_notification("proposal_accepted", array("proposal_id" => $proposal_id), $name ? "999999996" : $actorId);
+            echo json_encode(array(
+                "success" => true,
+                "proposal_id" => (int) $proposal_id,
+                "invoice_id" => (int) $result["invoice_id"],
+                "invoice_action" => $result["invoice_action"],
+                "message" => app_lang("proposal_accepted_and_converted")
+            ));
+        } catch (\Throwable $e) {
+            log_message('error', 'Proposal acceptance/conversion failed: {type} {message}', [
+                'type' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+            echo json_encode(array("success" => false, "message" => $e->getMessage()));
         }
     }
 

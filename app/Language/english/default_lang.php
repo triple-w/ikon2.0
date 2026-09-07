@@ -530,6 +530,7 @@ $lang["add_payment"] = "Add payment";
 $lang["never"] = "Never";
 $lang["email_invoice_to_client"] = "Email invoice to client";
 $lang["download_pdf"] = "Download PDF";
+$lang["download_xml"] = "Download XML";
 $lang["print"] = "Print";
 $lang["actions"] = "Actions";
 $lang["balance_due"] = "Balance Due";

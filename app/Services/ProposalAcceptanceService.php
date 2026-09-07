@@ -18,7 +18,7 @@ final class ProposalAcceptanceService
         $this->converter ??= new ProposalToInvoiceService(null, $this->db);
     }
 
-    public function acceptAndConvert(int $proposalId, int $actorId, ?string $publicKey = null): array
+    public function acceptAndConvert(int $proposalId, int $actorId, ?string $publicKey = null, array $acceptanceData = []): array
     {
         $this->db->transBegin();
         try {
@@ -48,14 +48,18 @@ final class ProposalAcceptanceService
 
             $invoiceId = $this->converter->createFromProposal($proposal, $conversionActorId);
             $now = get_current_utc_time();
-            $updated = $this->db->table('proposals')->where(['id' => $proposalId, 'deleted' => 0])->update([
+            $proposalUpdate = [
                 'status' => 'accepted',
                 'accepted_by' => $actorId,
                 'accepted_at' => $now,
                 'converted_sale_id' => $invoiceId,
                 'converted_at' => $now,
                 'converted_by' => $conversionActorId,
-            ]);
+            ];
+            if (array_key_exists('meta_data', $acceptanceData)) {
+                $proposalUpdate['meta_data'] = (string) $acceptanceData['meta_data'];
+            }
+            $updated = $this->db->table('proposals')->where(['id' => $proposalId, 'deleted' => 0])->update($proposalUpdate);
             if (! $updated) {
                 throw new RuntimeException('No fue posible cerrar la propuesta.');
             }

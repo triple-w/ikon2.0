@@ -15,6 +15,10 @@ class Pdf extends \TCPDF {
         $this->SetFontSize(10);
         $this->setListIndentWidth(7);
         $this->setImageScale(1.42);
+        if ($this->pdf_type === 'proposal') {
+            $this->SetMargins(12, 12, 12);
+            $this->SetAutoPageBreak(true, 12);
+        }
     }
 
     public function Header() {
@@ -109,6 +113,10 @@ class Pdf extends \TCPDF {
     }
 
     private function _rebuild_html($content) {
+
+        if ($this->pdf_type === 'proposal') {
+            return $this->_rebuild_proposal_html($content);
+        }
 
         // Add cellpadding to <table> tags 
         $cellpadding = 10;
@@ -237,5 +245,24 @@ class Pdf extends \TCPDF {
         $content = $default_style . $content;
 
         return $content;
+    }
+
+    private function _rebuild_proposal_html($content) {
+        $print_style = '<style>
+            body { font-size: 9.5pt; line-height: 1.25; color: #333; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { line-height: 1.2; }
+            tr { page-break-inside: avoid; }
+            img { max-width: 100%; height: auto; }
+            h1 { font-size: 24px; font-weight: normal; }
+            h2 { font-size: 21px; font-weight: normal; }
+            h3 { font-size: 18px; font-weight: normal; }
+            h4 { font-size: 15px; font-weight: normal; }
+            h5 { font-size: 13px; }
+            h6 { font-size: 11px; font-weight: normal; }
+            p { margin-top: 0; margin-bottom: 5px; }
+        </style>';
+
+        return $print_style . $content;
     }
 }
