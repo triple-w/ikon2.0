@@ -1,0 +1,12 @@
+<?php
+namespace App\Controllers;
+use App\Models\{Items_model,Suppliers_model};
+use App\Services\SupplierCostHistoryService;
+final class Supplier_costs extends Security_Controller{
+ function __construct(){parent::__construct();$this->access_only_team_members();}
+ private function allowed(string$p):bool{$permissions=is_array($this->login_user->permissions)?$this->login_user->permissions:(@unserialize((string)$this->login_user->permissions)?:[]);return(bool)($this->login_user->is_admin||get_array_value($permissions,$p));}
+ private function guard():void{if(!$this->allowed('supplier_costs_edit'))app_redirect('forbidden');}
+ function form(){$this->guard();$id=(int)$this->request->getPost('id');$service=new SupplierCostHistoryService();$row=$id?$service->manual($id):null;if($id&&!$row)show_404();$product=(int)($this->request->getPost('product_id')?:($row->product_id??0));$supplier=(int)($this->request->getPost('supplier_id')?:($row->supplier_id??0));$items=[''=>'Seleccione producto'];foreach((new Items_model())->get_all_where(['deleted'=>0],1000000,0,'title')->getResult()as$i)$items[$i->id]=$i->title;$suppliers=(new Suppliers_model())->activeDropdown($supplier);return$this->template->view('suppliers/manual_cost_form',['row'=>$row,'items'=>$items,'suppliers'=>$suppliers,'product_id'=>$product,'supplier_id'=>$supplier,'token'=>bin2hex(random_bytes(16)),'can_manage_suppliers'=>$this->allowed('suppliers_manage')]);}
+ function save(){$this->guard();try{$id=(int)$this->request->getPost('id');$result=(new SupplierCostHistoryService())->saveManual($this->request->getPost(),(int)$this->login_user->id,$id?:null);return$this->response->setJSON(['success'=>true,'id'=>$result['id'],'message'=>$result['created']?'Costo manual registrado.':'Costo manual actualizado.']);}catch(\InvalidArgumentException$e){return$this->response->setJSON(['success'=>false,'message'=>$e->getMessage()]);}catch(\Throwable$e){log_message('error','MANUAL_SUPPLIER_COST_FAILURE '.$e::class.': '.$e->getMessage());return$this->response->setJSON(['success'=>false,'message'=>'No fue posible guardar el costo manual.']);}}
+ function delete(){$this->guard();$id=(int)$this->request->getPost('id');if(!(new SupplierCostHistoryService())->deleteManual($id))return$this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Sólo se pueden eliminar costos manuales.']);return$this->response->setJSON(['success'=>true,'message'=>'Costo manual eliminado.']);}
+}

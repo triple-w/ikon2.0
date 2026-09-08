@@ -8,7 +8,7 @@ use CodeIgniter\Database\BaseConnection;
 
 final class SupplierComparisonService
 {
-    private const VALID_STATUSES = ['sent', 'accepted', 'declined', 'not_paid', 'partially_paid', 'paid', 'open', 'closed'];
+    private const VALID_STATUSES = ['sent', 'accepted', 'declined', 'not_paid', 'partially_paid', 'paid', 'open', 'closed', 'manual'];
 
     public function __construct(private ?BaseConnection $db = null)
     {
@@ -20,7 +20,7 @@ final class SupplierComparisonService
         $history = $this->db->table('product_supplier_cost_history h')
             ->select('h.id,h.product_id,h.supplier_id,h.source_type,h.source_id,h.source_item_id,h.source_folio,h.proposal_id,h.proposal_item_id,h.client_id,h.unit_cost,h.sale_unit_price,h.quantity,h.currency,h.quoted_at,h.source_status,s.name supplier_name,s.rfc supplier_rfc,s.status supplier_status,s.deleted supplier_deleted,c.company_name')
             ->join('suppliers s', 's.id=h.supplier_id')
-            ->join('clients c', 'c.id=h.client_id')
+            ->join('clients c', 'c.id=h.client_id', 'left')
             ->where('h.product_id', $productId)
             ->whereIn('h.source_status', self::VALID_STATUSES)
             ->where('h.unit_cost IS NOT NULL', null, false)
@@ -40,7 +40,7 @@ final class SupplierComparisonService
                     'last_cost' => $this->decimal($row['unit_cost']),
                     'best_cost' => $this->decimal($row['unit_cost']),
                     'last_date' => $row['quoted_at'],
-                    'last_sale_unit_price' => $this->decimal($row['sale_unit_price']),
+                    'last_sale_unit_price' => $this->nullableDecimal($row['sale_unit_price']),
                     'quote_count' => 0,
                     'history' => [],
                 ];
@@ -57,8 +57,8 @@ final class SupplierComparisonService
                 'document_folio' => $row['source_folio'] ?: ('#' . ($row['source_id'] ?: $row['proposal_id'])),
                 'proposal_id' => (int) $row['proposal_id'], 'proposal_public_key' => $row['source_type'] === 'proposal' ? $row['source_folio'] : null,
                 'client_id' => (int) $row['client_id'], 'client_name' => $row['company_name'],
-                'sale_unit_price' => $this->decimal($row['sale_unit_price']),
-                'quantity' => $this->decimal($row['quantity']),
+                'sale_unit_price' => $this->nullableDecimal($row['sale_unit_price']),
+                'quantity' => $this->nullableDecimal($row['quantity']),
             ];
             if ($generalBest === null || bccomp((string) $row['unit_cost'], $generalBest, 6) < 0) {
                 $generalBest = $this->decimal($row['unit_cost']);
@@ -108,6 +108,8 @@ final class SupplierComparisonService
         $percent = FiscalDecimal::micros($last) === 0 ? null : FiscalDecimal::prorate($difference, '100.000000', $last);
         return ['difference' => $difference, 'percent' => $percent];
     }
+
+    private function nullableDecimal(mixed $value): ?string { return $value === null || $value === '' ? null : $this->decimal($value); }
 
     private function decimal(mixed $value): string
     {

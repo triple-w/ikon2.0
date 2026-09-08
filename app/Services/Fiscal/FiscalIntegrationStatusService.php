@@ -10,8 +10,10 @@ final class FiscalIntegrationStatusService
     public function inspect(int $draftId=3):array
     {
         $f=config('Fiscal');$pac=config('TimbradorXpress');$pdf=config('FiscalPdfProvider');
-        $issuer=(new FiscalIssuerResolver($this->db))->resolve(null,'development');
-        $series=$issuer?$this->db->table('fiscal_series')->where(['issuer_profile_id'=>$issuer->id,'environment'=>'development','is_active'=>1,'deleted'=>0])->whereIn('document_type',['ingreso','I'])->orderBy('is_default','DESC')->get(1)->getRow():null;
+        $environment=$f->environment;
+        $pacCoherent=$pac->isCoherentWithFiscal($environment);
+        $issuer=(new FiscalIssuerResolver($this->db))->resolve(null,$environment);
+        $series=$issuer?$this->db->table('fiscal_series')->where(['issuer_profile_id'=>$issuer->id,'environment'=>$environment,'is_active'=>1,'deleted'=>0])->whereIn('document_type',['income','ingreso','I'])->orderBy('is_default','DESC')->get(1)->getRow():null;
         $certificate=$issuer?$this->db->table('fiscal_issuer_certificates')->where(['issuer_profile_id'=>$issuer->id,'status'=>'valid','deleted'=>0])->orderBy('valid_to','DESC')->get(1)->getRow():null;
         $csdValid=false;$rfcMatch=false;
         $keyExportable=false;
@@ -34,17 +36,22 @@ final class FiscalIntegrationStatusService
             'runtime_mode'=>$f->runtimeMode,'fiscal_environment'=>$f->environment,
             'pac_adapter'=>$f->pacAdapter,'allow_real_pac'=>$f->allowRealPac,
             'pac_environment'=>$pac->environment,'pac_endpoint'=>$pac->baseUrl.'timbrarConSello',
-            'pac_api_key_development_configured'=>$pac->environment==='sandbox'&&$pac->isConfigured(),
+            'pac_expected_environment'=>$pac->expectedEnvironmentForFiscal($environment),
+            'pac_environment_coherent'=>$pacCoherent,
+            'pac_api_key_configured'=>$pac->isConfigured(),
+            'pac_api_key_sandbox_configured'=>$pac->environment==='sandbox'&&$pac->isConfigured(),
+            'pac_api_key_production_configured'=>$pac->environment==='production'&&$pac->isConfigured(),
+            'pac_production_enabled'=>$pac->productionEnabled,
             'pac_api_key_fingerprint'=>$pac->isConfigured()?substr(hash('sha256',$pac->apiKey),0,12):null,
             'credits_known'=>'not_queried','issuer_configured'=>(bool)$issuer,
             'issuer_id'=>$issuer?->id,'issuer_rfc_masked'=>$issuer?$this->mask((string)$issuer->rfc):null,
-            'series_configured'=>(bool)$series,'series_test_configured'=>(bool)$series,'series_id'=>$series?->id,'series_name'=>$series?->series,
+            'series_configured'=>(bool)$series,'series_test_configured'=>$environment==='development'&&(bool)$series,'series_id'=>$series?->id,'series_name'=>$series?->series,
             'csd_active'=>(bool)$certificate,'csd_valid'=>$csdValid,'csd_rfc_matches'=>$rfcMatch,'csd_transport_key_exportable'=>$keyExportable,
             'soap_client'=>class_exists(\SoapClient::class),'curl'=>extension_loaded('curl'),
             'pdf_provider'=>$pdf->provider,'pdf_enabled'=>$pdf->enabled,
             'pdf_wsdl_configured'=>$pdf->wsdl!=='','pdf_user_configured'=>$pdf->username!=='',
             'pdf_password_configured'=>$pdf->password!=='','income_template'=>$template,
-            'complete_clients'=>$this->db->table('fiscal_profiles')->where(['profile_type'=>'receiver','environment'=>'development'])->whereIn('status',['active','ready'])->countAllResults(),
+            'complete_clients'=>$this->db->table('fiscal_profiles')->where(['profile_type'=>'receiver','environment'=>$environment])->whereIn('status',['active','ready'])->countAllResults(),
             'configured_products'=>$this->db->table('item_fiscal_settings')->whereIn('status',['active','ready'])->where('deleted',0)->countAllResults(),
             'active_unknown_attempts_global'=>$unknownGlobal,
             'global_unknown_is_diagnostic_only'=>true,
@@ -53,7 +60,7 @@ final class FiscalIntegrationStatusService
             'active_inflight_attempts_global'=>$inflightGlobal,
             'status_draft_id'=>$draftId,'status_document_id'=>$documentId?:null,
         ];
-        $checks['ready']=$f->runtimeMode==='integration'&&$f->environment==='development'&&$f->pacAdapter==='timbradorxpress'&&$f->allowRealPac&&$pac->environment==='sandbox'&&$pac->baseUrl===\Config\TimbradorXpress::SANDBOX_URL&&$checks['pac_api_key_development_configured']&&$issuer&&$series&&$csdValid&&$rfcMatch&&$keyExportable&&$checks['soap_client']&&$checks['curl']&&$pdf->provider==='timbradorxpress-tools'&&$pdf->enabled&&$checks['pdf_wsdl_configured']&&$checks['pdf_user_configured']&&$checks['pdf_password_configured']&&$template==='1';
+        $checks['ready']=$f->runtimeMode==='integration'&&$f->enabled&&$f->stampingEnabled&&!$f->previewMode&&$f->pacAdapter==='timbradorxpress'&&$f->allowRealPac&&$pacCoherent&&$issuer&&$series&&$csdValid&&$rfcMatch&&$keyExportable&&$checks['soap_client']&&$checks['curl']&&$pdf->provider==='timbradorxpress-tools'&&$pdf->enabled&&$checks['pdf_wsdl_configured']&&$checks['pdf_user_configured']&&$checks['pdf_password_configured']&&$template==='1';
         $checks['ready_for_stamp_draft_'.$draftId]=$checks['ready']&&$draftPreflight&&$unknownForDraft===0&&$unknownForDocument===0;
         return$checks;
     }

@@ -21,6 +21,8 @@ $config = static function (
     $value->allowRealPac = $allowReal;
     $value->environment = $environment;
     $value->runtimeMode = $adapter === 'fake' ? 'automated_test' : 'integration';
+    $value->stampingEnabled = true;
+    $value->previewMode = false;
     $value->pacEncryptionKey = '';
     $value->stampingSendingStaleMinutes = 5;
     return $value;
@@ -82,7 +84,7 @@ try {
 } catch (Throwable) {
     $blocked = true;
 }
-$assert($blocked, 'Production remains blocked by the master factory.');
+$assert(!$blocked, 'Production coherente queda habilitado por la fábrica maestra.');
 
 $service = (string) file_get_contents(APPPATH . 'Services/Fiscal/Pac/FiscalStampingService.php');
 $controller = (string) file_get_contents(APPPATH . 'Controllers/Fiscal/Stamping.php');

@@ -61,15 +61,16 @@ final class FiscalPacAdapterFactory
         if (!$fiscal->allowRealPac) throw new RuntimeException('Las llamadas reales al PAC están deshabilitadas.');
         $runtimeProvider = $this->timbradorXpress ?? config('TimbradorXpress');
         if ($fiscal->runtimeMode === 'integration') {
-            if ($fiscal->environment !== 'development' || $runtimeProvider->environment !== 'sandbox' || $runtimeProvider->productionEnabled) {
-                throw new RuntimeException('El modo integration requiere PAC development.');
+            if (!$fiscal->enabled || !$fiscal->stampingEnabled || $fiscal->previewMode
+                || !$runtimeProvider->isCoherentWithFiscal($fiscal->environment)) {
+                throw new RuntimeException('El modo integration requiere un PAC coherente con el ambiente fiscal activo.');
             }
-            $runtimeProvider->assertSandbox();
             if (!$runtimeProvider->isConfigured()) throw new RuntimeException('PAC no configurado.');
             return new TimbradorXpressRestAdapter($runtimeProvider);
         }
         if ($fiscal->runtimeMode === 'production') {
-            if ($fiscal->environment !== 'production' || $runtimeProvider->environment !== 'production' || !$runtimeProvider->productionEnabled) {
+            if (!$fiscal->enabled || !$fiscal->stampingEnabled || $fiscal->previewMode
+                || !$runtimeProvider->isCoherentWithFiscal($fiscal->environment)) {
                 throw new RuntimeException('La configuración productiva del PAC no es consistente.');
             }
             if (!$runtimeProvider->isConfigured()) throw new RuntimeException('PAC no configurado.');

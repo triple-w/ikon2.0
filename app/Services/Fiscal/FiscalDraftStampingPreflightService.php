@@ -38,10 +38,10 @@ final class FiscalDraftStampingPreflightService
         $fiscal=config('Fiscal');
         if($fiscal->runtimeMode!=='automated_test'){
             $pac=config('TimbradorXpress');$pdf=config('FiscalPdfProvider');
-            if($fiscal->runtimeMode!=='integration'||!$fiscal->allowRealPac||$fiscal->pacAdapter!=='timbradorxpress'||$fiscal->environment!=='development')$errors[]='El modo de integración PAC no está configurado correctamente.';
-            if($pac->environment!=='sandbox'||$pac->baseUrl!==$pac::SANDBOX_URL||!$pac->isConfigured())$errors[]='El PAC de desarrollo no está configurado.';
-            if(($draft['environment']??'')!=='development')$errors[]='El borrador no pertenece al ambiente development.';
-            if(($snapshot['series_snapshot']['environment']??'')!=='development'||(int)($snapshot['series_snapshot']['issuer_profile_id']??0)!==(int)($draft['issuer_id']??0)||empty($snapshot['series_snapshot']['is_active']))$errors[]='Selecciona una serie development activa del emisor.';
+            if($fiscal->runtimeMode!=='integration'||!$fiscal->enabled||!$fiscal->stampingEnabled||$fiscal->previewMode||!$fiscal->allowRealPac||$fiscal->pacAdapter!=='timbradorxpress')$errors[]='El modo de integración PAC no está configurado correctamente.';
+            if(!$pac->isCoherentWithFiscal($fiscal->environment))$errors[]='El PAC no coincide con el ambiente fiscal activo.';
+            if(($draft['environment']??'')!==$fiscal->environment)$errors[]='El borrador no pertenece al ambiente fiscal activo.';
+            if(($snapshot['series_snapshot']['environment']??'')!==$fiscal->environment||(int)($snapshot['series_snapshot']['issuer_profile_id']??0)!==(int)($draft['issuer_id']??0)||empty($snapshot['series_snapshot']['is_active']))$errors[]='Selecciona una serie activa del emisor en el ambiente fiscal actual.';
             if(!class_exists(\SoapClient::class))$errors[]='La extensión SOAP no está disponible.';
             if($pdf->provider!=='timbradorxpress-tools'||!$pdf->enabled||$pdf->username===''||$pdf->password===''||$pdf->wsdl==='')$errors[]='El servicio PDF WSTools33 no está configurado.';
             try{$template=(new FiscalPdfTemplateResolver($this->db))->resolve((int)$draft['issuer_id'],'timbradorxpress-tools','I');if($template->templateCode!=='1')$errors[]='La plantilla PDF de ingreso debe ser 1.';}catch(Throwable){$errors[]='La plantilla PDF de ingreso debe ser 1.';}

@@ -9,8 +9,11 @@
                         <i data-feather="menu" class="icon"></i>
                     </a>
                 </li>
-                <?php if(config('Fiscal')->runtimeMode==='integration'){ ?>
+                <?php if(config('Fiscal')->runtimeMode==='integration'&&config('Fiscal')->environment==='development'){ ?>
                 <li class="nav-item d-flex align-items-center"><span class="badge bg-warning text-dark">AMBIENTE DE PRUEBAS PAC</span></li>
+                <?php } ?>
+                <?php if(config('Fiscal')->runtimeMode==='integration'&&config('Fiscal')->environment==='production'){ ?>
+                <li class='nav-item d-flex align-items-center'><span class='badge bg-danger'>PAC PRODUCCI&#211;N</span></li>
                 <?php } ?>
                 <?php if((new \App\Services\Fiscal\FiscalPreviewModeGuard(db_connect()))->isPreview()){ ?>
                 <li class="nav-item d-flex align-items-center"><span class="badge bg-danger">AMBIENTE DE VISTA PREVIA — TIMBRADO FISCAL DESHABILITADO</span></li>

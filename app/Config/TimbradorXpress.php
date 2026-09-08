@@ -36,6 +36,32 @@ final class TimbradorXpress extends BaseConfig
         $this->requestTimeout=max(5,min(120,(int)env('TIMBRADORXPRESS_REQUEST_TIMEOUT',60)));
     }
     public function isConfigured():bool{return $this->apiKey!=='';}
+    public function expectedEnvironmentForFiscal(string $fiscalEnvironment): ?string
+    {
+        return match (strtolower(trim($fiscalEnvironment))) {
+            'development' => 'sandbox',
+            'production' => 'production',
+            default => null,
+        };
+    }
+    public function expectedBaseUrlForFiscal(string $fiscalEnvironment): ?string
+    {
+        return match (strtolower(trim($fiscalEnvironment))) {
+            'development' => self::SANDBOX_URL,
+            'production' => self::PRODUCTION_URL,
+            default => null,
+        };
+    }
+    public function isCoherentWithFiscal(string $fiscalEnvironment): bool
+    {
+        $fiscalEnvironment = strtolower(trim($fiscalEnvironment));
+        $expectedEnvironment = $this->expectedEnvironmentForFiscal($fiscalEnvironment);
+        $expectedBaseUrl = $this->expectedBaseUrlForFiscal($fiscalEnvironment);
+        if ($expectedEnvironment === null || $expectedBaseUrl === null) return false;
+        if ($this->environment !== $expectedEnvironment || !hash_equals($expectedBaseUrl, $this->baseUrl)) return false;
+        if ($fiscalEnvironment === 'production') return $this->productionEnabled && $this->isConfigured();
+        return !$this->productionEnabled && $this->isConfigured();
+    }
     public function assertSandbox():void
     {
         if($this->environment!=='sandbox'||$this->productionEnabled||!str_starts_with($this->baseUrl,'https://dev.timbradorxpress.mx/'))throw new RuntimeException('La primera prueba sólo está permitida en sandbox con producción deshabilitada.');
