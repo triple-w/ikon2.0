@@ -6,28 +6,29 @@ namespace App\Services\Fiscal\Pac;
 use App\Contracts\Fiscal\Pac\PacAdapterInterface;
 use App\Domain\Fiscal\Pac\PacResponse;
 use App\Domain\Fiscal\Pac\StampRequest;
+use Config\Fiscal;
 use Config\TimbradorXpress;
 use RuntimeException;
 
 final class TimbradorXpressRestAdapter implements PacAdapterInterface
 {
     private $client;
-    public function __construct(private readonly ?TimbradorXpress $configuration = null, $client = null)
+    public function __construct(private readonly ?TimbradorXpress $configuration = null, $client = null, private readonly ?Fiscal $fiscal = null)
     {
-        $this->client = $client ?: service('curlrequest');
+        $this->client = $client;
     }
     public function stamp(StampRequest $request): PacResponse
     {
         $config=$this->configuration??config('TimbradorXpress');
         if ($request->provider !== 'timbradorxpress'||$request->environment!==$config->environment) throw new RuntimeException('Proveedor o ambiente PAC no permitido.');
-        if(!$config->isConfigured())throw new RuntimeException('PAC no configurado.');
-        if($config->environment==='production')throw new RuntimeException('El adaptador productivo está bloqueado para esta etapa.');
-        $config->assertSandbox();
+        $config->assertTransportAllowed($this->fiscal ?? config('Fiscal'));
         if (strlen($request->signedXml) > 2097152) throw new RuntimeException('El XML firmado excede el límite permitido.');
         if ($request->keyPem === null || preg_match('/-----BEGIN (?:RSA )?PRIVATE KEY-----/', $request->keyPem) !== 1) {
             throw new RuntimeException('La llave CSD no está disponible para timbrarConSello.');
         }
         $url = $config->baseUrl.'timbrarConSello';
+        $this->client ??= service('curlrequest');
+        $transportStartedAt = gmdate('Y-m-d H:i:s');
         try {
             $response = $this->client->post($url, [
                 'form_params'=>['apikey'=>$config->apiKey,'xmlCFDI'=>$request->signedXml,'keyPEM'=>$request->keyPem],
@@ -37,7 +38,7 @@ final class TimbradorXpressRestAdapter implements PacAdapterInterface
             ]);
             $body=(string)$response->getBody();$status=(int)$response->getStatusCode();
             $contentType=method_exists($response,'getHeaderLine')?(string)$response->getHeaderLine('Content-Type'):'';
-            $forensic=['request_sent'=>true,'response_content_type'=>mb_substr(trim($contentType),0,160),'response_body_length'=>strlen($body),'response_body_sha256'=>hash('sha256',$body)];
+            $forensic=['request_sent'=>true,'sent_at'=>$transportStartedAt,'response_content_type'=>mb_substr(trim($contentType),0,160),'response_body_length'=>strlen($body),'response_body_sha256'=>hash('sha256',$body)];
             try{
                 $parsed=(new TimbradorXpressResponseParser())->parse($body,$status);
                 if($parsed->data!==null&&$parsed->data!==''){
@@ -64,6 +65,8 @@ final class TimbradorXpressRestAdapter implements PacAdapterInterface
     {
         $config=$this->configuration??config('TimbradorXpress');foreach(['environment','uuid','rfcEmisor','rfcReceptor','total'] as $key)if(empty($query[$key]))throw new RuntimeException("Falta {$key} para consultar el estado SAT.");
         if($query['environment']!==$config->environment||!$config->isConfigured())throw new RuntimeException('PAC no configurado para el ambiente.');
+        $config->assertTransportAllowed($this->fiscal ?? config('Fiscal'));
+        $this->client ??= service('curlrequest');
         $url=$config->baseUrl.'consultarEstadoSAT';
         try{
             $response=$this->client->post($url,['form_params'=>['apikey'=>$config->apiKey,'uuid'=>$query['uuid'],'rfcEmisor'=>$query['rfcEmisor'],'rfcReceptor'=>$query['rfcReceptor'],'total'=>$query['total']],'connect_timeout'=>$config->connectTimeout,'timeout'=>$config->requestTimeout,'verify'=>true,'http_errors'=>false,'headers'=>['Accept'=>'application/json','Content-Type'=>'application/x-www-form-urlencoded']]);

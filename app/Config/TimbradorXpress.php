@@ -62,6 +62,22 @@ final class TimbradorXpress extends BaseConfig
         if ($fiscalEnvironment === 'production') return $this->productionEnabled && $this->isConfigured();
         return !$this->productionEnabled && $this->isConfigured();
     }
+    /** Normal PAC transport; the first sandbox integration test has its own guard. */
+    public function assertTransportAllowed(Fiscal $fiscal): void
+    {
+        if (!$fiscal->enabled || $fiscal->runtimeMode !== 'integration'
+            || $fiscal->pacAdapter !== 'timbradorxpress' || !$fiscal->allowRealPac
+            || !$fiscal->stampingEnabled || $fiscal->previewMode) {
+            throw new RuntimeException('El transporte PAC requiere integration, timbradorxpress y timbrado real habilitado sin preview.');
+        }
+        if (!in_array($fiscal->environment, ['development', 'production'], true)
+            || !$this->isCoherentWithFiscal($fiscal->environment)
+            || trim($this->apiKey) === '') {
+            throw new RuntimeException('El proveedor, URL o credencial PAC no es coherente con el ambiente fiscal activo.');
+        }
+    }
+
+    /** Only for the explicitly restricted first sandbox integration test. */
     public function assertSandbox():void
     {
         if($this->environment!=='sandbox'||$this->productionEnabled||!str_starts_with($this->baseUrl,'https://dev.timbradorxpress.mx/'))throw new RuntimeException('La primera prueba sólo está permitida en sandbox con producción deshabilitada.');

@@ -508,7 +508,7 @@ final class FiscalStampingService
         try {
             $updated = $this->db->table('fiscal_stamp_attempts')
                 ->where(['id' => $attemptId, 'fiscal_document_id' => $documentId, 'status' => 'pending'])
-                ->update(['status' => 'sending', 'sent_at' => $now, 'updated_at' => $now]);
+                ->update(['status' => 'sending', 'updated_at' => $now]);
             if (!$updated || $this->db->affectedRows() !== 1 || !$this->db->transStatus()) {
                 throw new RuntimeException('No fue posible confirmar el intento antes del envío.');
             }
@@ -708,6 +708,7 @@ final class FiscalStampingService
         $this->db->transStart();
         $this->db->table('fiscal_stamp_attempts')->where('id', $attemptId)->update([
             'status' => 'transport_not_sent',
+            'sent_at' => null,
             'responded_at' => get_current_utc_time(),
             'provider_message' => $message,
             'error_category' => 'transport_not_sent',
@@ -735,6 +736,10 @@ final class FiscalStampingService
             'response_error_message'=>$metadata['response_error_message']??null,
             'response_structure'=>isset($metadata['response_structure'])?json_encode($metadata['response_structure'],JSON_UNESCAPED_SLASHES):json_encode(['keys'=>$metadata['response_keys']??[],'has_data'=>$metadata['has_data']??false],JSON_UNESCAPED_SLASHES),
         ];
+        // "sending" reserves the attempt; only adapter evidence confirms transport.
+        if (($metadata['request_sent'] ?? null) === true) {
+            $row['sent_at'] = $metadata['sent_at'] ?? get_current_utc_time();
+        }
         if(!empty($metadata['forensic_path']))$row['contingency_path']=$metadata['forensic_path'];
         $this->db->table('fiscal_stamp_attempts')->where('id',$attemptId)->update($row);
     }

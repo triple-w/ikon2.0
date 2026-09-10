@@ -58,44 +58,8 @@ final class FiscalPacAdapterFactory
 
     private function createTimbradorXpress(Fiscal $fiscal): PacAdapterInterface
     {
-        if (!$fiscal->allowRealPac) throw new RuntimeException('Las llamadas reales al PAC están deshabilitadas.');
-        $runtimeProvider = $this->timbradorXpress ?? config('TimbradorXpress');
-        if ($fiscal->runtimeMode === 'integration') {
-            if (!$fiscal->enabled || !$fiscal->stampingEnabled || $fiscal->previewMode
-                || !$runtimeProvider->isCoherentWithFiscal($fiscal->environment)) {
-                throw new RuntimeException('El modo integration requiere un PAC coherente con el ambiente fiscal activo.');
-            }
-            if (!$runtimeProvider->isConfigured()) throw new RuntimeException('PAC no configurado.');
-            return new TimbradorXpressRestAdapter($runtimeProvider);
-        }
-        if ($fiscal->runtimeMode === 'production') {
-            if (!$fiscal->enabled || !$fiscal->stampingEnabled || $fiscal->previewMode
-                || !$runtimeProvider->isCoherentWithFiscal($fiscal->environment)) {
-                throw new RuntimeException('La configuración productiva del PAC no es consistente.');
-            }
-            if (!$runtimeProvider->isConfigured()) throw new RuntimeException('PAC no configurado.');
-            return new TimbradorXpressRestAdapter($runtimeProvider);
-        }
-        throw new RuntimeException('El PAC real no está permitido en automated_test.');
-
-        /*
-        if (!$fiscal->allowRealPac) {
-            throw new RuntimeException('Las llamadas reales al PAC están deshabilitadas.');
-        }
-        if ($fiscal->environment !== 'sandbox') {
-            throw new RuntimeException('TimbradorXpress sólo está permitido en sandbox durante esta etapa.');
-        }
-
         $provider = $this->timbradorXpress ?? config('TimbradorXpress');
-        if ($provider->environment !== 'sandbox' || $provider->productionEnabled) {
-            throw new RuntimeException('La configuración maestra y TimbradorXpress no coinciden en sandbox seguro.');
-        }
-        $provider->assertSandbox();
-        if (!$provider->isConfigured()) {
-            throw new RuntimeException('PAC no configurado.');
-        }
-
-        return new TimbradorXpressRestAdapter($provider);
-        */
+        $provider->assertTransportAllowed($fiscal);
+        return new TimbradorXpressRestAdapter($provider, null, $fiscal);
     }
 }
