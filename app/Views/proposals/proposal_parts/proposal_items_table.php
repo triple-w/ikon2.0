@@ -5,19 +5,21 @@ if (!$color) {
 }
 
 $pdf_render = isset($mode);
-$image_column_width = $pdf_render ? 18 : 20;
-$item_column_width = $pdf_render ? 42 : 40;
+$proposal_fiscal_output = $proposal_fiscal_output ?? false;
+$summary_colspan = $proposal_fiscal_output ? 5 : 4;
+$image_column_width = $proposal_fiscal_output ? 15 : ($pdf_render ? 18 : 20);
+$item_column_width = $proposal_fiscal_output ? 27 : ($pdf_render ? 42 : 40);
 $image_max_width = $pdf_render ? 90 : 95;
 $image_max_height = $pdf_render ? 85 : 90;
 $item_cell_padding = $pdf_render ? 5 : 10;
 
 $discount_row = '<tr>
-                        <td colspan="4" style="text-align: right;">' . app_lang("discount") . '</td>
+                        <td colspan="' . $summary_colspan . '" style="text-align: right;">' . app_lang("discount") . '</td>
                         <td style="text-align: right; width: 20%; border: 1px solid #fff; background-color: #f4f4f4;">' . to_currency($proposal_total_summary->discount_total, $proposal_total_summary->currency_symbol) . '</td>
                     </tr>';
 
 $total_after_discount_row = '<tr>
-                                    <td colspan="4" style="text-align: right;">' . app_lang("total_after_discount") . '</td>
+                                    <td colspan="' . $summary_colspan . '" style="text-align: right;">' . app_lang("total_after_discount") . '</td>
                                     <td style="text-align: right; width: 20%; border: 1px solid #fff; background-color: #f4f4f4;">' . to_currency($proposal_total_summary->proposal_subtotal - $proposal_total_summary->discount_total, $proposal_total_summary->currency_symbol) . '</td>
                                 </tr>';
 ?>
@@ -25,13 +27,15 @@ $total_after_discount_row = '<tr>
 <table class="table-responsive" cellpadding="0" style="width: 100%; border-collapse: collapse;">
     <tr style="font-weight: bold; background-color: <?php echo $color; ?>; color: #fff;  ">
         <th style="width: <?php echo $image_column_width; ?>%; border-right: 1px solid #eee; text-align: center;"> Imagen </th>
-        <th style="width: <?php echo $item_column_width; ?>%; border-right: 1px solid #eee;"> <?php echo app_lang("item"); ?> </th>
+        <th style="width: <?php echo $item_column_width; ?>%; border-right: 1px solid #eee;"> <?php echo $proposal_fiscal_output ? 'Producto o servicio' : app_lang("item"); ?> </th>
         <th style="text-align: center; width: 12%; border-right: 1px solid #eee;"> <?php echo app_lang("quantity"); ?></th>
-        <th style="text-align: right; width: 14%; border-right: 1px solid #eee;"> <?php echo app_lang("rate"); ?></th>
+        <th style="text-align: right; width: 14%; border-right: 1px solid #eee;"> <?php echo $proposal_fiscal_output ? 'Precio sin impuestos' : app_lang("rate"); ?></th>
+        <?php if ($proposal_fiscal_output) { ?><th style="text-align: right; width: 18%; border-right: 1px solid #eee;">Impuestos</th><?php } ?>
         <th style="text-align: right; width: 14%; "> <?php echo app_lang("total"); ?></th>
     </tr>
     <?php
     foreach ($proposal_items as $item) {
+        $fiscal_line = $proposal_fiscal_output ? $proposal_fiscal_lines[$item->id] : null;
         $product_image_source = '';
         if (!empty($item->product_image)) {
             if ($pdf_render) {
@@ -57,12 +61,13 @@ $total_after_discount_row = '<tr>
                 <span style="color: #888; font-size: 90%;"><?php echo custom_nl2br($item->description ? process_images_from_content($item->description) : ""); ?></span>
             </td>
             <td style="text-align: center; width: 12%; border: 1px solid #fff;"> <?php echo $item->quantity . " " . $item->unit_type; ?></td>
-            <td style="text-align: right; width: 14%; border: 1px solid #fff;"> <?php echo to_currency($item->rate, $item->currency_symbol); ?></td>
-            <td style="text-align: right; width: 14%; border: 1px solid #fff;"> <?php echo to_currency($item->total, $item->currency_symbol); ?></td>
+            <td style="text-align: right; width: 14%; border: 1px solid #fff;"> <?php echo to_currency($fiscal_line ? $fiscal_line['unit_base'] : $item->rate, $item->currency_symbol); ?></td>
+            <?php if ($fiscal_line) { ?><td style="text-align: right; width: 18%; border: 1px solid #fff;"><?php echo $fiscal_line['taxes']; ?></td><?php } ?>
+            <td style="text-align: right; width: 14%; border: 1px solid #fff;"> <?php echo to_currency($fiscal_line ? $fiscal_line['total'] : $item->total, $item->currency_symbol); ?></td>
         </tr>
     <?php } ?>
     <tr>
-        <td colspan="4" style="text-align: right;"><?php echo app_lang("sub_total"); ?></td>
+        <td colspan="<?php echo $summary_colspan; ?>" style="text-align: right;"><?php echo app_lang("sub_total"); ?></td>
         <td style="text-align: right; width: 20%; border: 1px solid #fff; background-color: #f4f4f4;">
             <?php echo to_currency($proposal_total_summary->proposal_subtotal, $proposal_total_summary->currency_symbol); ?>
         </td>
@@ -74,7 +79,7 @@ $total_after_discount_row = '<tr>
     ?>
     <?php if ($proposal_total_summary->tax) { ?>
         <tr>
-            <td colspan="4" style="text-align: right;"><?php echo $proposal_total_summary->tax_name; ?></td>
+            <td colspan="<?php echo $summary_colspan; ?>" style="text-align: right;"><?php echo $proposal_total_summary->tax_name; ?></td>
             <td style="text-align: right; width: 20%; border: 1px solid #fff; background-color: #f4f4f4;">
                 <?php echo to_currency($proposal_total_summary->tax, $proposal_total_summary->currency_symbol); ?>
             </td>
@@ -82,7 +87,7 @@ $total_after_discount_row = '<tr>
     <?php } ?>
     <?php if ($proposal_total_summary->tax2) { ?>
         <tr>
-            <td colspan="4" style="text-align: right;"><?php echo $proposal_total_summary->tax_name2; ?></td>
+            <td colspan="<?php echo $summary_colspan; ?>" style="text-align: right;"><?php echo $proposal_total_summary->tax_name2; ?></td>
             <td style="text-align: right; width: 20%; border: 1px solid #fff; background-color: #f4f4f4;">
                 <?php echo to_currency($proposal_total_summary->tax2, $proposal_total_summary->currency_symbol); ?>
             </td>
@@ -93,8 +98,14 @@ $total_after_discount_row = '<tr>
         echo $discount_row;
     }
     ?>
+    <?php if ($proposal_fiscal_output) { ?>
+        <tr>
+            <td colspan="<?php echo $summary_colspan; ?>" style="text-align: right;">Impuestos</td>
+            <td style="text-align: right; width: 14%; border: 1px solid #fff; background-color: #f4f4f4;"><?php echo to_currency($proposal_total_summary->tax_total, $proposal_total_summary->currency_symbol); ?></td>
+        </tr>
+    <?php } ?>
     <tr>
-        <td colspan="4" style="text-align: right;"><?php echo app_lang("total"); ?></td>
+        <td colspan="<?php echo $summary_colspan; ?>" style="text-align: right;"><?php echo app_lang("total"); ?></td>
         <td style="text-align: right; width: 20%; background-color: <?php echo $color; ?>; color: #fff;">
             <?php echo to_currency($proposal_total_summary->proposal_total, $proposal_total_summary->currency_symbol); ?>
         </td>

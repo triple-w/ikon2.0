@@ -2106,20 +2106,38 @@ if (!function_exists('prepare_proposal_view')) {
             $proposal_info = get_array_value($proposal_data, "proposal_info");
             $proposal_total_summary = get_array_value($proposal_data, "proposal_total_summary");
 
+            // Explicit opt-in preserves saved templates and legacy totals.
+            $legacy_proposal_total = $proposal_total_summary->proposal_total;
+            $fiscal_output = preg_match('/\{PROPOSAL_(?:TAXES|GRAND_TOTAL)\}/', (string) $proposal_info->content);
+            $proposal_data['proposal_fiscal_output'] = (bool) $fiscal_output;
+            $proposal_data['mode'] = $proposal_data['mode'] ?? null;
+            if ($fiscal_output) {
+                $proposal_data = array_replace($proposal_data, (new \App\Services\ProposalTemplateFiscalService())->prepare(
+                    (int) $proposal_info->id, $proposal_data['proposal_items'], $proposal_total_summary
+                ));
+                $proposal_total_summary = $proposal_data['proposal_total_summary'];
+            }
+
             $parser_data = array();
 
             $parser_data["PROPOSAL_ID"] = get_proposal_id($proposal_info->id);
             $parser_data["PROPOSAL_DATE"] = format_to_date($proposal_info->proposal_date, false);
             $parser_data["PROPOSAL_EXPIRY_DATE"] = format_to_date($proposal_info->valid_until, false);
-            $parser_data["PROPOSAL_ITEMS"] = view("proposals/proposal_parts/proposal_items_table", $proposal_data);
+            $parser_data["PROPOSAL_ITEMS"] = view("proposals/proposal_parts/proposal_items_table", $proposal_data, array("saveData" => false));
             $parser_data["PROPOSAL_SUBTOTAL"] = to_currency($proposal_total_summary->proposal_subtotal, $proposal_total_summary->currency_symbol);
             $parser_data["PROPOSAL_DISCOUNT"] = to_currency($proposal_total_summary->discount_total, $proposal_total_summary->currency_symbol);
             $parser_data["PROPOSAL_TOTAL_AFTER_DISCOUNT"] = to_currency($proposal_total_summary->proposal_subtotal - $proposal_total_summary->discount_total, $proposal_total_summary->currency_symbol);
-            $parser_data["PROPOSAL_TOTAL"] = to_currency($proposal_total_summary->proposal_total, $proposal_total_summary->currency_symbol);
+            $parser_data["PROPOSAL_TOTAL"] = to_currency($legacy_proposal_total, $proposal_total_summary->currency_symbol);
+            $proposal_data['proposal_fiscal_output'] = (bool) $fiscal_output;
+            $proposal_data['mode'] = $proposal_data['mode'] ?? null;
+            if ($fiscal_output) {
+                $parser_data["PROPOSAL_TAXES"] = to_currency($proposal_total_summary->tax_total, $proposal_total_summary->currency_symbol);
+                $parser_data["PROPOSAL_GRAND_TOTAL"] = to_currency($proposal_total_summary->proposal_total, $proposal_total_summary->currency_symbol);
+            }
             $parser_data["PROPOSAL_NOTE"] = $proposal_info->note;
             $parser_data["APP_TITLE"] = get_setting("app_title");
 
-            $parser_data["COMPANY_INFO"] = view("proposals/proposal_parts/proposal_from");
+            $parser_data["COMPANY_INFO"] = view("proposals/proposal_parts/proposal_from", $proposal_data, array("saveData" => false));
 
             $options = array("is_default" => true);
             if ($proposal_info->company_id) {
@@ -2146,7 +2164,7 @@ if (!function_exists('prepare_proposal_view')) {
             $client_info = get_array_value($proposal_data, "client_info");
             $view_data["client_info"] = $client_info;
             $view_data["is_preview"] = true;
-            $parser_data["PROPOSAL_TO_INFO"] = view("proposals/proposal_parts/proposal_to", $view_data);
+            $parser_data["PROPOSAL_TO_INFO"] = view("proposals/proposal_parts/proposal_to", $view_data, array("saveData" => false));
             $parser_data["PROPOSAL_TO_COMPANY_NAME"] = $client_info->company_name;
             $parser_data["PROPOSAL_TO_ADDRESS"] = $client_info->address;
             $parser_data["PROPOSAL_TO_CITY"] = $client_info->city;
@@ -2197,7 +2215,9 @@ if (!function_exists('get_available_proposal_variables')) {
                 "PROPOSAL_SUBTOTAL",
                 "PROPOSAL_DISCOUNT",
                 "PROPOSAL_TOTAL_AFTER_DISCOUNT",
-                "PROPOSAL_TOTAL"
+                "PROPOSAL_TOTAL",
+                "PROPOSAL_TAXES",
+                "PROPOSAL_GRAND_TOTAL"
             ),
             "company_info" => array(
                 "APP_TITLE",
@@ -2983,8 +3003,10 @@ if (!function_exists('prepare_proposal_pdf')) {
         if ($proposal_data) {
             $proposal_data["mode"] = clean_data($mode);
 
-            foreach ($proposal_data['proposal_items'] ?? array() as $proposal_item) {
-                $proposal_item->product_image = $proposal_item->product_image_pdf ?? '';
+            foreach ($proposal_data['proposal_items'] ?? array() as $index => $proposal_item) {
+                $pdf_item = clone $proposal_item;
+                $pdf_item->product_image = $proposal_item->product_image_pdf ?? '';
+                $proposal_data['proposal_items'][$index] = $pdf_item;
             }
             $proposal_data['proposal_preview'] = prepare_proposal_view($proposal_data);
 

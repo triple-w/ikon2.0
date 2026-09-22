@@ -709,6 +709,8 @@ final class FiscalStampingService
         $this->db->table('fiscal_stamp_attempts')->where('id', $attemptId)->update([
             'status' => 'transport_not_sent',
             'sent_at' => null,
+            'parsing_phase' => 'transport_not_sent',
+            'response_structure' => json_encode(['request_sent'=>false], JSON_UNESCAPED_SLASHES),
             'responded_at' => get_current_utc_time(),
             'provider_message' => $message,
             'error_category' => 'transport_not_sent',
@@ -727,6 +729,8 @@ final class FiscalStampingService
     private function persistResponseForensics(int $attemptId, object $response): void
     {
         $metadata=$response->metadata??[];
+        $structure=$metadata['response_structure']??['keys'=>$metadata['response_keys']??[],'has_data'=>$metadata['has_data']??false];
+        if (array_key_exists('request_sent',$metadata)) $structure['request_sent']=$metadata['request_sent'];
         $row=[
             'response_content_type'=>$metadata['response_content_type']??null,
             'response_body_length'=>$metadata['response_body_length']??null,
@@ -734,7 +738,7 @@ final class FiscalStampingService
             'parsing_phase'=>$metadata['parsing_phase']??'transport_completed',
             'response_error_class'=>$metadata['response_error_class']??null,
             'response_error_message'=>$metadata['response_error_message']??null,
-            'response_structure'=>isset($metadata['response_structure'])?json_encode($metadata['response_structure'],JSON_UNESCAPED_SLASHES):json_encode(['keys'=>$metadata['response_keys']??[],'has_data'=>$metadata['has_data']??false],JSON_UNESCAPED_SLASHES),
+            'response_structure'=>json_encode($structure,JSON_UNESCAPED_SLASHES),
         ];
         // "sending" reserves the attempt; only adapter evidence confirms transport.
         if (($metadata['request_sent'] ?? null) === true) {
