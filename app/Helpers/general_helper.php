@@ -2106,16 +2106,17 @@ if (!function_exists('prepare_proposal_view')) {
             $proposal_info = get_array_value($proposal_data, "proposal_info");
             $proposal_total_summary = get_array_value($proposal_data, "proposal_total_summary");
 
-            // Explicit opt-in preserves saved templates and legacy totals.
+            // Request fiscal values without changing the legacy table's presentation.
             $legacy_proposal_total = $proposal_total_summary->proposal_total;
-            $fiscal_output = preg_match('/\{PROPOSAL_(?:TAXES|GRAND_TOTAL)\}/', (string) $proposal_info->content);
-            $proposal_data['proposal_fiscal_output'] = (bool) $fiscal_output;
+            $fiscal_output = preg_match('/\{PROPOSAL_(?:ITEMS_WITH_TAXES|TAXES|GRAND_TOTAL|DISCOUNT_ROW|TOTAL_AFTER_DISCOUNT_ROW)\}/', (string) $proposal_info->content);
+            $proposal_data['proposal_fiscal_output'] = false;
+            $proposal_data['proposal_show_summary'] = true;
             $proposal_data['mode'] = $proposal_data['mode'] ?? null;
             if ($fiscal_output) {
-                $proposal_data = array_replace($proposal_data, (new \App\Services\ProposalTemplateFiscalService())->prepare(
+                $fiscal_data = array_replace($proposal_data, (new \App\Services\ProposalTemplateFiscalService())->prepare(
                     (int) $proposal_info->id, $proposal_data['proposal_items'], $proposal_total_summary
                 ));
-                $proposal_total_summary = $proposal_data['proposal_total_summary'];
+                $proposal_total_summary = $fiscal_data['proposal_total_summary'];
             }
 
             $parser_data = array();
@@ -2123,16 +2124,31 @@ if (!function_exists('prepare_proposal_view')) {
             $parser_data["PROPOSAL_ID"] = get_proposal_id($proposal_info->id);
             $parser_data["PROPOSAL_DATE"] = format_to_date($proposal_info->proposal_date, false);
             $parser_data["PROPOSAL_EXPIRY_DATE"] = format_to_date($proposal_info->valid_until, false);
-            $parser_data["PROPOSAL_ITEMS"] = view("proposals/proposal_parts/proposal_items_table", $proposal_data, array("saveData" => false));
+            if (strpos((string) $proposal_info->content, '{PROPOSAL_ITEMS}') !== false) {
+                $parser_data["PROPOSAL_ITEMS"] = view("proposals/proposal_parts/proposal_items_table", $proposal_data, array("saveData" => false));
+            }
+            if (strpos((string) $proposal_info->content, '{PROPOSAL_ITEMS_WITH_TAXES}') !== false) {
+                $parser_data["PROPOSAL_ITEMS_WITH_TAXES"] = view("proposals/proposal_parts/proposal_items_with_taxes", $fiscal_data, array("saveData" => false));
+            }
             $parser_data["PROPOSAL_SUBTOTAL"] = to_currency($proposal_total_summary->proposal_subtotal, $proposal_total_summary->currency_symbol);
             $parser_data["PROPOSAL_DISCOUNT"] = to_currency($proposal_total_summary->discount_total, $proposal_total_summary->currency_symbol);
             $parser_data["PROPOSAL_TOTAL_AFTER_DISCOUNT"] = to_currency($proposal_total_summary->proposal_subtotal - $proposal_total_summary->discount_total, $proposal_total_summary->currency_symbol);
             $parser_data["PROPOSAL_TOTAL"] = to_currency($legacy_proposal_total, $proposal_total_summary->currency_symbol);
-            $proposal_data['proposal_fiscal_output'] = (bool) $fiscal_output;
-            $proposal_data['mode'] = $proposal_data['mode'] ?? null;
             if ($fiscal_output) {
                 $parser_data["PROPOSAL_TAXES"] = to_currency($proposal_total_summary->tax_total, $proposal_total_summary->currency_symbol);
                 $parser_data["PROPOSAL_GRAND_TOTAL"] = to_currency($proposal_total_summary->proposal_total, $proposal_total_summary->currency_symbol);
+                $parser_data["PROPOSAL_DISCOUNT_ROW"] = '';
+                $parser_data["PROPOSAL_TOTAL_AFTER_DISCOUNT_ROW"] = '';
+                if (\App\Services\Fiscal\FiscalDecimal::micros((string) $proposal_total_summary->discount_total) > 0) {
+                    $parser_data["PROPOSAL_DISCOUNT_ROW"] = view("proposals/proposal_parts/proposal_summary_row", array(
+                        'summary_label' => app_lang('discount'),
+                        'summary_amount' => $parser_data["PROPOSAL_DISCOUNT"]
+                    ), array("saveData" => false));
+                    $parser_data["PROPOSAL_TOTAL_AFTER_DISCOUNT_ROW"] = view("proposals/proposal_parts/proposal_summary_row", array(
+                        'summary_label' => app_lang('total_after_discount'),
+                        'summary_amount' => $parser_data["PROPOSAL_TOTAL_AFTER_DISCOUNT"]
+                    ), array("saveData" => false));
+                }
             }
             $parser_data["PROPOSAL_NOTE"] = $proposal_info->note;
             $parser_data["APP_TITLE"] = get_setting("app_title");
@@ -2211,10 +2227,13 @@ if (!function_exists('get_available_proposal_variables')) {
                 "PROPOSAL_DATE",
                 "PROPOSAL_EXPIRY_DATE",
                 "PROPOSAL_ITEMS",
+                "PROPOSAL_ITEMS_WITH_TAXES",
                 "PROPOSAL_NOTE",
                 "PROPOSAL_SUBTOTAL",
                 "PROPOSAL_DISCOUNT",
+                "PROPOSAL_DISCOUNT_ROW",
                 "PROPOSAL_TOTAL_AFTER_DISCOUNT",
+                "PROPOSAL_TOTAL_AFTER_DISCOUNT_ROW",
                 "PROPOSAL_TOTAL",
                 "PROPOSAL_TAXES",
                 "PROPOSAL_GRAND_TOTAL"

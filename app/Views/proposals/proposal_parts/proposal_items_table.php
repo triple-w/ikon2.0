@@ -6,6 +6,7 @@ if (!$color) {
 
 $pdf_render = isset($mode);
 $proposal_fiscal_output = $proposal_fiscal_output ?? false;
+$proposal_show_summary = $proposal_show_summary ?? true;
 $summary_colspan = $proposal_fiscal_output ? 5 : 4;
 $image_column_width = $proposal_fiscal_output ? 15 : ($pdf_render ? 18 : 20);
 $item_column_width = $proposal_fiscal_output ? 27 : ($pdf_render ? 42 : 40);
@@ -66,6 +67,7 @@ $total_after_discount_row = '<tr>
             <td style="text-align: right; width: 14%; border: 1px solid #fff;"> <?php echo to_currency($fiscal_line ? $fiscal_line['total'] : $item->total, $item->currency_symbol); ?></td>
         </tr>
     <?php } ?>
+    <?php if ($proposal_show_summary) { ?>
     <tr>
         <td colspan="<?php echo $summary_colspan; ?>" style="text-align: right;"><?php echo app_lang("sub_total"); ?></td>
         <td style="text-align: right; width: 20%; border: 1px solid #fff; background-color: #f4f4f4;">
@@ -110,4 +112,5 @@ $total_after_discount_row = '<tr>
             <?php echo to_currency($proposal_total_summary->proposal_total, $proposal_total_summary->currency_symbol); ?>
         </td>
     </tr>
+    <?php } ?>
 </table>

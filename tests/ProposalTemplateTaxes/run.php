@@ -70,12 +70,13 @@ $fixture = static function ($specs, $discount='0', $amountType='fixed') use ($db
     $legacy=(object)['proposal_subtotal'=>999,'proposal_total'=>999,'discount_total'=>0,'discount_type'=>'before_tax',
         'tax'=>0,'tax2'=>0,'tax_name'=>'','tax_name2'=>'','currency_symbol'=>'$'];
     $info=(object)['id'=>10,'company_id'=>1,'proposal_date'=>'2026-09-22','valid_until'=>'2026-10-22','note'=>'',
-        'content'=>'{PROPOSAL_ITEMS}<p>BASE={PROPOSAL_SUBTOTAL}</p><p>DESC={PROPOSAL_DISCOUNT}</p><p>NET={PROPOSAL_TOTAL_AFTER_DISCOUNT}</p><p>TAX={PROPOSAL_TAXES}</p><p>FINAL={PROPOSAL_GRAND_TOTAL}</p><p>LEGACY={PROPOSAL_TOTAL}</p>'];
+        'content'=>file_get_contents(APPPATH.'../docs/proposal-with-taxes.html')];
     $client=(object)array_fill_keys(['company_name','address','city','state','zip','country','vat_number','gst_number'],'');
     return ['proposal_info'=>$info,'proposal_items'=>$items,'proposal_total_summary'=>$legacy,'client_info'=>$client];
 };
 
 $cases = [
+    'caso-real'=>[[['rate'=>'10545.50','taxes'=>[$iva]]], '0','fixed','10545.50','1687.28','12232.78'],
     'iva-exacta'=>[[['rate'=>'10545.45','taxes'=>[$iva]]], '0','fixed','10545.45','1687.27','12232.72'],
     'sin-impuesto'=>[[['rate'=>'100','taxes'=>[]]], '0','fixed','100.00','0.00','100.00'],
     'dos-productos'=>[[['rate'=>'100','taxes'=>[$iva]],['rate'=>'200','taxes'=>[$ieps]]], '0','fixed','300.00','32.00','332.00'],
@@ -100,7 +101,19 @@ try {
         $assert($data['proposal_items'][0]->product_image==='assets/images/image_preview.png', "$name: PDF no modifica imagen del preview");
         $normalize=static fn($s)=>trim(preg_replace('/\s+/u',' ',html_entity_decode(strip_tags($s))));
         $assert($normalize($html)===$normalize($pdfHtml), "$name: importes y texto identicos en preview y PDF");
-        $assert(!str_contains($html,'{PROPOSAL_') && str_contains($html,'LEGACY='.to_currency(999,'$')) && str_contains($html,'FINAL='.to_currency($grand,'$')), "$name: placeholders resueltos y TOTAL legacy preservado");
+        $assert(!str_contains($html,'{PROPOSAL_') && str_contains($html,to_currency($grand,'$')), "$name: placeholders resueltos y grand total correcto");
+        $dom=new DOMDocument(); @$dom->loadHTML('<?xml encoding="UTF-8">'.$html); $xpath=new DOMXPath($dom);
+        $tables=$xpath->query('//table');
+        $assert($tables->length===2, "$name: una tabla de partidas y un unico resumen");
+        $assert($xpath->query('.//tr',$tables->item(0))->length===count($specs)+1 && $xpath->query('.//th',$tables->item(0))->length===6, "$name: tabla fiscal solo tiene encabezado y partidas");
+        $summaryRows=$xpath->query('.//tr',$tables->item(1));
+        $labels=[];
+        foreach ($summaryRows as $row) $labels[]=trim($xpath->query('./td',$row)->item(0)->textContent);
+        $expected=(float)$discount>0?['Sub Total',app_lang('discount'),app_lang('total_after_discount'),'Impuestos','Total']:['Sub Total','Impuestos','Total'];
+        $assert($labels===$expected, "$name: filas y orden correctos, sin descuento cero");
+        if ((float)$discount>0) {
+            $assert(str_contains($summaryRows->item(1)->textContent,to_currency($summary->discount_total,'$')) && str_contains($summaryRows->item(2)->textContent,to_currency((float)$base-(float)$summary->discount_total,'$')), "$name: descuento y base neta reales");
+        }
         $assert(str_contains($html,'Precio sin impuestos') && str_contains($html,'Producto o servicio'), "$name: columnas fiscales");
         if ($name==='retencion') $assert(str_contains($html,'Retención ISR 10%') && str_contains($html,to_currency('-10','$')), 'Retencion conserva signo negativo');
         if ($name==='multiples') $assert(str_contains($html,'IVA 16%') && str_contains($html,'IEPS 8%'), 'Dos impuestos en una partida');
@@ -113,7 +126,7 @@ try {
             $formatted=to_currency($amount,'$');
             $assert(str_contains($binary,mb_convert_encoding($formatted,'UTF-16BE','UTF-8')) || str_contains($binary,$formatted), "$name: importe $formatted presente en el PDF binario");
         }
-        if ($name==='iva-exacta') {
+        if ($name==='caso-real') {
             file_put_contents(WRITEPATH.'proposal-tax-preview.html',$html);
             file_put_contents(WRITEPATH.'proposal-tax-preview.pdf',$binary);
         }
@@ -125,9 +138,25 @@ try {
     $data['proposal_info']->content='{PROPOSAL_ITEMS}<p>{PROPOSAL_TOTAL}</p>';
     $legacy=prepare_proposal_view($data);
     $assert(!str_contains($legacy,'Precio sin impuestos') && str_contains($legacy,to_currency(999,'$')), 'Plantilla historica conserva columnas y total');
+    $data['proposal_info']->content='{PROPOSAL_ITEMS}<p>{PROPOSAL_TAXES}</p><p>{PROPOSAL_GRAND_TOTAL}</p><p>LEGACY={PROPOSAL_TOTAL}</p>';
+    $mixed=prepare_proposal_view($data);
+    $assert(!str_contains($mixed,'Precio sin impuestos') && !str_contains($mixed,'>Impuestos</th>') && str_contains($mixed,'LEGACY='.to_currency(999,'$')), 'Totales fiscales no agregan columnas a ITEMS legacy');
+    $data['proposal_info']->content='{PROPOSAL_ITEMS_WITH_TAXES}';
+    $itemsOnly=prepare_proposal_view($data);
+    $assert(!str_contains($itemsOnly,app_lang('sub_total')) && str_contains($itemsOnly,'IVA 16%'), 'Tabla fiscal independiente no genera resumen');
+    $data['proposal_info']->content='{PROPOSAL_ITEMS}{PROPOSAL_ITEMS_WITH_TAXES}';
+    $both=prepare_proposal_view($data);
+    $dom=new DOMDocument(); @$dom->loadHTML('<?xml encoding="UTF-8">'.$both); $xpath=new DOMXPath($dom);
+    $assert($xpath->query('//table[1]//th')->length===5 && $xpath->query('//table[2]//th')->length===6, 'Ambos placeholders coexisten sin contaminar columnas');
     $helper=file_get_contents(APPPATH.'Helpers/general_helper.php');
     $variables=substr($helper,strpos($helper,'function get_available_proposal_variables()'),1800);
     $assert(str_contains($variables,'"PROPOSAL_TAXES"') && str_contains($variables,'"PROPOSAL_GRAND_TOTAL"'), 'Editor ofrece ambos placeholders');
+    foreach (['PROPOSAL_ITEMS_WITH_TAXES','PROPOSAL_DISCOUNT_ROW','PROPOSAL_TOTAL_AFTER_DISCOUNT_ROW'] as $variable) {
+        $assert(str_contains($variables,'"'.$variable.'"'), 'Editor ofrece '.$variable);
+    }
+    $data=$fixture([['rate'=>'100','taxes'=>[$iva]]]);
+    $data['proposal_info']->content='{PROPOSAL_DISCOUNT_ROW}{PROPOSAL_TOTAL_AFTER_DISCOUNT_ROW}';
+    $assert(trim(prepare_proposal_view($data))==='', 'Filas de descuento devuelven cadena vacia con cero');
     $data=$fixture([['rate'=>'100','taxes'=>[$iva]]]);
     $db->tables['proposal_items'][0]->fiscal_override_json='';
     try { prepare_proposal_view($data); $assert(false,'Configuracion incompleta bloquea salida fiscal'); }
