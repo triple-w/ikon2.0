@@ -106,7 +106,8 @@ class Proposals extends Security_Controller {
 
     function save_view() {
         $this->validate_submitted_data(array(
-            "id" => "required|numeric"
+            "id" => "required|numeric",
+            "proposal_template_id" => "permit_empty|is_natural"
         ));
 
         $id = $this->request->getPost("id");
@@ -116,13 +117,19 @@ class Proposals extends Security_Controller {
             app_redirect("forbidden");
         }
 
-        $proposal_data = array(
-            "content" => normalize_proposal_items_template_layout(decode_ajax_post_data($this->request->getPost('view')))
-        );
-
-        $this->Proposals_model->ci_save($proposal_data, $id);
-
-        echo json_encode(array("success" => true, 'message' => app_lang('record_saved')));
+        try {
+            if ($this->request->getPost('view') === null) {
+                throw new \RuntimeException('Falta el contenido de la propuesta.');
+            }
+            $selected = $this->request->getPost('proposal_template_id');
+            $saved = (new \App\Services\ProposalTemplateSelectionService())->save(
+                (int) $id, decode_ajax_post_data($this->request->getPost('view')),
+                $selected === null || $selected === '' ? null : (int) $selected
+            );
+            return $this->response->setJSON(['success' => true, 'message' => app_lang('record_saved')] + $saved);
+        } catch (\RuntimeException $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
     }
 
     /* add, edit or clone an proposal */
@@ -164,6 +171,7 @@ class Proposals extends Security_Controller {
             if (get_setting("default_proposal_template")) {
                 $Proposal_templates_model = model("App\Models\Proposal_templates_model");
                 $proposal_data["content"] = $Proposal_templates_model->get_one(get_setting("default_proposal_template"))->template;
+                $proposal_data['proposal_template_id'] = (int) get_setting('default_proposal_template');
             }
         }
 
@@ -177,6 +185,7 @@ class Proposals extends Security_Controller {
             $proposal_data["discount_amount_type"] = $main_proposal_info->discount_amount_type;
             $proposal_data["discount_type"] = $main_proposal_info->discount_type;
             $proposal_data["content"] = $main_proposal_info->content;
+            $proposal_data['proposal_template_id'] = $main_proposal_info->proposal_template_id ?? null;
             $proposal_data["public_key"] = make_random_string();
             $proposal_data["created_by"] = $this->login_user->id;
             $proposal_data["status"] = "draft";
@@ -530,7 +539,7 @@ class Proposals extends Security_Controller {
 
     private function _get_proposal_total_view($proposal_id = 0) {
         $view_data["proposal_total_summary"] = $this->Proposals_model->get_proposal_total_summary($proposal_id);
-        $view_data["canonical_tax_breakdown"] = (new \App\Services\Fiscal\CommercialTaxBreakdownService())->forProposal((int)$proposal_id);
+        $view_data['proposal_commercial_totals'] = (new \App\Services\ProposalTotalsService())->forProposal((int) $proposal_id);
         $view_data["proposal_id"] = $proposal_id;
         $view_data["is_proposal_editable"] = $this->_is_proposal_editable($proposal_id);
         return $this->template->view('proposals/proposal_total_section', $view_data);

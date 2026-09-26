@@ -1003,6 +1003,7 @@ if (!function_exists('get_proposal_making_data')) {
             }
             $data['proposal_items'] = $proposal_items;
             $data["proposal_total_summary"] = $ci->Proposals_model->get_proposal_total_summary($proposal_id);
+            $data['proposal_commercial_totals'] = (new \App\Services\ProposalTotalsService())->forProposal((int) $proposal_id);
 
             $data['total_read_count'] = $ci->Event_tracker_model->total_read_count(array("context" => "proposal", "context_id" => $proposal_id));
 

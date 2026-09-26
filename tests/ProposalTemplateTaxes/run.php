@@ -16,12 +16,18 @@ function company_widget($id = 0, $billFrom = '') { return 'Empresa de prueba'; }
 
 final class ProposalFixtureDb {
     public array $tables = [];
-    public function table($name) { return new ProposalFixtureQuery($this->tables[$name] ?? []); }
+    public bool $writeFailure = false;
+    public bool $hasTemplateColumn = true;
+    public function table($name) { return new ProposalFixtureQuery($this->tables[$name] ?? [], $this); }
+    public function fieldExists($field, $table) { return $this->hasTemplateColumn; }
+    public function prefixTable($name) { return $name; }
+    public function escape($value) { return "'".$value."'"; }
 }
 final class ProposalFixtureQuery {
-    public function __construct(private array $rows) {}
+    public function __construct(private array $rows, private ProposalFixtureDb $db) {}
     public function where($conditions, $value = null) {
         foreach (is_array($conditions) ? $conditions : [$conditions=>$value] as $key=>$expected) {
+            $key = preg_replace('/^[a-z]+\./', '', $key);
             $this->rows = array_values(array_filter($this->rows, fn($row)=>($row->$key ?? null) == $expected));
         }
         return $this;
@@ -30,6 +36,16 @@ final class ProposalFixtureQuery {
     public function get($limit = null) { return $this; }
     public function getRow() { return $this->rows[0] ?? null; }
     public function getResult() { return $this->rows; }
+    public function select($fields) { return $this; }
+    public function join(...$args) { return $this; }
+    public function groupStart() { return $this; }
+    public function groupEnd() { return $this; }
+    public function orWhere(...$args) { return $this; }
+    public function update($data) {
+        if ($this->db->writeFailure) return false;
+        foreach ($this->rows as $row) foreach ($data as $key=>$value) $row->$key=$value;
+        return true;
+    }
 }
 
 $root = is_file(dirname(__DIR__, 2) . '/tests/bootstrap.php') ? dirname(__DIR__, 2) : dirname(__DIR__);
@@ -95,6 +111,27 @@ try {
         $data=$fixture($specs,$discount,$discountType);
         $resolved=(new App\Services\ProposalTemplateFiscalService($db))->prepare(10,$data['proposal_items'],$data['proposal_total_summary']);
         $summary=$resolved['proposal_total_summary'];
+        $totalsService=new App\Services\ProposalTotalsService($db);
+        $totals=$totalsService->forProposal(10);
+        $ui=view('proposals/proposal_total_section', ['proposal_commercial_totals'=>$totals,
+            'proposal_total_summary'=>$data['proposal_total_summary'],'is_proposal_editable'=>false,'proposal_id'=>10], ['saveData'=>false]);
+        $assert(str_contains($ui,to_currency($grand,'$')) && str_contains($ui,to_currency($taxTotal,'$')), "$name: UI inicial usa total e impuestos canonicos");
+        $assert(((float)$discount>0)===str_contains($ui,app_lang('total_after_discount')), "$name: UI no imprime descuento cero");
+        // Copied conversion inputs: real Sale and Proposal resolvers, no alternate tax calculator.
+        $db->tables['invoices']=[clone $db->tables['proposals'][0]];
+        $db->tables['invoice_items']=array_map(static function($item) { $copy=clone $item; $copy->invoice_id=10; return $copy; }, $data['proposal_items']);
+        $db->tables['invoice_items ii']=$db->tables['invoice_items'];
+        $totalsService->assertSaleMatches($totals,10);
+        $assert($totalsService->forSale(10)['grand_total']===$grand, "$name: Proposal y Sale conservan los cuatro totales");
+        if ($name==='caso-real') {
+            $db->tables['invoice_items'][0]->rate='999';
+            try { $totalsService->assertSaleMatches($totals,10); $assert(false,'Venta con totales diferentes debe bloquearse'); }
+            catch (RuntimeException $e) { $assert(str_contains($e->getMessage(),'no coinciden'), 'Conversion detecta discrepancia y permite rollback de aceptacion'); }
+            $db->tables['invoice_items'][0]->rate=$specs[0]['rate'];
+            $editableUi=view('proposals/proposal_total_section', ['proposal_commercial_totals'=>$totals,
+                'proposal_total_summary'=>$data['proposal_total_summary'],'is_proposal_editable'=>true,'proposal_id'=>10], ['saveData'=>false]);
+            $assert(str_contains($editableUi,'discount_modal_form') && !str_contains($editableUi,app_lang('total_after_discount')), 'Sin descuento se conserva acceso para agregar descuento');
+        }
         $assert($summary->proposal_subtotal===$base && (float)$summary->tax_total===(float)$taxTotal && $summary->proposal_total===$grand, "$name: resumen fiscal esperado");
         $html=prepare_proposal_view($data);
         $pdfHtml=prepare_proposal_pdf($data,'html');
@@ -157,6 +194,38 @@ try {
     $data=$fixture([['rate'=>'100','taxes'=>[$iva]]]);
     $data['proposal_info']->content='{PROPOSAL_DISCOUNT_ROW}{PROPOSAL_TOTAL_AFTER_DISCOUNT_ROW}';
     $assert(trim(prepare_proposal_view($data))==='', 'Filas de descuento devuelven cadena vacia con cero');
+    $data=$fixture([['rate'=>'10545.50','taxes'=>[$iva]]]);
+    $db->tables['proposals'][0]->content='{PROPOSAL_ITEMS}';
+    $db->tables['proposals'][0]->proposal_template_id=1;
+    $db->tables['proposal_templates']=[(object)['id'=>1,'deleted'=>0,'template'=>'{PROPOSAL_ITEMS}'],
+        (object)['id'=>2,'deleted'=>0,'template'=>$data['proposal_info']->content]];
+    $selection=new App\Services\ProposalTemplateSelectionService($db);
+    $saved=$selection->save(10,$selection->template(2)->template,2);
+    $reloaded=$db->table('proposals')->where('id',10)->get()->getRow();
+    $assert($saved['proposal_template_id']===2 && $reloaded->proposal_template_id===2, 'Seleccion guarda ID fiscal y reload lo conserva');
+    $data['proposal_info']->content=$reloaded->content;
+    $persistedHtml=prepare_proposal_view($data);
+    $persistedPdf=prepare_proposal_pdf($data,'html');
+    $assert(str_contains($persistedHtml,'Precio sin impuestos') && str_contains($persistedPdf,to_currency('12232.78','$')), 'Preview y PDF leen snapshot fiscal persistido');
+    $db->tables['proposal_templates'][1]->template='CAMBIO GLOBAL';
+    $assert($reloaded->content!==$db->tables['proposal_templates'][1]->template, 'Cambiar plantilla global no reescribe documento guardado');
+    $selection->save(10,$reloaded->content,null);
+    $assert($reloaded->proposal_template_id===2, 'Guardar contenido sin enviar ID conserva seleccion');
+    $db->writeFailure=true;
+    try { $selection->save(10,'NO GUARDADO',1); $assert(false,'Error de guardado debe fallar'); }
+    catch (RuntimeException $e) { $assert($reloaded->proposal_template_id===2 && $reloaded->content!=='NO GUARDADO', 'Error de BD no confirma guardado ni cambia seleccion'); }
+    $db->writeFailure=false;
+    try { $selection->save(10,'INVALIDO',999); $assert(false,'Plantilla inexistente debe fallar'); }
+    catch (RuntimeException $e) { $assert($reloaded->proposal_template_id===2, 'Plantilla inexistente no sustituye seleccion por default'); }
+    $db->hasTemplateColumn=false;
+    try { $selection->save(10,'INVALIDO',1); $assert(false,'Migracion faltante debe fallar'); }
+    catch (RuntimeException $e) { $assert(str_contains($e->getMessage(),'migración'), 'Migracion faltante devuelve error explicito'); }
+    $db->hasTemplateColumn=true;
+    $selection->save(10,'{PROPOSAL_ITEMS}',1);
+    $data['proposal_info']->content=$reloaded->content;
+    $assert(!str_contains(prepare_proposal_view($data),'Precio sin impuestos'), 'Cambio persistido a template sin impuestos conserva columnas legacy');
+    $publicController=file_get_contents(APPPATH.'Controllers/Offer.php');
+    $assert(str_contains($publicController,'get_proposal_making_data($proposal_id)') && str_contains($publicController,'prepare_proposal_view($proposal_data)'), 'Enlace publico lee el mismo contenido persistido');
     $data=$fixture([['rate'=>'100','taxes'=>[$iva]]]);
     $db->tables['proposal_items'][0]->fiscal_override_json='';
     try { prepare_proposal_view($data); $assert(false,'Configuracion incompleta bloquea salida fiscal'); }

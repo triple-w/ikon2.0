@@ -166,8 +166,13 @@ class Proposal_templates extends Security_Controller {
         $this->init_permission_checker("proposal");
         $this->access_only_allowed_members();
 
-        $template_info = $this->Proposal_templates_model->get_one($id);
-        echo json_encode(array("success" => true, 'template' => $template_info->template));
+        validate_numeric_value($id);
+        try {
+            $template_info = (new \App\Services\ProposalTemplateSelectionService())->template((int) $id);
+            return $this->response->setJSON(['success' => true, 'id' => (int) $template_info->id, 'template' => $template_info->template]);
+        } catch (\RuntimeException $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
     }
 
 }

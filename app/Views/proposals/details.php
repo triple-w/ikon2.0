@@ -22,7 +22,7 @@
                         </div>
                     <?php } ?>
                     <div class="float-end pr15" id="proposal-total-section">
-                        <?php echo view("proposals/proposal_total_section", array("is_proposal_editable" => $is_proposal_editable)); ?>
+                        <?php echo view("proposals/proposal_total_section", array("is_proposal_editable" => $is_proposal_editable, "proposal_id" => $proposal_info->id, "proposal_total_summary" => $proposal_total_summary, "proposal_commercial_totals" => $proposal_commercial_totals)); ?>
                     </div>
                 </div>
             </div>

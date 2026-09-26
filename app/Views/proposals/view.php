@@ -149,11 +149,6 @@
             }
         });
 
-        $("body").on("click", "#proposal-save-and-show-btn", function() {
-            $(this).trigger("submit");
-            $("#proposal-preview-btn")[0].click();
-        });
-
         setTimeout(function() {
             $(".hidden-input-field").focus();
             $(".hidden-input-field").remove();

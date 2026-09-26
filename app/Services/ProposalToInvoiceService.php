@@ -23,6 +23,8 @@ final class ProposalToInvoiceService
     public function createFromProposal(object $proposal, int $actorId): int
     {
         $this->validateRelations($proposal);
+        $totalsService = new ProposalTotalsService($this->db);
+        $proposalTotals = $totalsService->forProposal((int) $proposal->id);
         $items = (new Proposal_items_model($this->db))->get_details(['proposal_id' => $proposal->id])->getResult();
         if (! $items) {
             throw new RuntimeException('La propuesta requiere al menos una partida activa.');
@@ -94,7 +96,10 @@ final class ProposalToInvoiceService
             'no_of_cycles' => 0,
         ];
 
-        return $this->creator->create($header, $rows, false);
+        $saleId = $this->creator->create($header, $rows, false);
+        // Acceptance owns the transaction and rolls back the conversion on mismatch.
+        $totalsService->assertSaleMatches($proposalTotals, $saleId);
+        return $saleId;
     }
 
     private function validateRelations(object $proposal): void

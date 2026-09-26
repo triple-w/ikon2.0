@@ -5,7 +5,6 @@ namespace App\Services;
 
 use App\Services\Fiscal\CommercialItemTaxDisplayService;
 use App\Services\Fiscal\CommercialTaxBreakdownService;
-use App\Services\Fiscal\FiscalDecimal;
 use RuntimeException;
 
 /** Read-only adapter: templates consume the same resolved amounts as the UI. */
@@ -19,7 +18,7 @@ final class ProposalTemplateFiscalService
     public function prepare(int $proposalId, array $items, object $legacySummary): array
     {
         $breakdown = new CommercialTaxBreakdownService($this->db);
-        $totals = $breakdown->forProposal($proposalId);
+        $totals = (new ProposalTotalsService($this->db))->forProposal($proposalId);
         if (empty($totals['ready'])) {
             throw new RuntimeException('No se puede generar la Proposal con impuestos: ' . implode('; ', $totals['missing'] ?: ['No hay partidas fiscales resueltas.']));
         }
@@ -39,7 +38,7 @@ final class ProposalTemplateFiscalService
         $summary->discount_type = 'before_tax';
         $summary->proposal_total = $totals['total'];
         $summary->tax = $summary->tax2 = 0;
-        $summary->tax_total = FiscalDecimal::subtract($totals['transferred'], $totals['withheld']);
+        $summary->tax_total = $totals['tax_total'];
 
         return ['proposal_total_summary' => $summary, 'proposal_fiscal_lines' => $lines, 'proposal_fiscal_output' => true];
     }
