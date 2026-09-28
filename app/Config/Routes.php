@@ -65,6 +65,10 @@ $routes->post('payment_complements/(:num)/cancel/check', 'Payment_complement_can
 $routes->get('payment_complements/(:num)/cancel/receipt/(:num)', 'Payment_complement_cancellations::receipt/$1/$2');
 $routes->post('payment_complements/(:num)/discard', 'Payment_complements::discard/$1', ['filter' => 'csrf']);
 
+$routes->get('payment_complements/(:num)/external-documents/new', 'Payment_complements::externalForm/$1');
+$routes->get('payment_complements/(:num)/external-documents/(:num)/edit', 'Payment_complements::externalForm/$1/$2');
+$routes->post('payment_complements/(:num)/external-documents/save', 'Payment_complements::saveExternal/$1', ['filter' => 'csrf']);
+$routes->post('payment_complements/(:num)/external-documents/(:num)/remove', 'Payment_complements::removeExternal/$1/$2', ['filter' => 'csrf']);
 // Fiscal Credit Notes (CFDI E) reuse the canonical fiscal/PAC pipeline.
 $routes->get('credit_notes', 'Credit_notes::index');
 $routes->post('credit_notes/list_data', 'Credit_notes::list_data', ['filter'=>'csrf']);
